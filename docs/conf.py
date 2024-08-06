@@ -36,6 +36,7 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.autosectionlabel',
     'sphinx.ext.extlinks',
+    "sphinx.ext.intersphinx",
     'sphinx.ext.viewcode',
     'sphinx.ext.todo',
     'sphinx_codeautolink',
@@ -53,6 +54,9 @@ autodoc_default_options = {
     "special-members": False,
 }
 
+intersphinx_mapping = {
+    "scipy": ("https://docs.scipy.org/doc/scipy/", None),
+}
 extlinks = {
     "issue": ("https://github.com/Ouranosinc/xsdba/issues/%s", "GH/%s"),
     "pull": ("https://github.com/Ouranosinc/xsdba/pull/%s", "PR/%s"),
