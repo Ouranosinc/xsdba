@@ -37,6 +37,11 @@ This package was created with Cookiecutter_ and the `Ouranosinc/cookiecutter-pyp
         :target: https://github.com/psf/black
         :alt: Python Black
 
+.. |logo| image:: https://raw.githubusercontent.com/Ouranosinc/xsdba/main/docs/logos/xsdba-logo-small-light.png
+        :target: https://github.com/Ouranosinc/xsdba
+        :alt: Xsdba
+        :class: xsdba-logo-small no-theme
+
 .. |build| image:: https://github.com/Ouranosinc/xsdba/actions/workflows/main.yml/badge.svg
         :target: https://github.com/Ouranosinc/xsdba/actions
         :alt: Build Status

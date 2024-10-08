@@ -15,6 +15,10 @@ build:
   tools:
     python: "mambaforge-22.9"
   jobs:
+    pre_install:
+      # FIXME: This is a workaround to install xclim v0.53, which is not released.
+      - mamba install -y -n base -c conda-forge "xclim=0.52.2"
+      - python -m pip install git+https://github.com/Ouranosinc/xclim.git@main
     pre_build:
       - sphinx-apidoc -o docs/apidoc --private --module-first src/xsdba
       - sphinx-build -M gettext docs docs/_build

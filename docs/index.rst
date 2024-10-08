@@ -8,6 +8,7 @@ Welcome to xsdba's documentation!
    readme
    installation
    usage
+   xsdba
    contributing
    releasing
    authors

@@ -11,5 +11,6 @@ dependencies:
   - sphinx-codeautolink
   - sphinx-copybutton
   - sphinx-intl
+  - sphinxcontrib-bibtex
   - sphinxcontrib-napoleon
   - typer >=0.12.3
