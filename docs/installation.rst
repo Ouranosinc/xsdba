@@ -97,3 +97,38 @@ The sources for xsdba can be downloaded from the `Github repo`_.
     These commands should work most of the time, but if big changes are made to the repository, you might need to remove the environment and create it again.
 
 .. _Github repo: https://github.com/Ouranosinc/xsdba
+
+
+.. _extra-dependencies:
+
+Extra Dependencies
+------------------
+
+Experimental SDBA Algorithms
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+`xsdba` also offers support for a handful of experimental adjustment methods to extend, available only if some additional libraries are installed. These libraries are completely optional.
+
+One experimental library is `SBCK`_. `SBCK` is available from PyPI but has one complex dependency: `Eigen3`_.
+As `SBCK` is compiled at installation time, a **C++** compiler (`GCC`, `Clang`, `MSVC`, etc.) must also be available.
+
+On Debian/Ubuntu, `Eigen3` can be installed via `apt`:
+
+.. code-block:: shell
+
+    $ sudo apt-get install libeigen3-dev
+
+Eigen3 is also available on conda-forge, so, if already using Anaconda, one can do:
+
+.. code-block:: shell
+
+    $ conda install -c conda-forge eigen
+
+Afterwards, `SBCK` can be installed from PyPI using `pip`:
+
+.. code-block:: shell
+
+    $ python -m pip install pybind11 sbck
+
+.. _SBCK: https://github.com/yrobink/SBCK
+.. _Eigen3: https://eigen.tuxfamily.org/index.php

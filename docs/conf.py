@@ -22,7 +22,17 @@ import sys
 
 sys.path.insert(0, os.path.abspath('..'))
 
+import xarray
+from pybtex.plugin import register_plugin
+from pybtex.style.formatting.alpha import Style as AlphaStyle
+from pybtex.style.labels import BaseLabelStyle
+
+xarray.DataArray.__module__ = "xarray"
+xarray.Dataset.__module__ = "xarray"
+xarray.CFTimeIndex.__module__ = "xarray"
+
 import xsdba
+
 
 # -- General configuration ---------------------------------------------
 
@@ -36,11 +46,20 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.autosectionlabel',
     'sphinx.ext.extlinks',
-    'sphinx.ext.viewcode',
+    "sphinx.ext.intersphinx",
+    "sphinx.ext.napoleon",
     'sphinx.ext.todo',
+    'sphinx.ext.viewcode',
+    "sphinxcontrib.bibtex",
     'sphinx_codeautolink',
     'sphinx_copybutton',
+    "nbsphinx",
+
 ]
+
+# suppress "duplicate citation for key" warnings
+suppress_warnings = ['bibtex.duplicate_citation']
+
 
 autosectionlabel_prefix_document = True
 autosectionlabel_maxdepth = 2
@@ -51,6 +70,29 @@ autodoc_default_options = {
     "undoc-members": True,
     "private-members": False,
     "special-members": False,
+}
+
+
+# Bibliography stuff
+# a simple label style which uses the bibtex keys for labels
+class XCLabelStyle(BaseLabelStyle):
+    def format_labels(self, sorted_entries):
+        for entry in sorted_entries:
+            yield entry.key
+
+
+class XCStyle(AlphaStyle):
+    default_label_style = XCLabelStyle
+
+
+register_plugin("pybtex.style.formatting", "xcstyle", XCStyle)
+bibtex_bibfiles = ["references.bib"]
+bibtex_default_style = "xcstyle"
+bibtex_reference_style = "author_year"
+
+intersphinx_mapping = {
+    "scipy": ("https://docs.scipy.org/doc/scipy/", None),
+    "pandas": ("https://pandas.pydata.org/docs/", None),
 }
 
 extlinks = {
@@ -67,7 +109,9 @@ templates_path = ['_templates']
 source_suffix = {'.rst': 'restructuredtext'}
 
 # The master toctree document.
-master_doc = 'index'
+# master_doc = 'index'
+root_doc = "index"
+
 
 # General information about the project.
 project = 'xsdba'
@@ -91,7 +135,6 @@ release = xsdba.__version__
 language = "en"
 
 # Sphinx-intl configuration
-locale_dirs = ['locales/']
 gettext_compact = False  # optional
 
 # List of patterns, relative to source directory, that match files and
@@ -157,7 +200,7 @@ latex_elements = {
 # (source start file, target name, title, author, documentclass
 # [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'xsdba.tex',
+    (root_doc, 'xsdba.tex',
      'xsdba Documentation',
      'Trevor James Smith', 'manual'),
 ]
@@ -168,7 +211,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'xsdba',
+    (root_doc, 'xsdba',
      'xsdba Documentation',
      [author], 1)
 ]
@@ -180,7 +223,7 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'xsdba',
+    (root_doc, 'xsdba',
      'xsdba Documentation',
      author,
      'xsdba',

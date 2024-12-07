@@ -5,13 +5,15 @@ build-backend = "flit_core.buildapi"
 [project]
 name = "xsdba"
 authors = [
+  {name = "Éric Dupuis", email = "dupuis.eric@ouranos.ca"},
   {name = "Trevor James Smith", email = "smith.trevorj@ouranos.ca"}
 ]
 maintainers = [
+  {name = "Éric Dupuis", email = "dupuis.eric@ouranos.ca"},
   {name = "Trevor James Smith", email = "smith.trevorj@ouranos.ca"}
 ]
 readme = {file = "README.rst", content-type = "text/x-rst"}
-requires-python = ">=3.8.0"
+requires-python = ">=3.10.0"
 keywords = ["xsdba"]
 license = {file = "LICENSE"}
 classifiers = [
@@ -22,8 +24,6 @@ classifiers = [
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.8",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
@@ -32,43 +32,69 @@ classifiers = [
 ]
 dynamic = ["description", "version"]
 dependencies = [
-  "typer >=0.12.3"
+  "boltons",
+  "bottleneck",
+  "cf_xarray>=0.10.0", # not sure if we need to be that strict
+  "cftime",
+  "dask",
+  "h5netcdf>=1.3.0",
+  "jsonpickle",
+  # TODO : for notebooks ... does this fall in optional deps?
+  "nc_time_axis",
+  "numba",
+  "numpy >=1.23.0,<2.0",
+  "pint>=0.24.3",
+  "scipy >=1.9.0",
+  "statsmodels",
+  "xarray >=2023.11.0",
+  "yamale"
 ]
 
 [project.optional-dependencies]
 dev = [
   # Dev tools and testing
-  "pip >=24.2.0",
-  "bump-my-version >=0.26.0",
+  "pip >=24.3.1",
+  "bump-my-version >=0.28.0",
   "watchdog >=4.0.0",
   "flake8 >=7.1.1",
   "flake8-rst-docstrings >=0.3.0",
   "flit >=3.9.0,<4.0",
-  "tox >=4.18.0",
+  "tox >=4.23.2",
   "coverage >=7.5.0",
   "coveralls >=4.0.1",
   "mypy",
+  "netcdf4",
   "numpydoc >=1.8.0; python_version >='3.9'",
-  "pytest >=8.3.2",
+  "pytest <8.0.0",
   "pytest-cov >=5.0.0",
-  "black ==24.8.0",
+  "pytest-xdist >=3.2.0",
+  "black ==24.10.0",
   "blackdoc ==0.3.9",
   "isort ==5.13.2",
-  "ruff >=0.5.7",
-  "pre-commit >=3.5.0"
+  "ruff >=0.7.0",
+  "pooch >=1.8.0",
+  "pre-commit >=3.5.0",
+  "xdoctest>=1.1.5",
+  "xclim >= 0.53.2"
 ]
 docs = [
   # Documentation and examples
+  "pooch >=1.8.0",
   "sphinx >=7.0.0",
   "sphinx-codeautolink",
   "sphinx-copybutton",
   "sphinx-intl",
   "sphinx-rtd-theme >=1.0",
   "nbsphinx",
-  "pandoc",
   "ipython",
   "ipykernel",
-  "jupyter_client"
+  "jupyter_client",
+  # ADD
+  "sphinx-autobuild >=2024.4.16",
+  "sphinx-autodoc-typehints",
+  "sphinx-mdinclude",
+  "sphinxcontrib-bibtex",
+  "sphinxcontrib-svg2pdfconverter[Cairosvg]"
 ]
 all = ["xsdba[dev]", "xsdba[docs]"]
 
@@ -86,8 +112,6 @@ xsdba = "xsdba.cli:app"
 
 [tool.black]
 target-version = [
-  "py38",
-  "py39",
   "py310",
   "py311",
   "py312",
@@ -201,17 +225,17 @@ exclude = [
   ".yamllint.yaml",
   "docs/_*",
   "docs/apidoc/modules.rst",
-  "docs/apidoc/xsdba*.rst",
-  "docs/locales"
+  "docs/apidoc/xsdba*.rst"
 ]
 
 [tool.isort]
 profile = "black"
-py_version = 38
+py_version = 310
+add_imports = "from __future__ import annotations"
 
 [tool.mypy]
 files = "."
-python_version = 3.8
+python_version = 3.10
 show_error_codes = true
 strict = true
 warn_no_return = true
@@ -228,12 +252,26 @@ allow_untyped_defs = true
 disable_error_code = "attr-defined"
 ignore_missing_imports = true
 
+# SPLIT: many checks removed
 [tool.numpydoc_validation]
 checks = [
   "all", # report on all checks, except the below
+  "ES01",
   "EX01",
+  "GL01",
+  "GL08",
+  "PR01",
+  "PR02", #
+  "PR04", #
+  "PR07",
+  "PR08",
+  "PR10", #
+  "RT01",
+  "RT03",
   "SA01",
-  "ES01"
+  "SA04",
+  "SS03",
+  "SS06"
 ]
 # remember to use single quotes for regex in TOML
 exclude = [
@@ -250,11 +288,20 @@ override_SS05 = [
 
 [tool.pytest.ini_options]
 addopts = [
-  "--verbose",
-  "--color=yes"
+  "--color=yes",
+  "--cov=xsdba",
+  "--numprocesses=0",
+  "--maxprocesses=8",
+  "--dist=worksteal"
 ]
+norecursedirs = ["docs/notebooks/*"]
 filterwarnings = ["ignore::UserWarning"]
+strict_markers = true
 testpaths = "tests"
+usefixtures = "xdoctest_namespace"
+markers = [
+  "slow: mark test as slow"
+]
 
 [tool.ruff]
 src = ["xsdba"]
@@ -280,7 +327,20 @@ ignore = [
   "COM", # commas
   "D205", # blank-line-after-summary
   "D400", # ends-in-period
-  "D401" # non-imperative-mood
+  "D401", # non-imperative-mood
+  # WIP xsdba
+  "E402", # top import module
+  "D200",
+  "FLY002",
+  "N801",
+  "N803",
+  "N806",
+  "PTH123",
+  "S310",
+  "PERF401", # don't force list comprehensions
+  "PERF203", # allow try/except in loop
+  "E501", # line too long
+  "W505" # doc line too long
 ]
 preview = true
 select = [
