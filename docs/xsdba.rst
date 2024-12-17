@@ -63,8 +63,8 @@ In a conventional empirical quantile mapping (EQM), this will compute the quanti
     passed, the adjustment factors will always be interpolated to the largest range of day of the years but this can
     lead to strange values, so we recommend converting the data beforehand to a common calendar.
 
-Application in multivariate settings
-====================================
+Application in multivariate settings (climate science examples)
+===============================================================
 When applying univariate adjustment methods to multiple variables, some strategies are recommended to avoid introducing unrealistic artifacts in adjusted outputs.
 
 Minimum and maximum temperature
@@ -84,18 +84,6 @@ In theory, short wave radiation should be capped when precipitation is not zero,
 Usage examples
 ==============
 The usage of this module is documented in two example notebooks: `Simple <notebooks/example.ipynb>`_ and `advanced <notebooks/advanced_example.ipynb>`_ examples.
-
-Discussion topics
-=================
-Some issues were also discussed on the Github repository. Most of these are still open questions, feel free to participate to the discussion!
-
-..
-    TODO: Check/Update issues list. Can we keep this? Those will still be in xclim's repo
-
-* Number quantiles to use in quantile mapping methods: :issue:`1162`
-* How to choose the quantiles: :issue:`1015`
-* Bias-adjustment when the trend goes to zero: :issue:`1145`
-* Spatial downscaling: :issue:`1150`
 
 Experimental wrap of SBCK
 =========================

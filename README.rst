@@ -1,6 +1,6 @@
-=====
-xsdba
-=====
+===========================================================
+xsdba: Statistical Downscaling and Bias Adjustment library
+===========================================================
 
 +----------------------------+-----------------------------------------------------+
 | Versions                   | |pypi| |versions|                                   |
@@ -22,7 +22,31 @@ Statistical correction and bias adjustment tools for xarray.
 Features
 --------
 
-* TODO
+* The `xsdba` submodule provides a collection of bias-adjustment methods meant to correct for systematic biases found in climate model simulations relative to observations.
+  Almost all adjustment algorithms conform to the `train` - `adjust` scheme, meaning that adjustment factors are first estimated on training data sets, then applied in a distinct step to the data to be adjusted.
+  Given a reference time series (`ref`), historical simulations (`hist`) and simulations to be adjusted (`sim`), any bias-adjustment method would be applied by first estimating the adjustment factors between the historical simulation and the observation series, and then applying these factors to `sim``, which could be a future simulation:
+
+* Time grouping (months, day of year, season) can be done within bias adjustment methods.
+
+* Properties and measures utilities can be used to assess the quality of adjustments.
+
+Quick Install
+-------------
+`xsdba` can be installed from PyPI:
+
+.. code-block:: shell
+
+    $ pip install xsdba
+
+Documentation
+-------------
+The official documentation is at https://xsdba.readthedocs.io/
+
+How to make the most of `xsdba`: `Basic Usage Examples`_ and `In-Depth Examples`_.
+
+.. _Basic Usage Examples: https://xsdba.readthedocs.io/en/stable/notebooks/.html
+.. _In-Depth Examples: https://xsdba.readthedocs.io/en/stable/notebooks/index.html
+
 
 Credits
 -------
@@ -36,11 +60,6 @@ This package was created with Cookiecutter_ and the `Ouranosinc/cookiecutter-pyp
 .. |black| image:: https://img.shields.io/badge/code%20style-black-000000.svg
         :target: https://github.com/psf/black
         :alt: Python Black
-
-.. |logo| image:: https://raw.githubusercontent.com/Ouranosinc/xsdba/main/docs/logos/xsdba-logo-small-light.png
-        :target: https://github.com/Ouranosinc/xsdba
-        :alt: Xsdba
-        :class: xsdba-logo-small no-theme
 
 .. |build| image:: https://github.com/Ouranosinc/xsdba/actions/workflows/main.yml/badge.svg
         :target: https://github.com/Ouranosinc/xsdba/actions
@@ -81,3 +100,18 @@ This package was created with Cookiecutter_ and the `Ouranosinc/cookiecutter-pyp
 .. |versions| image:: https://img.shields.io/pypi/pyversions/xsdba.svg
         :target: https://pypi.python.org/pypi/xsdba
         :alt: Supported Python Versions
+
+.. |logo| image:: https://raw.githubusercontent.com/Ouranosinc/xsdba/main/docs/logos/xsdba-logo-small-light.png
+        :target: https://github.com/Ouranosinc/xsdba
+        :alt: Xsdba
+        :class: xsdba-logo-small no-theme
+
+.. |logo-light| image:: https://raw.githubusercontent.com/Ouranosinc/xsdba/main/docs/logos/xsdba-logo-small-light.png
+        :target: https://github.com/Ouranosinc/xsdba
+        :alt:
+        :class: xclim-logo-small only-light-inline
+
+.. |logo-dark| image:: https://raw.githubusercontent.com/Ouranosinc/xsdba/main/docs/logos/xsdba-logo-small-dark.png
+        :target: https://github.com/Ouranosinc/xsdba
+        :alt:
+        :class: xclim-logo-small only-dark-inline
