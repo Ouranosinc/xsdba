@@ -13,6 +13,12 @@ Changes
     * ``xsdba.units`` is an adaptation of the ``xclim.core.units`` modules.
     * Many functions and definitions found in ``xclim.core.calendar`` have been adapted to ``xsdba.base``.
 * Dependencies have been updated to reflect the new package structure. (:pull:`45`)
+* Updated documentation configuration: (:pull:`46`)
+    * Significant improvements to the documentation content and layout.
+    * Now using the `furo` theme for `sphinx`.
+    * Notebooks are now linted and formatted with `nbstripout` and `nbqa-black`.
+    * CSS configurations have been added for better rendering of the documentation and logos.
+* Added the `vulture` linter (for identifying dead code) to the pre-commit configuration. (:pull:`46`).
 
 .. _changes_0.1.0:
 

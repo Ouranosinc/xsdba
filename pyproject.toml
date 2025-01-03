@@ -80,6 +80,7 @@ dev = [
 ]
 docs = [
   # Documentation and examples
+  "furo >=2023.9.10",
   "ipykernel",
   "ipython >=8.5.0",
   "jupyter_client",
@@ -93,7 +94,6 @@ docs = [
   "sphinx-copybutton",
   "sphinx-intl",
   "sphinx-mdinclude",
-  "sphinx-rtd-theme >=1.0",
   "sphinxcontrib-bibtex"
 ]
 all = ["xsdba[dev]", "xsdba[docs]"]
@@ -383,3 +383,11 @@ max-doc-length = 180
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
+
+[tool.vulture]
+exclude = []
+ignore_decorators = ["@pytest.fixture"]
+ignore_names = []
+min_confidence = 90
+paths = ["src/xsdba", "tests"]
+sort_by_size = true

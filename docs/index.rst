@@ -7,7 +7,7 @@ Welcome to xsdba's documentation!
    self
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 0
    :caption: Table of Contents:
 
    readme
@@ -17,8 +17,6 @@ Welcome to xsdba's documentation!
    contributing
    releasing
    notebooks/index
-   notebooks/example
-   notebooks/advanced_example
 
 
 .. toctree::
