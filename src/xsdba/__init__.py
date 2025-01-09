@@ -47,4 +47,4 @@ if hasattr(adjustment, "_generate_SBCK_classes"):
 
 __author__ = """Trevor James Smith"""
 __email__ = "smith.trevorj@ouranos.ca"
-__version__ = "0.1.1-dev.1"
+__version__ = "0.2.0"

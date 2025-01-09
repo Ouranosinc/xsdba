@@ -2,7 +2,7 @@
 Changelog
 =========
 
-`Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
+`v0.2.0 <https://github.com/Ouranosinc/xsdba>`_
 ------------------------------------------------------------
 
 Contributors: Éric Dupuis (:user:`coxipi`), Trevor James Smith (:user:`Zeitsperre`).
