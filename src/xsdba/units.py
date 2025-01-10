@@ -6,24 +6,14 @@ Units Handling Submodule
 from __future__ import annotations
 
 import inspect
-from copy import deepcopy
 from functools import wraps
 from typing import Any, cast
 
-import pint
-from pint import UndefinedUnitError
-
-# this dependency is "necessary" for convert_units_to
+# this dependency is "necessary" for convert_units_to and all unit printing (which use the CF formatter)
 # if we only do checks, we could get rid of it
-
-try:
-    # allows to use cf units
-    import cf_xarray.units
-except ImportError:  # noqa: S110
-    # cf-xarray is not installed, this will not be used
-    pass
-
+import cf_xarray.units  # noqa: F401
 import numpy as np
+import pint
 import xarray as xr
 
 from xsdba.base import parse_offset
@@ -42,23 +32,7 @@ __all__ = [
     "units2str",
 ]
 
-# shamelessly adapted from `cf-xarray` (which adopted it from MetPy and xclim itself)
-units = deepcopy(cf_xarray.units.units)
-# Changing the default string format for units/quantities.
-# CF is implemented by cf-xarray, g is the most versatile float format.
-# The following try/except logic can be removed when xclim drops support numpy <2.0.
-try:
-    units.formatter.default_format = "gcf"
-except UndefinedUnitError:
-    units.default_format = "gcf"
-# Switch this flag back to False. Not sure what that implies, but it breaks some tests.
-units.force_ndarray_like = False  # noqa: F841
-# Another alias not included by cf_xarray
-units.define("@alias percent = pct")
-
-# Default context.
-null = pint.Context("none")
-units.add_context(null)
+units = pint.get_application_registry()
 
 FREQ_UNITS = {
     "D": "d",
@@ -221,7 +195,8 @@ def units2str(value: xr.DataArray | str | units.Quantity | units.Unit) -> str:
     pint.Unit
         Units of the data array.
     """
-    return str(units2pint(value))
+    # Ensure we use CF's formatter. (default with xclim, but not with only cf-xarray)
+    return f"{units2pint(value):cf}"
 
 
 # XC
@@ -269,8 +244,8 @@ def pint_multiply(
         f = f.to(out_units)
     else:
         f = f.to_reduced_units()
-    out: xr.DataArray = da * f.magnitude
-    out = out.assign_attrs(units=str(f.units))
+    out: xr.DataArray = da * float(f.magnitude)
+    out = out.assign_attrs(units=f"{f.units:cf}")
     return out
 
 
@@ -299,7 +274,7 @@ def pint2cfattrs(value: units.Quantity | units.Unit, is_difference=None) -> dict
         Units following CF-Convention, using symbols.
     """
     value = value if isinstance(value, pint.Unit | units.Unit) else value.units
-    s = str(value)
+    s = f"{value:cf}"
     if "delta_" in s:
         is_difference = True
         s = s.replace("delta_", "")
@@ -344,13 +319,14 @@ def convert_units_to(  # noqa: C901
     target_unit = units2str(target)
     source_unit = units2str(source)
     if target_unit == source_unit:
-        return source if isinstance(source, str) is False else str2pint(source).m
+        return source if not isinstance(source, str) else float(str2pint(source).m)
     else:  # Convert units
         if isinstance(source, xr.DataArray):
             out = source.copy(data=units.convert(source.data, source_unit, target_unit))
             out = out.assign_attrs(units=target_unit)
-        else:
-            out = str2pint(source).to(target_unit).m
+        else:  # scalar
+            # explicit float cast because cf-xarray's registry ouputs 0-dim arrays
+            out = float(str2pint(source).to(target_unit).m)
         return out
 
 

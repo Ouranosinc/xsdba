@@ -167,7 +167,7 @@ def _var(da: xr.DataArray, *, group: str | Grouper = "time") -> xr.DataArray:
     if group.prop != "group":
         da = da.groupby(group.name)
     out = da.var(dim=group.dim)
-    out.attrs["units"] = str((units(u) ** 2).units)
+    out.attrs["units"] = f"{(units(u) ** 2).units:cf}"
     return out
 
 
