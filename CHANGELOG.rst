@@ -5,7 +5,7 @@ Changelog
 `Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
 ------------------------------------------------------------
 
-Contributors:
+Contributors: Pascal Bourgault (:user:`aulemahal`).
 
 Changes
 ^^^^^^^
@@ -13,7 +13,7 @@ Changes
 
 Fixes
 ^^^^^
-* No change.
+* Gave credits to the package to all previous contributors of ``xclim.sdba`` (:issue:`58`, :pull:`59`).
 
 .. _changes_0.2.0:
 

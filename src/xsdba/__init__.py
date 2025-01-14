@@ -45,6 +45,6 @@ if hasattr(adjustment, "_generate_SBCK_classes"):
     for cls in adjustment._generate_SBCK_classes():
         adjustment.__dict__[cls.__name__] = cls
 
-__author__ = """Trevor James Smith"""
-__email__ = "smith.trevorj@ouranos.ca"
+__author__ = """Éric Dupuis"""
+__email__ = "dupuis.eric@ouranos.ca"
 __version__ = "0.2.0"
