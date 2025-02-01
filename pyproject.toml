@@ -62,7 +62,7 @@ dev = [
   "flake8 >=7.1.1",
   "flake8-rst-docstrings >=0.3.0",
   "flit >=3.9.0,<4.0",
-  "isort ==5.13.2",
+  "isort ==6.0.0",
   "mypy",
   "netcdf4",
   "numpydoc >=1.8.0",
