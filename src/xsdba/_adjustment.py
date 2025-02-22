@@ -420,6 +420,7 @@ def mbcn_adjust(
 
     # mbcn core
     scen_mbcn = xr.zeros_like(sim)
+    sim_mbcn_reordered = xr.zeros_like(sim)
     for ib in range(gw_idxs[gr_dim].size):
         # indices in a given time block (with and without the window)
         indices_gw = gw_idxs[{gr_dim: ib}].fillna(-1).astype(int).values
@@ -463,14 +464,37 @@ def mbcn_adjust(
         )
 
         # 3. reorder scen according to npdft results
-        reordered = reordering(ref=npdft_block, sim=scen_block)
+        reordered_and_order = reordering(
+            ref=npdft_block, sim=scen_block, output_order=True
+        )
+        reordered, new_order = (
+            reordered_and_order["reordered"],
+            reordered_and_order["new_order"],
+        )
+        sim_block_reordered = xr.apply_ufunc(
+            lambda da, ind: da[ind],
+            sim[{"time": ind_gw}],
+            new_order,
+            input_core_dims=[["time"], ["time"]],
+            output_core_dims=[["time"]],
+            vectorize=True,
+            dask="parallelized",
+        )
+
         if win > 1:
             # keep  central value of window (intersecting indices in gw_idxs and g_idxs)
             scen_mbcn[{"time": ind_g}] = reordered[{"time": np.in1d(ind_gw, ind_g)}]
+            sim_mbcn_reordered[{"time": ind_g}] = sim_block_reordered[
+                {"time": np.in1d(ind_gw, ind_g)}
+            ]
+
         else:
             scen_mbcn[{"time": ind_g}] = reordered
+            sim_mbcn_reordered[{"time": ind_g}] = sim_block_reordered
+    out = scen_mbcn.to_dataset(name="scen")
+    out["sim_reordered"] = sim_mbcn_reordered
 
-    return scen_mbcn.to_dataset(name="scen")
+    return out
 
 
 @map_blocks(reduces=[Grouper.PROP, "quantiles"], scen=[])

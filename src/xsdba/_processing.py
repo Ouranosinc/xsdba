@@ -144,7 +144,7 @@ def _normalize(
 
 
 @map_groups(reordered=[Grouper.DIM], main_only=False)
-def _reordering(ds: xr.Dataset, *, dim: str) -> xr.Dataset:
+def _reordering(ds: xr.Dataset, *, dim: str, output_order: bool = False) -> xr.Dataset:
     """
     Group-wise reordering.
 
@@ -156,6 +156,10 @@ def _reordering(ds: xr.Dataset, *, dim: str) -> xr.Dataset:
             - ref : The timeseries whose rank to use.
     dim : str
         The dimension along which to reorder.
+    output_order : bool
+        Switch to determine if the ranking indices should
+        be included in the output dataset. Default: False
+        This is only compatible with the 1d reordering.
 
     Returns
     -------
@@ -164,7 +168,8 @@ def _reordering(ds: xr.Dataset, *, dim: str) -> xr.Dataset:
     """
 
     def _reordering_1d(data, ordr):
-        return np.sort(data)[np.argsort(np.argsort(ordr))]
+        new_order = np.argsort(data)[np.argsort(np.argsort(ordr))]
+        return data[new_order], new_order
 
     def _reordering_2d(data, ordr):
         data_r = data.ravel()
@@ -191,20 +196,20 @@ def _reordering(ds: xr.Dataset, *, dim: str) -> xr.Dataset:
         )
 
     if len(dim) == 1:
-        return (
-            xr.apply_ufunc(
-                _reordering_1d,
-                ds.sim,
-                ds.ref,
-                input_core_dims=[dim, dim],
-                output_core_dims=[dim],
-                vectorize=True,
-                dask="parallelized",
-                output_dtypes=[ds.sim.dtype],
-            )
-            .rename("reordered")
-            .to_dataset()
+        new_data, new_order = xr.apply_ufunc(
+            _reordering_1d,
+            ds.sim,
+            ds.ref,
+            input_core_dims=[dim, dim],
+            output_core_dims=[dim, dim],
+            vectorize=True,
+            dask="parallelized",
+            output_dtypes=[ds.sim.dtype, np.int_],
         )
+        out = new_data.to_dataset(name="reordered")
+        if output_order:
+            out["new_order"] = new_order
+        return out
 
     raise ValueError(
         f"Reordering can only be done along one dimension. "
