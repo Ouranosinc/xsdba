@@ -143,7 +143,7 @@ def _normalize(
     )
 
 
-@map_groups(reordered=[Grouper.DIM], main_only=False)
+@map_groups(reordered_and_order=[Grouper.DIM], main_only=False)
 def _reordering(ds: xr.Dataset, *, dim: str, output_order: bool = False) -> xr.Dataset:
     """
     Group-wise reordering.
@@ -180,7 +180,12 @@ def _reordering(ds: xr.Dataset, *, dim: str, output_order: bool = False) -> xr.D
         ]  # pick the middle of the window
 
     if {"window", "time"} == set(dim):
-        return (
+        if output_order:
+            raise NotImplementedError(
+                "`output_order = True`, but this is not implemented"
+                "if `dim` == {'window', 'time'}"
+            )
+        reordered_and_order = (
             xr.apply_ufunc(
                 _reordering_2d,
                 ds.sim,
@@ -194,7 +199,7 @@ def _reordering(ds: xr.Dataset, *, dim: str, output_order: bool = False) -> xr.D
             .rename("reordered")
             .to_dataset()
         )
-
+        return reordered_and_order
     if len(dim) == 1:
         new_data, new_order = xr.apply_ufunc(
             _reordering_1d,
@@ -206,10 +211,10 @@ def _reordering(ds: xr.Dataset, *, dim: str, output_order: bool = False) -> xr.D
             dask="parallelized",
             output_dtypes=[ds.sim.dtype, np.int_],
         )
-        out = new_data.to_dataset(name="reordered")
+        reordered_and_order = new_data.to_dataset(name="reordered")
         if output_order:
-            out["new_order"] = new_order
-        return out
+            reordered_and_order["new_order"] = new_order
+        return reordered_and_order
 
     raise ValueError(
         f"Reordering can only be done along one dimension. "
