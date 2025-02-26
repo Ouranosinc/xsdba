@@ -947,20 +947,19 @@ class TestExtremeValues:
         dref = xr.open_dataset(gosset.fetch("sdba/ahccd_1950-2013.nc")).isel(location=2)
         ref = dref.sel(time=slice("1950", "2009")).pr
         hist = dsim.sel(time=slice("1950", "2009")).pr
-        with xclim.core.units.units.context("hydro"):
-            QDM = QuantileDeltaMapping.train(
-                ref,
-                hist,
-                adapt_freq_thresh="0.1 mm/d",
-                jitter_under_thresh_value="0.01 mm/d",
-                kind="*",
-                group=Grouper("time.dayofyear", 31),
-            )
-            adj = QDM.adjust(hist)
-            EX = ExtremeValues.train(
-                ref, hist, cluster_thresh="10 mm/day", q_thresh=0.9
-            )
-            adj_GEV = EX.adjust(sim=hist, scen=adj, reorder_sim=reorder_sim)
+        ref = xclim.core.units.convert_units_to(ref, "mm/d", context="hydro")
+        hist = xclim.core.units.convert_units_to(hist, "mm/d", context="hydro")
+        QDM = QuantileDeltaMapping.train(
+            ref,
+            hist,
+            adapt_freq_thresh="0.1 mm/d",
+            jitter_under_thresh_value="0.01 mm/d",
+            kind="*",
+            group=Grouper("time.dayofyear", 31),
+        )
+        adj = QDM.adjust(hist)
+        EX = ExtremeValues.train(ref, hist, cluster_thresh="10 mm/day", q_thresh=0.9)
+        adj_GEV = EX.adjust(sim=hist, scen=adj, reorder_sim=reorder_sim)
 
         # For reorder_sim == True, the assert should always work by construction
         # For reorder_sim == False, there might be case where maximum in adj_GEV and adj occur
