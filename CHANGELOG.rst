@@ -23,6 +23,7 @@ Changes
 * Added `upstream` testing to the CI pipeline for both daily and push events. (:pull:`61`).
 * Import last changes in xclim before the embargo (:pull:`80`).
 * `xsdba` has begun the process of adoption of the OpenSSF Best Practices checklist. (:pull:`82`).
+* In `ExtremeValues.adjust`, the new option `reorder_sim` can be set to `True`, and `sim` is reordered to match the ranks of `scen`. (:pull:`84`).
 
 Fixes
 ^^^^^
