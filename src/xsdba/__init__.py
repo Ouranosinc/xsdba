@@ -47,4 +47,4 @@ if hasattr(adjustment, "_generate_SBCK_classes"):
 
 __author__ = """Éric Dupuis"""
 __email__ = "dupuis.eric@ouranos.ca"
-__version__ = "0.2.1-dev.1"
+__version__ = "0.2.1-dev.2"

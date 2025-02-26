@@ -3,13 +3,13 @@ xsdba: Statistical Downscaling and Bias Adjustment library
 ===========================================================
 
 +----------------------------+-----------------------------------------------------+
-| Versions                   | |pypi| |versions|                                   |
+| Versions                   | |pypi| |conda| |versions|                           |
 +----------------------------+-----------------------------------------------------+
 | Documentation and Support  | |docs|                                              |
 +----------------------------+-----------------------------------------------------+
 | Open Source                | |license| |ossf-score|                              |
 +----------------------------+-----------------------------------------------------+
-| Coding Standards           | |black| |isort| |ruff| |pre-commit|                 |
+| Coding Standards           | |black| |isort| |ruff| |ossf-bp| |pre-commit|       |
 +----------------------------+-----------------------------------------------------+
 | Development Status         | |status| |build| |coveralls|                        |
 +----------------------------+-----------------------------------------------------+
@@ -64,6 +64,10 @@ This package was created with Cookiecutter_ and the `Ouranosinc/cookiecutter-pyp
         :target: https://github.com/Ouranosinc/xsdba/actions
         :alt: Build Status
 
+.. |conda| image:: https://img.shields.io/conda/vn/conda-forge/xsdba.svg
+        :target: https://anaconda.org/conda-forge/xsdba
+        :alt: Conda-forge Build Version
+
 .. |coveralls| image:: https://coveralls.io/repos/github/Ouranosinc/xsdba/badge.svg
         :target: https://coveralls.io/github/Ouranosinc/xsdba
         :alt: Coveralls
@@ -80,10 +84,9 @@ This package was created with Cookiecutter_ and the `Ouranosinc/cookiecutter-pyp
         :target: https://github.com/Ouranosinc/xsdba/blob/main/LICENSE
         :alt: License
 
-..
-    .. |ossf-bp| image:: https://bestpractices.coreinfrastructure.org/projects/9945/badge
-            :target: https://bestpractices.coreinfrastructure.org/projects/9945
-            :alt: Open Source Security Foundation Best Practices
+.. |ossf-bp| image:: https://bestpractices.coreinfrastructure.org/projects/10045/badge
+        :target: https://bestpractices.coreinfrastructure.org/projects/10045
+        :alt: Open Source Security Foundation Best Practices
 
 .. |ossf-score| image:: https://api.securityscorecards.dev/projects/github.com/Ouranosinc/xsdba/badge
         :target: https://securityscorecards.dev/viewer/?uri=github.com/Ouranosinc/xsdba

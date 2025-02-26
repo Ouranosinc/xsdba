@@ -7,6 +7,10 @@ Changelog
 
 Contributors: Pascal Bourgault (:user:`aulemahal`), Éric Dupuis (:user:`coxipi`), Trevor James Smith (:user:`Zeitsperre`).
 
+Announcements
+^^^^^^^^^^^^^
+* `xsdba` is now available as a package on the Anaconda `conda-forge` channel. (:pull:`82`).
+
 Changes
 ^^^^^^^
 * Remove the units registry declaration and instead use whatever is set as pint's application registry.
@@ -18,13 +22,14 @@ Changes
     * Corrected some minor spelling and security issues.
 * Added `upstream` testing to the CI pipeline for both daily and push events. (:pull:`61`).
 * Import last changes in xclim before the embargo (:pull:`80`).
+* `xsdba` has begun the process of adoption of the OpenSSF Best Practices checklist. (:pull:`82`).
 
 Fixes
 ^^^^^
-* Gave credits to the package to all previous contributors of ``xclim.sdba`` (:issue:`58`, :pull:`59`).
-* Pin `sphinx-codeautolink` to fix ReadTheDocs and correct some docs errors (:pull:`40`).
+* Gave credits to the package to all previous contributors of ``xclim.sdba``. (:issue:`58`, :pull:`59`).
+* Pin `sphinx-codeautolink` to fix ReadTheDocs and correct some docs errors. (:pull:`40`).
 * Removed reliance on the `netcdf4` package for testing purposes. The `h5netcdf` engine is now used for file IO operations. (:pull:`71`).
-* Changes to reflect the change of library name `xsdba` (:pull:`72`)
+* Changes to reflect the change of library name `xsdba`. (:pull:`72`).
 
 .. _changes_0.2.0:
 
