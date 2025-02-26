@@ -23,6 +23,8 @@ Changes
 * Added `upstream` testing to the CI pipeline for both daily and push events. (:pull:`61`).
 * Import last changes in xclim before the embargo (:pull:`80`).
 * `xsdba` has begun the process of adoption of the OpenSSF Best Practices checklist. (:pull:`82`).
+* `xclim` migration guide added. (:issue:`62`, :pull:`86`).
+* Add a missing `dOTC` example to documentation. (:pull:`86`).
 
 Fixes
 ^^^^^
@@ -30,6 +32,7 @@ Fixes
 * Pin `sphinx-codeautolink` to fix ReadTheDocs and correct some docs errors. (:pull:`40`).
 * Removed reliance on the `netcdf4` package for testing purposes. The `h5netcdf` engine is now used for file IO operations. (:pull:`71`).
 * Changes to reflect the change of library name `xsdba`. (:pull:`72`).
+* Revert changes to allow using `group="time.dayofyear"` and `interp="linear"` in adjustment methods. (:pull:`86`).
 
 .. _changes_0.2.0:
 
