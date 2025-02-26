@@ -733,10 +733,7 @@ class TestMBCn:
             .expand_dims(location=["Amos"])
             for file in ["ahccd_1950-2013.nc", "CanESM2_1950-2100.nc"]
         )
-        water_density_inverse = "1e-03 m^3/kg"
-        dsim["pr"] = convert_units_to(
-            pint_multiply(dsim.pr, water_density_inverse), ref.pr
-        )
+        dsim["pr"] = xclim.units.convert_units_to(dsim.pr, ref.pr, context="hydro")
         ref, hist = (
             ds.sel(time=slice("1981", "2010")).isel(time=slice(365 * 4))
             for ds in [ref, dsim]
@@ -905,10 +902,7 @@ class TestExtremeValues:
         dref = xr.open_dataset(gosset.fetch("sdba/ahccd_1950-2013.nc"))  # .chunk()
         ref = dref.sel(time=slice("1950", "2009")).pr
         hist = dsim.sel(time=slice("1950", "2009")).pr
-        # TODO: Do we want to include standard conversions in xsdba tests?
-        # this is just convenient for now to keep those tests
-        hist = pint_multiply(hist, "1e-03 m^3/kg")
-        hist = convert_units_to(hist, ref)
+        hist = xclim.core.units.convert_units_to(hist, ref, context="hydro")
 
         quantiles = np.linspace(0.01, 0.99, num=50)
 
