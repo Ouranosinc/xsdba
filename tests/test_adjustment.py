@@ -714,7 +714,9 @@ class TestQM:
 @pytest.mark.slow
 class TestMBCn:
     @pytest.mark.parametrize("use_dask", [True, False])
-    @pytest.mark.parametrize("group, window", [["time", 1], ["time.dayofyear", 31]])
+    @pytest.mark.parametrize(
+        "group, window", [["time", 1], ["time.dayofyear", 31], ["5D", 7]]
+    )
     @pytest.mark.parametrize("period_dim", [None, "period"])
     def test_simple(self, use_dask, group, window, period_dim, gosset):
         group, window, period_dim, use_dask = "time", 1, None, False

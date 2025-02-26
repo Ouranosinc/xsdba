@@ -145,7 +145,10 @@ class Grouper(Parametrizable):
             dim, prop = group.split(".")
         else:
             dim, prop = group, "group"
-
+        # TODO : Remove this special workaround
+        # This will only work with MBCn
+        if group == "5D":
+            dim = "time"
         if isinstance(add_dims, str):
             add_dims = [add_dims]
 

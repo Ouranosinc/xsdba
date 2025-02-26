@@ -27,8 +27,6 @@ from .utils import _fitfunc_1d
 
 def _adapt_freq_hist(ds: xr.Dataset, adapt_freq_thresh: str):
     """Adapt frequency of null values of `hist`    in order to match `ref`."""
-    # ADAPT: Drop context altogether?
-    # with units.context(infer_context(ds.ref.attrs.get("standard_name"))):
     thresh = convert_units_to(adapt_freq_thresh, ds.ref)
     dim = ["time"] + ["window"] * ("window" in ds.hist.dims)
     return _adapt_freq.func(

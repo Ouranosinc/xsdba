@@ -23,6 +23,7 @@ Changes
 * Added `upstream` testing to the CI pipeline for both daily and push events. (:pull:`61`).
 * Import last changes in xclim before the embargo (:pull:`80`).
 * `xsdba` has begun the process of adoption of the OpenSSF Best Practices checklist. (:pull:`82`).
+* Add a new grouping method specific for `MBCn` which called by passing `group=Grouper("5D", window=n)` where `n` is an odd positive integer. (:pull:`79`).
 
 Fixes
 ^^^^^
