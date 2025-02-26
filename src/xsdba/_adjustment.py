@@ -948,7 +948,7 @@ def extremes_adjust(
     # Find probabilities of extremes of fut according to its own cluster-fitted dist.
     sim = ds.sim
     if reorder_sim:
-        sim = reordering(ref=ds.scen, sim=ds.sim, output_order=False)
+        sim = reordering(ref=ds.scen, sim=ds.sim)
     px_fut = xr.apply_ufunc(
         _fit_cluster_and_cdf,
         sim,
