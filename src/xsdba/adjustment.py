@@ -6,6 +6,7 @@ Adjustment Methods
 """
 from __future__ import annotations
 
+from copy import deepcopy
 from inspect import signature
 from typing import Any
 from warnings import warn
@@ -1774,7 +1775,9 @@ class MBCn(TrainAdjust):
 
     Notes
     -----
-    * Only  "time" and "time.dayofyear" (with a suitable window) are implemented as possible values for `group`.
+    * The grouping of time dimensions is passed through `base_kws`. Three types of grouping are allowed: "time" or `xsdba.Grouper("time")
+      "time.dayofyear"; `xsdba.Grouper("time.dayofyear", window); and `xsdba.Grouper("5D", window)`, where `window` must be an odd integer that
+      counts the number of 5-day subgroups. The window moves in 5-day strides too. This last option is a specific option to `MBCn`.
     * The historical reference (:math:`T`, for "target"), simulated historical (:math:`H`) and simulated projected (:math:`S`)
       datasets are constructed by stacking the timeseries of N variables together using ``xsdba.stack_variables``.
 
@@ -1914,14 +1917,14 @@ class MBCn(TrainAdjust):
 
         g_idxs, gw_idxs = grouped_time_indexes(ref.time, self.group)
         ds = self.ds.copy()
-        ds["g_idxs"] = g_idxs
-        ds["gw_idxs"] = gw_idxs
 
         # adjust (adjust for npft transform, train/adjust for univariate bias correction)
         out = mbcn_adjust(
             ref=ref,
             hist=hist,
             sim=sim,
+            g_idxs=g_idxs,
+            gw_idxs=gw_idxs,
             ds=ds,
             pts_dims=self.pts_dims,
             interp=self.interp,

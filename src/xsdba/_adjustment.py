@@ -27,8 +27,6 @@ from .utils import _fitfunc_1d
 
 def _adapt_freq_hist(ds: xr.Dataset, adapt_freq_thresh: str):
     """Adapt frequency of null values of `hist`    in order to match `ref`."""
-    # ADAPT: Drop context altogether?
-    # with units.context(infer_context(ds.ref.attrs.get("standard_name"))):
     thresh = convert_units_to(adapt_freq_thresh, ds.ref)
     dim = ["time"] + ["window"] * ("window" in ds.hist.dims)
     return _adapt_freq.func(
@@ -345,10 +343,12 @@ def _npdft_adjust(sim, af_q, rots, quantiles, method, extrap):
 
 
 def mbcn_adjust(
-    ref: xr.Dataset,
-    hist: xr.Dataset,
-    sim: xr.Dataset,
+    ref: xr.DataArray,
+    hist: xr.DataArray,
+    sim: xr.DataArray,
     ds: xr.Dataset,
+    g_idxs: xr.DataArray,
+    gw_idxs: xr.DataArray,
     pts_dims: Sequence[str],
     interp: str,
     extrapolation: str,
@@ -372,12 +372,14 @@ def mbcn_adjust(
         training data.
     sim : xr.DataArray
         data to adjust (stacked with multivariate dimension).
+    g_idxs : xr.DataArray
+        Indices of the times in each time group.
+    gw_idxs: xr.DataArray
+        Indices of the times in each windowed time group.
     ds : xr.Dataset
         Dataset variables:
             rot_matrices : Rotation matrices used in the training step.
             af_q : Adjustment factors obtained in the training step for the npdf transform
-            g_idxs : Indices of the times in each time group
-            gw_idxs: Indices of the times in each windowed time group
     pts_dims : [str, str]
         The name of the "multivariate" dimension and its primed counterpart. Defaults to "multivar", which
         is the normal case when using :py:func:`xsdba.stack_variables`, and "multivar_prime".
@@ -407,8 +409,6 @@ def mbcn_adjust(
     rot_matrices = ds.rot_matrices
     af_q = ds.af_q
     quantiles = af_q.quantiles
-    g_idxs = ds.g_idxs
-    gw_idxs = ds.gw_idxs
     gr_dim = gw_idxs.attrs["group_dim"]
     win = gw_idxs.attrs["group"][1]
 
