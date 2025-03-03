@@ -183,7 +183,7 @@ values = [
 ]
 
 [tool.codespell]
-ignore-words-list = "astroid,hanel,lond,ot,socio-economic"
+ignore-words-list = "astroid,hanel,indx,lond,ot,socio-economic"
 
 [tool.coverage.paths]
 source = ["src/xsdba/", "*/site-packages/xsdba/"]
