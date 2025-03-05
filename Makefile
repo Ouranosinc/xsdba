@@ -56,13 +56,19 @@ lint/flake8: ## check style with flake8
 	python -m ruff check src/xsdba tests
 	python -m flake8 --config=.flake8 src/xsdba tests
 	python -m numpydoc lint src/xsdba/**.py
+	codespell src/xclim tests docs
 
 lint/black: ## check style with black
 	python -m black --check src/xsdba tests
 	python -m blackdoc --check src/xsdba docs
 	python -m isort --check src/xsdba tests
+	python -m yamllint --config-file=.yamllint.yaml src/xsdba
 
-lint: lint/flake8 lint/black ## check style
+lint/security: ## check dependencies
+	python -m deptry src/xsdba
+	python -m vulture src/xsdba tests
+
+lint: lint/flake8 lint/black lint/security ## check style
 
 test: ## run tests quickly with the default Python
 	python -m pytest

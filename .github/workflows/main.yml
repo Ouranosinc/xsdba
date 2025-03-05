@@ -131,6 +131,7 @@ jobs:
           disable-sudo: true
           egress-policy: block
           allowed-endpoints: >
+            cdn.fwupd.org:443
             conda.anaconda.org:443
             coveralls.io:443
             files.pythonhosted.org:443
@@ -148,6 +149,7 @@ jobs:
         with:
           cache-downloads: true
           cache-environment: true
+          cache-environment-key: conda-Python${{ matrix.python-version }}-${{ hashFiles('environment-dev.yml') }}
           environment-file: environment-dev.yml
           create-args: >-
             python=${{ matrix.python-version }}
