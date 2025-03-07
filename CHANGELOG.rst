@@ -2,19 +2,18 @@
 Changelog
 =========
 
-..
-    `Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
-    ------------------------------------------------------------
+`Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
+------------------------------------------------------------
 
-    Contributors:
+Contributors: Éric Dupuis (:user:`coxipi`)
 
-    Changes
-    ^^^^^^^
-    * No change.
+Changes
+^^^^^^^
+* No change.
 
-    Fixes
-    ^^^^^
-    * No change.
+Fixes
+^^^^^
+* ``xsdba.processing.escore`` now correctly handles all-nan slices.  (:issue:`109`, :pull:`108`).
 
 .. _changes_0.3.2:
 

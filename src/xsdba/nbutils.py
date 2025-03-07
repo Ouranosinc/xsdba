@@ -364,13 +364,15 @@ def _escore(tgt, sim, out):
 
     n1 = sim.shape[1]
     n2 = tgt.shape[1]
+    if 0 in [n1, n2]:
+        out[0] = np.nan
+    else:
+        sXY = _correlation(tgt, sim)
+        sXX = _autocorrelation(tgt)
+        sYY = _autocorrelation(sim)
 
-    sXY = _correlation(tgt, sim)
-    sXX = _autocorrelation(tgt)
-    sYY = _autocorrelation(sim)
-
-    w = n1 * n2 / (n1 + n2)
-    out[0] = w * (sXY + sXY - sXX - sYY) / 2
+        w = n1 * n2 / (n1 + n2)
+        out[0] = w * (sXY + sXY - sXX - sYY) / 2
 
 
 @njit(
