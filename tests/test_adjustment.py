@@ -938,7 +938,8 @@ class TestExtremeValues:
         )
         hist = (ref.copy() * np.nan).assign_attrs(ref.attrs)
         EX = ExtremeValues.train(ref, hist, cluster_thresh="10 mm/day", q_thresh=0.9)
-        new_scen = EX.adjust(sim=hist, scen=ref)
+        with pytest.warns(RuntimeWarning, match="All-nan slice encountered"):
+            new_scen = EX.adjust(sim=hist, scen=ref)
         assert new_scen.isnull().all()
 
 

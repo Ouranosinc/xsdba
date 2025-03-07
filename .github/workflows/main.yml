@@ -72,7 +72,7 @@ jobs:
           - "3.10"
           - "3.11"
           - "3.12"
-          # - "3.13"
+          - "3.13"
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
@@ -106,7 +106,7 @@ jobs:
           key: ${{ matrix.os }}-Python${{ matrix.python-version }}-${{ hashFiles('pyproject.toml', 'tox.ini') }}
       - name: Test with tox
         run: |
-          python -m tox -e ${{ matrix.python-version }}-coveralls
+          python -m tox
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COVERALLS_FLAG_NAME: run-${{ matrix.python-version }}
@@ -120,7 +120,7 @@ jobs:
     strategy:
       matrix:
         os: [ 'ubuntu-latest' ]
-        python-version: [ "3.10", "3.11", "3.12" ]
+        python-version: [ "3.10", "3.11", "3.12", "3.13" ]
     defaults:
       run:
         shell: bash -l {0}
@@ -162,17 +162,15 @@ jobs:
           python -m pip check || true
       - name: Test with pytest
         run: |
-          python -m pytest --cov xsdba
+          python -m pytest --numprocesses=logical --durations=10 --cov=xsdba --cov-report=lcov
       - name: Report Coverage
-        run: |
-          python -m coveralls
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          COVERALLS_FLAG_NAME: run-Python${{ matrix.python-version }}-conda
-          COVERALLS_PARALLEL: true
-          COVERALLS_SERVICE_NAME: github
+        uses: coverallsapp/github-action@648a8eb78e6d50909eff900e4ec85cab4524a45b # v2.3.6
+        with:
+          flag-name: run-Python${{ matrix.python-version }}-conda
+          parallel: true
 
   finish:
+    name: Finish
     needs:
       - test-pypi
       - test-conda

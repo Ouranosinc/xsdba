@@ -2,19 +2,23 @@
 Changelog
 =========
 
-..
-    `Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
-    ------------------------------------------------------------
+`Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
+------------------------------------------------------------
 
-    Contributors:
+Contributors: Trevor James Smith (:user:`Zeitsperre`).
 
-    Changes
-    ^^^^^^^
-    * No change.
+Changes
+^^^^^^^
+* `xsdba` now supports Python3.13. Metadata and CI have been adjusted. (:pull:`105`).
+* Unpinned `numpy` and raised minimum supported versions of a few scientific libraries. (:pull:`105`).
 
-    Fixes
-    ^^^^^
-    * No change.
+Fixes
+^^^^^
+* For `fastnanquantile`, `POT`, and `xclim` have been added to a new `extras` install recipe. All dependencies can be installed using the ``$ python -m pip install xsdba[all]`` command. Documentation has been added. (:pull:`105`).
+
+Internal changes
+^^^^^^^^^^^^^^^^
+* `tox` has been configured to test Python3.10 builds against `numpy >=1.24.0,<2.0` in the GitHub Workflow pipeline. Passing the `numpy` keyword to `tox` (``$ tox -e py3.10-numpy``) will adjust the build. (:pull:`105`).
 
 .. _changes_0.3.2:
 

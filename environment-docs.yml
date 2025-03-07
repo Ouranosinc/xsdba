@@ -11,7 +11,6 @@ dependencies:
 - nbsphinx >=0.9.5
 - nc-time-axis >=1.4.1
 - pooch >=1.8.0
-- pot >=0.9.4
 - sphinx >=7.1.0,<8.2.0 # pinned until nbsphinx supports sphinx 8.2
 - sphinx-autobuild >=2024.4.16
 - sphinx-autodoc-typehints
