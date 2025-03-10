@@ -1,8 +1,4 @@
-"""
-# noqa: SS01
-Statistical Downscaling and Bias Adjustment Utilities
-=====================================================
-"""
+"""Testing utilities for xsdba (test data management)"""
 
 from __future__ import annotations
 
