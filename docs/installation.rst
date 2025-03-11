@@ -70,7 +70,7 @@ The sources for xsdba can be downloaded from the `Github repo`_.
 
         .. code-block:: console
 
-            python -m pip install -e .[dev]
+            python -m pip install -e ".[dev]"
 
         Even if you do not intend to contribute to `xsdba`, we favor using `environment-dev.yml` over `environment.yml` because it includes additional packages that are used to run all the examples provided in the documentation.
         If for some reason you wish to install the `PyPI` version of `xsdba` into an existing Anaconda environment (*not recommended if requirements are not met*), only run the last command above.
@@ -104,6 +104,21 @@ The sources for xsdba can be downloaded from the `Github repo`_.
 Extra Dependencies
 ------------------
 
+`xsdba` has a few optional dependencies that can be installed using the following commands:
+
+For supporting additional methods and optional functionality:
+
+.. code-block:: console
+
+    python -m pip install "xsdba[extras]"
+
+To install all optional dependencies (development, documentation, and extras):
+
+.. code-block:: console
+
+    python -m pip install "xsdba[all]"
+
+
 Experimental SDBA Algorithms
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -114,19 +129,19 @@ As `SBCK` is compiled at installation time, a **C++** compiler (`GCC`, `Clang`, 
 
 On Debian/Ubuntu, `Eigen3` can be installed via `apt`:
 
-.. code-block:: shell
+.. code-block:: console
 
     $ sudo apt-get install libeigen3-dev
 
 Eigen3 is also available on conda-forge, so, if already using Anaconda, one can do:
 
-.. code-block:: shell
+.. code-block:: console
 
     $ conda install -c conda-forge eigen
 
 Afterwards, `SBCK` can be installed from PyPI using `pip`:
 
-.. code-block:: shell
+.. code-block:: console
 
     $ python -m pip install pybind11 sbck
 

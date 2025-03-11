@@ -5,6 +5,58 @@ Changelog
 `Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
 ------------------------------------------------------------
 
+Contributors: Trevor James Smith (:user:`Zeitsperre`).
+
+Changes
+^^^^^^^
+* `xsdba` now supports Python3.13. Metadata and CI have been adjusted. (:pull:`105`).
+* Unpinned `numpy` and raised minimum supported versions of a few scientific libraries. (:pull:`105`).
+
+Fixes
+^^^^^
+* For `fastnanquantile`, `POT`, and `xclim` have been added to a new `extras` install recipe. All dependencies can be installed using the ``$ python -m pip install xsdba[all]`` command. Documentation has been added. (:pull:`105`).
+
+Internal changes
+^^^^^^^^^^^^^^^^
+* `tox` has been configured to test Python3.10 builds against `numpy >=1.24.0,<2.0` in the GitHub Workflow pipeline. Passing the `numpy` keyword to `tox` (``$ tox -e py3.10-numpy``) will adjust the build. (:pull:`105`).
+
+.. _changes_0.3.2:
+
+`v0.3.2 <https://github.com/Ouranosinc/xsdba/tree/0.3.2>`_ (2025-03-06)
+-----------------------------------------------------------------------
+
+Contributors: Trevor James Smith (:user:`Zeitsperre`).
+
+Fixes
+^^^^^
+* Packaging and security adjustments. (:pull:`106`):
+    * Added `deptry`, `codespell`, `vulture`, and `yamllint` to the dev dependencies.
+    * Added a few transitive dependencies (`packaging`, `pandas`) to the core dependencies.
+    * Added `fastnanquantile` to the `dev` dependencies (to be placed in an `extras` recipe for `xsdba` v0.4.0+).
+    * Configured `deptry` to handle optional imports.
+    * A new Makefile command `lint/security` has been added (called when running `$ make lint`).
+    * Updated `tox.ini` with new linting dependencies.
+
+.. _changes_0.3.1:
+
+`v0.3.1 <https://github.com/Ouranosinc/xsdba/tree/0.3.1>`_ (2025-03-04)
+-----------------------------------------------------------------------
+
+Contributors: Trevor James Smith (:user:`Zeitsperre`).
+
+Changes
+^^^^^^^
+* Added `POT` to the development dependencies. (:pull:`96`).
+
+Fixes
+^^^^^
+* Adjusted the documentation dependencies and the `sphinx` configuration to fix the ReadTheDocs build. (:pull:`96`).
+
+.. _changes_0.3.0:
+
+`v0.3.0 <https://github.com/Ouranosinc/xsdba/tree/0.3.0>`_ (2025-03-04)
+-----------------------------------------------------------------------
+
 Contributors: Pascal Bourgault (:user:`aulemahal`), Éric Dupuis (:user:`coxipi`), Trevor James Smith (:user:`Zeitsperre`).
 
 Announcements
@@ -23,6 +75,8 @@ Changes
 * Added `upstream` testing to the CI pipeline for both daily and push events. (:pull:`61`).
 * Import last changes in xclim before the embargo (:pull:`80`).
 * `xsdba` has begun the process of adoption of the OpenSSF Best Practices checklist. (:pull:`82`).
+* `xclim` migration guide added. (:issue:`62`, :pull:`86`).
+* Add a missing `dOTC` example to documentation. (:pull:`86`).
 * Add a new grouping method specific for `MBCn` which called by passing `group=Grouper("5D", window=n)` where `n` is an odd positive integer. (:pull:`79`).
 * In `ExtremeValues.adjust`, the new option `reorder_sim` can be set to `True`, and `sim` is reordered to match the ranks of `scen`. (:pull:`84`).
 
@@ -32,6 +86,7 @@ Fixes
 * Pin `sphinx-codeautolink` to fix ReadTheDocs and correct some docs errors. (:pull:`40`).
 * Removed reliance on the `netcdf4` package for testing purposes. The `h5netcdf` engine is now used for file IO operations. (:pull:`71`).
 * Changes to reflect the change of library name `xsdba`. (:pull:`72`).
+* Revert changes to allow using `group="time.dayofyear"` and `interp="linear"` in adjustment methods. (:pull:`86`).
 
 .. _changes_0.2.0:
 

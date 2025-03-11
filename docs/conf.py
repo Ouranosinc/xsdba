@@ -103,14 +103,11 @@ extlinks = {
 }
 
 skip_notebooks = os.getenv("SKIP_NOTEBOOKS")
-if skip_notebooks or os.getenv("READTHEDOCS_VERSION_TYPE") in [
-    "branch",
-    "external",
-]:
-    if skip_notebooks:
-        warnings.warn("Not executing notebooks.")
+if skip_notebooks:
+    warnings.warn("Not executing notebooks.")
     nbsphinx_execute = "never"
 elif os.getenv("READTHEDOCS_VERSION_NAME") in ["latest", "stable"]:
+    warnings.warn("'latest' or 'stable' version detected. Forcing notebook execution.")
     nbsphinx_execute = "always"
 else:
     nbsphinx_execute = "auto"

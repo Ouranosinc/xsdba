@@ -44,9 +44,12 @@ The official documentation is at https://xsdba.readthedocs.io/
 
 How to make the most of `xsdba`: `Basic Usage Examples`_ and `In-Depth Examples`_.
 
+`xsdba` was first developed as the submodule `sdba` of `xclim`_. A `migration guide`_  is available for users of `sdba`.
+
 .. _Basic Usage Examples: https://xsdba.readthedocs.io/en/latest/notebooks/example.html
 .. _In-Depth Examples: https://xsdba.readthedocs.io/en/latest/notebooks/advanced_example.html
-
+.. _xclim: https://xclim.readthedocs.io/
+.. _migration guide: https://xsdba.readthedocs.io/en/stable/xclim_migration_guide.html
 
 Credits
 -------

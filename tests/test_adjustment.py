@@ -18,6 +18,7 @@ from xsdba.adjustment import (
     PrincipalComponents,
     QuantileDeltaMapping,
     Scaling,
+    dOTC,
 )
 from xsdba.base import Grouper, stack_periods
 from xsdba.options import set_options
@@ -916,7 +917,7 @@ class TestExtremeValues:
             ref, hist, group=Grouper("time.dayofyear", window=31), nquantiles=quantiles
         )
 
-        scen = EQM.adjust(hist, extrapolation="constant")
+        scen = EQM.adjust(hist, interp="linear", extrapolation="constant")
 
         EX = ExtremeValues.train(ref, hist, cluster_thresh="1 mm/day", q_thresh=0.97)
         new_scen = EX.adjust(scen, hist, frac=0.000000001)
@@ -932,7 +933,8 @@ class TestExtremeValues:
         )
         hist = (ref.copy() * np.nan).assign_attrs(ref.attrs)
         EX = ExtremeValues.train(ref, hist, cluster_thresh="10 mm/day", q_thresh=0.9)
-        new_scen = EX.adjust(sim=hist, scen=ref)
+        with pytest.warns(RuntimeWarning, match="All-nan slice encountered"):
+            new_scen = EX.adjust(sim=hist, scen=ref)
         assert new_scen.isnull().all()
 
     @pytest.mark.parametrize("reorder_sim", [True, False])
@@ -1107,29 +1109,38 @@ class TestdOTC:
         scen_sbck = scen_sbck.to_numpy()
         assert np.allclose(scen, scen_sbck)
 
-    def test_shape(self, random, timelonlatseries):
+    def test_shape(self, timelonlatseries):
+        attrs_tas = {"units": "K"}
 
         pytest.importorskip("ot")
         # `sim` has a different time than `ref,hist` (but same size)
         ref = xr.merge(
             [
-                tasmax_series(np.arange(730).astype(float), start="2000-01-01").chunk(
-                    {"time": -1}
-                ),
-                tasmin_series(np.arange(730).astype(float), start="2000-01-01").chunk(
-                    {"time": -1}
-                ),
+                timelonlatseries(
+                    np.arange(730).astype(float), start="2000-01-01", attrs=attrs_tas
+                )
+                .chunk({"time": -1})
+                .to_dataset(name="tasmax"),
+                timelonlatseries(
+                    np.arange(730).astype(float), start="2000-01-01", attrs=attrs_tas
+                )
+                .chunk({"time": -1})
+                .to_dataset(name="tasmin"),
             ]
         )
         hist = ref.copy()
         sim = xr.merge(
             [
-                tasmax_series(np.arange(730).astype(float), start="2020-01-01").chunk(
-                    {"time": -1}
-                ),
-                tasmin_series(np.arange(730).astype(float), start="2020-01-01").chunk(
-                    {"time": -1}
-                ),
+                timelonlatseries(
+                    np.arange(730).astype(float), start="2020-01-01", attrs=attrs_tas
+                )
+                .chunk({"time": -1})
+                .to_dataset(name="tasmax"),
+                timelonlatseries(
+                    np.arange(730).astype(float), start="2020-01-01", attrs=attrs_tas
+                )
+                .chunk({"time": -1})
+                .to_dataset(name="tasmin"),
             ]
         )
         ref, hist, sim = (stack_variables(arr) for arr in [ref, hist, sim])

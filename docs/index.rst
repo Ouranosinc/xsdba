@@ -16,6 +16,7 @@ users can easily bias-adjust large datasets.
    readme
    installation
    usage
+   xclim_migration_guide
    xsdba
    contributing
    releasing

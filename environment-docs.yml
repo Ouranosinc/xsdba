@@ -14,7 +14,7 @@ dependencies:
 - sphinx >=7.1.0,<8.2.0 # pinned until nbsphinx supports sphinx 8.2
 - sphinx-autobuild >=2024.4.16
 - sphinx-autodoc-typehints
-- sphinx-codeautolink >=0.16.2
+- sphinx-codeautolink
 - sphinx-copybutton
 - sphinx-intl
 - sphinx-mdinclude
