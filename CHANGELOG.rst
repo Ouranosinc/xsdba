@@ -5,12 +5,13 @@ Changelog
 `Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
 ------------------------------------------------------------
 
-Contributors: Trevor James Smith (:user:`Zeitsperre`).
+Contributors: Trevor James Smith (:user:`Zeitsperre`), Éric Dupuis (:user:`coxipi`).
 
 Changes
 ^^^^^^^
 * `xsdba` now supports Python3.13. Metadata and CI have been adjusted. (:pull:`105`).
 * Unpinned `numpy` and raised minimum supported versions of a few scientific libraries. (:pull:`105`).
+* ``xsdba.jitter_over_thresh`` is available directly in training methods by passing the `jitter_over_thresh_value` and `jitter_over_thresh_upper_bnd`  arguments. (:pull:`110`).
 
 Fixes
 ^^^^^
