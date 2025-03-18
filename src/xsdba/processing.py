@@ -10,11 +10,9 @@ import types
 from collections.abc import Sequence
 from typing import cast
 
-import cftime
 import dask.array as dsk
 import numpy as np
 import xarray as xr
-from xarray.core import dtypes
 from xarray.core.utils import get_temp_dimname
 
 from xsdba._processing import _adapt_freq, _normalize, _reordering
