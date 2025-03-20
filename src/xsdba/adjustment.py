@@ -1884,6 +1884,16 @@ class MBCn(TrainAdjust):
         adj_kws: dict[str, Any] | None = None,
         period_dim=None,
     ):
+        # Usually matching times  is done in `train`, but since we must
+        # use again `ref` and `hist` in MBCn.adjust, this should be checked again
+        if not self._allow_diff_training_times:
+            self._check_matching_times(ref, hist)
+        # We may also use a different time period for `hist` but still require
+        # it has the same size as `ref`'s time.
+        elif not self._allow_diff_time_sizes:
+            self._check_matching_time_sizes(ref, hist)
+            hist["time"] = ref.time
+
         # set default values for non-specified parameters
         base_kws_vars = {} if base_kws_vars is None else deepcopy(base_kws_vars)
         pts_dim = self.pts_dims[0]
