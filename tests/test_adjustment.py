@@ -1215,3 +1215,49 @@ class TestSBCKutils:
             **kws,
         )
         unstack_variables(scen).load()
+
+
+# TODO: find why the class won't let itself be tested
+# class TestIbicus:
+#     def test_QM(self, gosset):
+#         pytest.importorskip("ibicus", minversion="0.4.0")
+#         ds = xr.open_dataset(
+#             gosset.fetch('sdba/ahccd_1950-2013.nc'),
+#             drop_variables=["lat", "lon"],
+#         ).tasmax
+#         ds2 = xr.open_dataset(
+#             gosset.fetch('sdba/nrcan_1950-2013.nc'),
+#             drop_variables=["lat", "lon"],
+#         ).tasmax
+#         tr_period = ('1950', '1979')
+#         adj_period = ('1980', '2009')
+
+#         ref = ds.sel(time=slice(*tr_period)).tasmax
+#         hist = ds2.sel(time=slice(*tr_period)).tasmax
+#         sim = ds2.sel(time=slice(*adj_period)).tasmax
+#         IbicusQM = adjustment.IbicusQM
+#         ibi = IbicusQM.adjust(ref,hist,sim)
+#         xsd = EmpiricalQuantileMapping.train(ref,hist, nquantiles=ref.time.size).adjust(sim, interp="linear")
+#         assert(np.abs((ibi-xsd).groupby('time.dayofyear').mean().mean()) < 0.01)
+
+
+def test_qm_ibicus(gosset):
+    pytest.importorskip("ibicus")
+    ds = xr.open_dataset(
+        gosset.fetch("sdba/ahccd_1950-2013.nc"),
+        drop_variables=["lat", "lon"],
+    )
+    ds2 = xr.open_dataset(
+        gosset.fetch("sdba/nrcan_1950-2013.nc"),
+        drop_variables=["lat", "lon"],
+    )
+    tr_period = ("1950", "1979")
+    adj_period = ("1980", "2009")
+
+    ref = ds.sel(time=slice(*tr_period)).tasmax
+    hist = ds2.sel(time=slice(*tr_period)).tasmax
+    sim = ds2.sel(time=slice(*adj_period)).tasmax
+    IbicusQM = adjustment.IbicusQM
+    ibi = IbicusQM.adjust(ref, hist, sim)
+    # xsd = EmpiricalQuantileMapping.train(ref,hist, nquantiles=ref.time.size).adjust(sim, interp="linear")
+    # assert(np.abs((ibi-xsd).groupby('time.dayofyear').mean().mean()) < 0.01)

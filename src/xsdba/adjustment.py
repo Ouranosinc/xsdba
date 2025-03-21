@@ -35,7 +35,13 @@ from xsdba._adjustment import (
     scaling_adjust,
     scaling_train,
 )
-from xsdba.base import Grouper, ParametrizableWithDataset, parse_group, uses_dask
+from xsdba.base import (
+    Grouper,
+    ParametrizableWithDataset,
+    map_groups,
+    parse_group,
+    uses_dask,
+)
 from xsdba.formatting import gen_call_string, update_history
 from xsdba.options import EXTRA_OUTPUT, OPTIONS, set_options
 from xsdba.processing import grouped_time_indexes
@@ -2072,3 +2078,57 @@ else:
                     )
                 )
         return classes
+
+
+try:
+    from ibicus.debias import QuantileMapping
+except ImportError:  # noqa: S110
+    pass
+else:
+
+    @map_groups(scen=[Grouper.DIM])
+    def apply_ibicus(ds, *, dim, ibicus):
+        if "window" in ds.dims:
+            sim = ds.sim.isel(window=ds.window.size // 2).rename(time="time")
+            ds = (
+                ds.drop_vars("sim").stack(time2=dim).reset_index("time2").drop_vars(dim)
+            )
+            hdim = "time2"
+        else:
+            sim = ds.sim
+            hdim = dim[0]
+        fdim = dim[0]
+        return (
+            xr.apply_ufunc(
+                ibicus.apply_on_window,
+                ds.ref,
+                ds.hist,
+                sim,
+                input_core_dims=[[hdim], [hdim], [fdim]],
+                output_core_dims=[[fdim]],
+                vectorize=True,
+            )
+            .rename("scen")
+            .to_dataset()
+        )
+
+    class IbicusQM(Adjust):
+
+        @classmethod
+        def _adjust(cls, ref, hist, sim, **kwargs):
+            ibicus = QuantileMapping(**kwargs)
+
+            # Input data,
+            ds = xr.Dataset(
+                data_vars={
+                    "ref": ref,
+                    "hist": hist,
+                    "sim": sim,
+                }
+            )
+
+            if ibicus.running_window_mode:
+                group = Grouper("time.dayofyear", window=ibicus.running_window_length)
+            else:
+                group = Grouper("time")
+            return apply_ibicus(ds, group=group, ibicus=ibicus).scen
