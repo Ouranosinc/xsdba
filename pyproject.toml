@@ -219,7 +219,7 @@ pep621_dev_dependency_groups = ["all", "dev", "docs"]
 [tool.deptry.per_rule_ignores]
 DEP001 = ["SBCK"]
 DEP003 = ["rich"]
-DEP004 = ["fastnanquantile", "ot", "pooch", "xclim"] # remove some of these in xsdba>=0.4.0
+DEP004 = ["fastnanquantile", "ot", "pooch", "xclim", "ibicus"] # remove some of these in xsdba>=0.4.0
 
 [tool.flit.sdist]
 include = [
