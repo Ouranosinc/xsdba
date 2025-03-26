@@ -7,7 +7,6 @@ Changelog
 
 Contributors: Trevor James Smith (:user:`Zeitsperre`), Jan Haacker (:user:`j-haacker`), Éric Dupuis (:user:`coxipi`).
 
-
 Changes
 ^^^^^^^
 * `xsdba` now supports Python3.13. Metadata and CI have been adjusted. (:pull:`105`).
@@ -19,6 +18,7 @@ Fixes
 * For `fastnanquantile`, `POT`, and `xclim` have been added to a new `extras` install recipe. All dependencies can be installed using the ``$ python -m pip install xsdba[all]`` command. Documentation has been added. (:pull:`105`).
 * Several small `dask`-related issues (chunking behaviour, dimension order when broadcasting variables, lazy array preservation) have been fixed. (:issue:`112`, :issue:`113`, :pull:`114`).
 * ``xsdba.processing.escore`` now correctly handles all-nan slices. (:issue:`109`, :pull:`108`).
+* `xsdba` now uses directly `operator` instead of using `xarray`'s derived `get_op` function. A refactoring in `xarray` had changed the position of `get_op` which caused a bug. (:pull:`120`).
 
 Internal changes
 ^^^^^^^^^^^^^^^^

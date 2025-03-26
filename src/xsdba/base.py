@@ -6,6 +6,7 @@ Base Classes and Developer Tools
 
 from __future__ import annotations
 
+import operator
 from collections import UserDict
 from collections.abc import Callable, Sequence
 from inspect import _empty, signature
@@ -922,7 +923,7 @@ def get_op(op: str, constrain: Sequence[str] | None = None) -> Callable:
         if op not in constraints:
             raise ValueError(f"Operation `{op}` not permitted for indice.")
 
-    return xr.core.ops.get_op(binary_op)
+    return getattr(operator, f"__{binary_op}__")
 
 
 # XC: calendar
