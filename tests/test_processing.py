@@ -145,8 +145,8 @@ def test_escore():
     x = np.array([1, 4, 3, 6, 4, 7, 5, 8, 4, 5, 3, 7]).reshape(2, 6)
     y = np.array([6, 6, 3, 8, 5, 7, 3, 7, 3, 6, 4, 3]).reshape(2, 6)
 
-    x = xr.DataArray(x, dims=("variables", "time"))
-    y = xr.DataArray(y, dims=("variables", "time"))
+    x = xr.DataArray(x, dims=("variables", "time")).astype(np.float64)
+    y = xr.DataArray(y, dims=("variables", "time")).astype(np.float64)
 
     # Value taken from escore of Cannon's MBC R package.
     out = escore(x, y)
