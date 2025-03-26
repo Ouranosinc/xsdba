@@ -7,7 +7,6 @@ Changelog
 
 Contributors: Trevor James Smith (:user:`Zeitsperre`), Jan Haacker (:user:`j-haacker`), Éric Dupuis (:user:`coxipi`).
 
-
 Changes
 ^^^^^^^
 * `xsdba` now supports Python3.13. Metadata and CI have been adjusted. (:pull:`105`).
@@ -24,6 +23,7 @@ Internal changes
 ^^^^^^^^^^^^^^^^
 * `tox` has been configured to test Python3.10 builds against `numpy >=1.24.0,<2.0` in the GitHub Workflow pipeline. Passing the `numpy` keyword to `tox` (``$ tox -e py3.10-numpy``) will adjust the build. (:pull:`105`).
 * Authorship and Zenodo metadata have been updated. Order of contributions is now developers followed by contributors in alphabetical order. (:pull:`116`).
+* `MBCn.adjust` now re-performs the check on `ref` and `hist` to ensure they have compatible time arrays (the check is done a second time in `adjust` since `ref` and `hist` are given again). (:pull:`118`).
 
 .. _changes_0.3.2:
 
