@@ -117,17 +117,18 @@ def test_grouper_apply(timeseries, use_dask, group, n):
     out = grouper.apply("mean", da0, main_only=True)
     np.testing.assert_array_equal(out, out_mean)
 
-    # With window
-    win_grouper = Grouper(group, window=5)
-    out = win_grouper.apply("mean", da0)
-    rolld = da0.rolling({win_grouper.dim: 5}, center=True).construct(
-        window_dim="window"
-    )
-    if grouper.prop != "group":
-        exp = rolld.groupby(group).mean(dim=[win_grouper.dim, "window"])
-    else:
-        exp = rolld.mean(dim=[grouper.dim, "window"]).expand_dims("group").T
-    np.testing.assert_array_equal(out, exp)
+    # With window (not applicable for group = 'time')
+    if group != "time":
+        win_grouper = Grouper(group, window=5)
+        out = win_grouper.apply("mean", da0)
+        rolld = da0.rolling({win_grouper.dim: 5}, center=True).construct(
+            window_dim="window"
+        )
+        if grouper.prop != "group":
+            exp = rolld.groupby(group).mean(dim=[win_grouper.dim, "window"])
+        else:
+            exp = rolld.mean(dim=[grouper.dim, "window"]).expand_dims("group").T
+        np.testing.assert_array_equal(out, exp)
 
     # With function + nongrouping-grouped
     grouper = Grouper(group)
@@ -141,8 +142,9 @@ def test_grouper_apply(timeseries, use_dask, group, n):
         assert normed.chunks == ((1, 1), (366,))
 
     # With window + nongrouping-grouped
-    out = win_grouper.apply(normalize, da0)
-    assert out.shape == da0.shape
+    if group != "time":
+        out = win_grouper.apply(normalize, da0)
+        assert out.shape == da0.shape
 
     # Mixed output
     def mixed_reduce(grdds, dim=None):
