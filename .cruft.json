@@ -11,7 +11,7 @@
       "project_slug": "xsdba",
       "project_short_description": "Statistical correction and bias adjustment tools for xarray.",
       "pypi_username": "Zeitsperre",
-      "version": "0.3.3-dev.3",
+      "version": "0.3.3-dev.4",
       "use_pytest": "y",
       "use_black": "y",
       "use_conda": "y",

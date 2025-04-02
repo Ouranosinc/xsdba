@@ -105,7 +105,7 @@ docs = [
 extras = [
   "fastnanquantile >=0.0.2",
   "POT >=0.9.4",
-  "xclim >= 0.55.1"
+  "xclim >= 0.56"
 ]
 all = ["xsdba[dev]", "xsdba[docs]", "xsdba[extras]"]
 
@@ -130,7 +130,7 @@ target-version = [
 ]
 
 [tool.bumpversion]
-current_version = "0.3.3-dev.3"
+current_version = "0.3.3-dev.4"
 commit = true
 commit_args = "--no-verify"
 tag = false

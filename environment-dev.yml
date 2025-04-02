@@ -19,7 +19,7 @@ dependencies:
 # Extras
 - fastnanquantile >=0.0.2
 - pot >=0.9.4
-- xclim >=0.55.1
+- xclim >=0.56
 # Dev tools and testing
 - black >=25.1.0
 - blackdoc ==0.3.9
