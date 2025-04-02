@@ -7,6 +7,7 @@ Numba-accelerated Utilities
 
 from __future__ import annotations
 
+import warnings
 from collections.abc import Hashable, Sequence
 
 import numpy as np
@@ -251,7 +252,16 @@ def quantile(da: DataArray, q: np.ndarray, dim: str | Sequence[Hashable]) -> Dat
         The quantiles computed along the `dim` dimension.
     """
     if USE_FASTNANQUANTILE is True:
-        return xr_apply_nanquantile(da, dim=dim, q=q).rename({"quantile": "quantiles"})
+        if len(q) <= 1000:
+            return xr_apply_nanquantile(da, dim=dim, q=q).rename(
+                {"quantile": "quantiles"}
+            )
+        else:
+            warnings.warn(
+                "`fastnanquantile` is installed and would thus normally be used by default. However, it doesn't "
+                f"work with more than 1000 quantiles (`len(q) = {len(q)}` was given). `xsdba` built-in functions will "
+                "be used instead."
+            )
 
     qc = np.array(q, dtype=da.dtype)
     dims = [dim] if isinstance(dim, str) else dim
