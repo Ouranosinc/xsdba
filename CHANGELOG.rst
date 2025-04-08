@@ -2,19 +2,18 @@
 Changelog
 =========
 
-..
-    `Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
-    ------------------------------------------------------------
+`Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
+------------------------------------------------------------
 
-    Contributors:
+Contributors: Éric Dupuis (:user:`coxipi`)
 
-    Changes
-    ^^^^^^^
-    * No change.
+Changes
+^^^^^^^
+* Numba utilities (``xsdba.nbutils``) are now declared without a signature, which means they are not precompiled, which speeds up the general import of `xsdba`. (:pull:`135`).
 
-    Fixes
-    ^^^^^
-    * No change.
+Fixes
+^^^^^
+* No change.
 
 .. _changes_0.4.0:
 
