@@ -428,3 +428,64 @@ def harmonize_units(params_to_check):
         return _wrapper
 
     return _decorator
+
+
+def wavelength_to_normalized_wavenumber(
+    lam: xr.DataArray | str,
+    delta: str | None = None,
+) -> xr.DataArray | float:
+    """
+    Convert a wavelength `lam` to a normalized wavenumber.
+
+    Parameters
+    ----------
+    lam : xr.DataArray or float
+        Wavelength.
+    delta: str, Optional
+        Nominal resolution of the grid.
+
+    Returns
+    -------
+    xr.DataArray or float
+        Normalized wavenumber.
+    """
+    if isinstance(lam, str):
+        lam, u = _parse_str(lam)
+        lam = float(lam)
+    else:
+        u = lam.units
+    delta = convert_units_to(delta, u)
+    alpha = 2 * delta / lam
+    if isinstance(lam, xr.DataArray):
+        alpha.attrs["units"] = ""
+    return alpha
+
+
+def normalized_wavenumber_to_wavelength(
+    alpha: xr.DataArray | float, delta: str | None = None, out_units: str | None = None
+) -> xr.DataArray | str:
+    """
+    Convert a normalized wavenumber `alpha` to a wavelength.
+
+    Parameters
+    ----------
+    alpha : xr.DataArray or float
+        Normalized wavelength number.
+    delta: str, Optional
+        Nominal resolution of the grid.
+
+    Returns
+    -------
+    xr.DataArray or float
+        Wavelength.
+    """
+    delta, u = (
+        _parse_str(delta) if out_units is None else convert_units_to(delta, out_units)
+    ), out_units
+    delta = np.abs(delta)
+    lam = 2 * delta / alpha
+    if isinstance(alpha, xr.DataArray):
+        lam = lam.assign_attrs({"units": u})
+    else:
+        lam = f"{lam} {u}"
+    return lam
