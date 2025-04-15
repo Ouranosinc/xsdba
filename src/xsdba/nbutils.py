@@ -26,7 +26,7 @@ except ImportError:
 @njit(
     fastmath={"arcp", "contract", "reassoc", "nsz", "afn"},
     nogil=True,
-    cache=False,
+    cache=True,
 )
 def _get_indexes(
     arr: np.array, virtual_indexes: np.array, valid_values_count: np.array
@@ -75,7 +75,7 @@ def _get_indexes(
 @njit(
     fastmath={"arcp", "contract", "reassoc", "nsz", "afn"},
     nogil=True,
-    cache=False,
+    cache=True,
 )
 def _linear_interpolation(
     left: np.array,
@@ -112,7 +112,7 @@ def _linear_interpolation(
 @njit(
     fastmath={"arcp", "contract", "reassoc", "nsz", "afn"},
     nogil=True,
-    cache=False,
+    cache=True,
 )
 def _nan_quantile_1d(
     arr: np.array,
@@ -162,7 +162,7 @@ def _nan_quantile_1d(
     [(float32[:], float32, float32[:]), (float64[:], float64, float64[:])],
     "(n),()->()",
     nopython=True,
-    cache=False,
+    cache=True,
 )
 def _vecquantiles(arr, rnk, res):
     if np.isnan(rnk):
@@ -291,7 +291,7 @@ def quantile(da: DataArray, q: np.ndarray, dim: str | Sequence[Hashable]) -> Dat
     ],
     fastmath=False,
     nogil=True,
-    cache=False,
+    cache=True,
 )
 def remove_NaNs(x):  # noqa: N802
     """Remove NaN values from series."""
@@ -308,7 +308,7 @@ def remove_NaNs(x):  # noqa: N802
     ],
     fastmath=True,
     nogil=True,
-    cache=False,
+    cache=True,
 )
 def _correlation(X, Y):
     """
@@ -334,7 +334,7 @@ def _correlation(X, Y):
     ],
     fastmath=True,
     nogil=True,
-    cache=False,
+    cache=True,
 )
 def _autocorrelation(X):
     """
@@ -359,7 +359,7 @@ def _autocorrelation(X):
     ],
     "(k, n),(k, m)->()",
     nopython=True,
-    cache=False,
+    cache=True,
 )
 def _escore(tgt, sim, out):
     """
@@ -388,7 +388,7 @@ def _escore(tgt, sim, out):
 @njit(
     fastmath=False,
     nogil=True,
-    cache=False,
+    cache=True,
 )
 def _first_and_last_nonnull(arr):
     """For each row of arr, get the first and last non NaN elements."""
@@ -405,7 +405,7 @@ def _first_and_last_nonnull(arr):
 @njit(
     fastmath=False,
     nogil=True,
-    cache=False,
+    cache=True,
 )
 def _extrapolate_on_quantiles(interp, oldx, oldg, oldy, newx, newg, method="constant"):
     """
@@ -432,7 +432,7 @@ def _extrapolate_on_quantiles(interp, oldx, oldg, oldy, newx, newg, method="cons
 @njit(
     fastmath=False,
     nogil=True,
-    cache=False,
+    cache=True,
 )
 def _pairwise_haversine_and_bins(lond, latd, transpose=False):
     """Inter-site distances with the haversine approximation."""

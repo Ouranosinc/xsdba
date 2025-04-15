@@ -2,19 +2,18 @@
 Changelog
 =========
 
-..
-    `Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
-    ------------------------------------------------------------
+`Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
+------------------------------------------------------------
 
-    Contributors:
+Contributors: Éric Dupuis (:user:`coxipi`)
 
-    Changes
-    ^^^^^^^
-    * No change.
+Changes
+^^^^^^^
+* Speed up import by activating `cache=True` for in numba-accelerated functions from ``xsdba.nbutils``. (:pull:`135`).
 
-    Fixes
-    ^^^^^
-    * No change.
+Fixes
+^^^^^
+* No change.
 
 .. _changes_0.4.0:
 

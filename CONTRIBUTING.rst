@@ -195,6 +195,13 @@ Before you submit a pull request, check that it meets these guidelines:
 Tips
 ----
 
+If you are working on numba-accelerated functions, consider disabling caching during the development phase and reactivating it once all changes are ready for review. This is done by commenting ``cache=True`` in the decorator.
+If the developing environment in installed interactively
+```bash
+pip install -e .
+```
+then another possibility is to remove the `__pycache__` with `rm -rf src/xsdba/__pycache__`. This will force the re-compilation of numba-accelerated functions and allow to incorporate changes made in the development.
+
 To run a subset of tests:
 
 .. code-block:: console
