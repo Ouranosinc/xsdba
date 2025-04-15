@@ -8,6 +8,7 @@ import xarray as xr
 from xsdba.adjustment import EmpiricalQuantileMapping
 from xsdba.base import Grouper
 from xsdba.processing import (
+    _normalized_radial_wavenumber,
     adapt_freq,
     escore,
     from_additive_space,
@@ -16,6 +17,7 @@ from xsdba.processing import (
     jitter_under_thresh,
     normalize,
     reordering,
+    spectral_filter,
     stack_variables,
     standardize,
     to_additive_space,
@@ -303,3 +305,100 @@ def test_stack_variables(gosset):
     ds1p = unstack_variables(da1)
 
     xr.testing.assert_equal(ds1, ds1p)
+
+
+class TestSpectralUtils:
+    @pytest.mark.parametrize(
+        "expected",
+        # values obtained in xsdba v0.5
+        [
+            (
+                [
+                    267.061139,
+                    267.347475,
+                    267.58364,
+                    267.816278,
+                    268.093685,
+                    268.326505,
+                    268.485636,
+                    268.684414,
+                    268.863002,
+                    268.969267,
+                ]
+            ),
+        ],
+    )
+    def test_spectral_filter(self, gosset, expected):
+        ds = xr.open_dataset(
+            gosset.fetch("NRCANdaily/nrcan_canada_daily_tasmax_1990.nc"),
+            engine="h5netcdf",
+        )
+        # select lat/lon without nan values
+        # spectral_filter not working if nan values are present (for now?)
+        tx = ds.tasmax.isel(time=0).sel(lat=slice(50, 47), lon=slice(-80, -74))
+        # using the default filter
+        tx_filt = spectral_filter(
+            tx,
+            lam_long=None,
+            lam_short=None,
+            dims=["lon", "lat"],
+            alpha_low_high=[0.9, 0.99],  # dummy value
+        ).isel(lon=0)
+        # performing dctn & idctn has a small inherent imprecision
+        np.testing.assert_allclose(expected, tx_filt.values[0:10], rtol=1e-5)
+
+    def test_spectral_filter_identity(self, gosset):
+        ds = xr.open_dataset(
+            gosset.fetch("NRCANdaily/nrcan_canada_daily_tasmax_1990.nc"),
+            engine="h5netcdf",
+        )
+        # select lat/lon without nan values
+        # spectral_filter not working in this case, for now
+        tx = ds.tasmax.isel(time=0).sel(lat=slice(50, 47), lon=slice(-80, -74))
+        tx_filt = spectral_filter(
+            tx,
+            lam_long=None,
+            lam_short=None,
+            dims=["lon", "lat"],
+            alpha_low_high=[0.9, 0.99],  # dummy value
+            mask_func=lambda da, _1, _2: 0 * da + 1,  # identity function, mask =1
+        )
+        # performing dctn & idctn has a small inherent imprecision
+        np.testing.assert_allclose(tx.values, tx_filt.values, rtol=1e-5)
+
+    def test_spectral_filter_everthing(self, gosset):
+        ds = xr.open_dataset(
+            gosset.fetch("NRCANdaily/nrcan_canada_daily_tasmax_1990.nc"),
+            engine="h5netcdf",
+        )
+        tx = ds.tasmax.isel(time=0).sel(lat=slice(50, 47), lon=slice(-80, -74))
+        tx_filt = spectral_filter(
+            tx,
+            lam_long=None,
+            lam_short=None,
+            dims=["lon", "lat"],
+            alpha_low_high=[0.9, 0.99],  # dummy value
+            mask_func=lambda da, _1, _2: 0 * da,  # mask =0
+        )
+        assert ((0 * tx).values == tx_filt.values).all()
+
+    def test_normalized_radial_wavenumber(self, gosset):
+        ds = xr.open_dataset(
+            gosset.fetch("NRCANdaily/nrcan_canada_daily_tasmax_1990.nc"),
+            engine="h5netcdf",
+        )
+
+        sim = ds.tasmax.isel(time=0).sel(lat=slice(50, 49.5), lon=slice(-80, -79.5))
+        alpha = _normalized_radial_wavenumber(sim, dims=["lon", "lat"])
+        # it is similar to the function itself, but a bit more human readable with the numpy notation
+        # I think it's a good check
+        alpha_by_hand = np.array(
+            [
+                [
+                    np.sqrt((i / sim.lon.size) ** 2 + (j / sim.lat.size) ** 2)
+                    for i in np.arange(sim.lon.size)
+                ]
+                for j in np.arange(sim.lat.size)
+            ]
+        )
+        np.testing.assert_allclose(alpha.values, alpha_by_hand)

@@ -2,19 +2,20 @@
 Changelog
 =========
 
-..
-    `Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
-    ------------------------------------------------------------
+`Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
+------------------------------------------------------------
 
-    Contributors:
+Contributors:  Éric Dupuis (:user:`coxipi`).
 
-    Changes
-    ^^^^^^^
-    * No change.
+Changes
+^^^^^^^
+* New functions related to spectral properties in Fourier space:
+    * Perform a spectral filter with ``xsdba.processing.spectral_filter`` with a low-pass filter with a cosine-squared profile by default. (:pull:`88`).
+    * New spatial diagnostic to compute the spectral variance of a given field ``xsdba.properties.spectral_variance``. (:pull:`88`).
 
-    Fixes
-    ^^^^^
-    * No change.
+Fixes
+^^^^^
+* No change.
 
 .. _changes_0.4.0:
 
