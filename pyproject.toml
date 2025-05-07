@@ -85,6 +85,7 @@ dev = [
 docs = [
   # Documentation and examples
   "furo >=2023.9.10",
+  "h5netcdf",
   "ipykernel",
   "ipython >=8.5.0",
   "jupyter_client",
