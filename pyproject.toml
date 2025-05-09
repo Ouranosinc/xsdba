@@ -367,6 +367,7 @@ ignore = [
   "D401", # non-imperative-mood
   # WIP xsdba
   "E402", # top import module
+  "E712", # use cond == False
   "D200",
   "FLY002",
   "N801",
