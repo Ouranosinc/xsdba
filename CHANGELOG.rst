@@ -43,6 +43,7 @@ Fixes
 * `xsdba` now uses directly `operator` instead of using `xarray`'s derived `get_op` function. A refactoring in `xarray` had changed the position of `get_op` which caused a bug. (:pull:`120`).
 * For more than 1000 quantiles, `fastnanquantile` is not used anymore, as it would throw an error. (:issue:`119`, :pull:`123`).
 * `Grouper` now throws an error if `group='time'` is used  with `window>1`. (:issue:`104`, :pull:`122`).
+* Slightly reduce "maximum" in `jitter` to fix dtype conversion issue. (:issue:`124`, :pull:`125`).
 
 Internal changes
 ^^^^^^^^^^^^^^^^
