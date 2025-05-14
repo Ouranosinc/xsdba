@@ -18,7 +18,7 @@ Changes
 
 Fixes
 ^^^^^
-* No change.
+* ``xsdba.processing.from_additive_space`` now handles units correctly by using `convert_units_to` instead of `harmonize_units`. (:pull:`146`).
 
 Internal changes
 ^^^^^^^^^^^^^^^^

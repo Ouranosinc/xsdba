@@ -23,6 +23,7 @@ from xsdba.base import Grouper, uses_dask
 from xsdba.formatting import update_xsdba_history
 from xsdba.nbutils import _escore
 from xsdba.units import (
+    convert_units_to,
     harmonize_units,
     normalized_wavenumber_to_wavelength,
     wavelength_to_normalized_wavenumber,
@@ -604,7 +605,6 @@ def to_additive_space(
 
 
 @update_xsdba_history
-@harmonize_units(["units", "lower_bound", "upper_bound"])
 def from_additive_space(
     data: xr.DataArray,
     lower_bound: str | None = None,
@@ -696,9 +696,11 @@ def from_additive_space(
         and (upper_bound is not None or trans == "log")
     ):
         # FIXME: convert_units_to is causing issues since it can't handle all variations of Quantified here
-        lower_bound_array = np.array(lower_bound).astype(float)
+        lower_bound_array = np.array(convert_units_to(lower_bound, units)).astype(float)
         if trans == "logit":
-            upper_bound_array = np.array(upper_bound).astype(float)
+            upper_bound_array = np.array(convert_units_to(upper_bound, units)).astype(
+                float
+            )
     else:
         raise ValueError(
             "Parameters missing. Either all parameters are given as attributes of data, "

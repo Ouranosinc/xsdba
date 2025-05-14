@@ -267,6 +267,24 @@ def test_from_additive(timeseries):
     np.testing.assert_allclose(hurs[1:-1], hurs2[1:-1])
 
 
+def test_from_additive_with_args(timeseries):
+    pr = timeseries(np.array([0, 1e-5, 1, np.e**10]), units="mm/d")
+    prlog = np.log(pr).assign_attrs({"units": 1})
+    pr2 = from_additive_space(prlog, lower_bound="0 mm/d", trans="log", units="mm/d")
+    np.testing.assert_allclose(pr[1:], pr2[1:])
+    pr2.attrs.pop("history")
+    assert pr.attrs == pr2.attrs
+
+    # logit
+    hurs = timeseries(np.array([0, 1e-5, 0.9, 1]), units="%")
+    hurslogit = (np.log(hurs / (100 - hurs))).assign_attrs({"units": 1})
+    hurs2 = from_additive_space(
+        hurslogit, lower_bound="0 %", trans="logit", upper_bound="100 %", units="%"
+    )
+    np.testing.assert_allclose(hurs[1:-1], hurs2[1:-1])
+    assert hurs2.attrs["units"] == "%"
+
+
 def test_normalize(timeseries, random):
     tas = timeseries(
         random.standard_normal((int(365.25 * 36),)) + 273.15,
