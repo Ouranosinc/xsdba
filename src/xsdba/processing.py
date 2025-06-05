@@ -225,7 +225,7 @@ def jitter(
     if lower is not None:
         jitter_lower = np.array(lower).astype(float)
         jitter_min = np.array(minimum if minimum is not None else 0).astype(float)
-        jitter_min = jitter_min + np.finfo(x.dtype).eps
+        jitter_min = np.nextafter(jitter_min.astype(x.dtype), np.inf)
         if uses_dask(x):
             jitter_dist = dsk.random.uniform(
                 low=dsk.from_array(jitter_min),
@@ -243,9 +243,16 @@ def jitter(
             raise ValueError("If 'upper' is given, so must 'maximum'.")
         jitter_upper = np.array(upper).astype(float)
         jitter_max = np.array(maximum).astype(float)
+        # for float64 (dtype.itemsize==8), `np.random.uniform`
+        # already excludes the upper limit
+        if x.dtype.itemsize < 8:
+            jitter_max = np.nextafter(jitter_max.astype(x.dtype), -np.inf)
         if uses_dask(x):
             jitter_dist = dsk.random.uniform(
-                low=jitter_upper, high=jitter_max, size=x.shape, chunks=x.chunks
+                low=dsk.from_array(jitter_upper),
+                high=dsk.from_array(jitter_max),
+                size=x.shape,
+                chunks=x.chunks,
             )
         else:
             jitter_dist = np.random.uniform(
