@@ -25,19 +25,22 @@ from .units import convert_units_to
 from .utils import _fitfunc_1d
 
 
-def _adapt_freq_hist(ds: xr.Dataset, adapt_freq_thresh: str):
-    """Adapt frequency of null values of `hist`    in order to match `ref`."""
-    thresh = convert_units_to(adapt_freq_thresh, ds.ref)
-    dim = ["time"] + ["window"] * ("window" in ds.hist.dims)
-    return _adapt_freq.func(
-        xr.Dataset({"sim": ds.hist, "ref": ds.ref}), thresh=thresh, dim=dim
-    ).sim_ad
+def _adapt_freq_sim(ds: xr.Dataset, adapt_freq_thresh: str):
+    """Adapt frequency of null values of `sim` in order to match `ref`."""
+    if "hist" in ds.data_vars:
+        ds = ds.rename({"hist": "sim"})
+    thresh = convert_units_to(adapt_freq_thresh, ds.sim)
+    dim = ["time"] + ["window"] * ("window" in ds.sim.dims)
+    return _adapt_freq.func(ds, thresh=thresh, dim=dim)
 
 
 @map_groups(
     af=[Grouper.PROP, "quantiles"],
     hist_q=[Grouper.PROP, "quantiles"],
     scaling=[Grouper.PROP],
+    dP0=[Grouper.PROP],
+    P0_ref=[Grouper.PROP],
+    pth=[Grouper.PROP],
 )
 def dqm_train(
     ds: xr.Dataset,
@@ -80,9 +83,14 @@ def dqm_train(
         if jitter_under_thresh_value
         else ds.hist
     )
-    ds["hist"] = (
-        _adapt_freq_hist(ds, adapt_freq_thresh) if adapt_freq_thresh else ds.hist
-    )
+
+    if adapt_freq_thresh:
+        out = _adapt_freq_sim(ds, adapt_freq_thresh)
+        ds["hist"], dP0, P0_ref, pth = (
+            out[k] for k in ["sim_ad", "dP0", "P0_ref", "pth"]
+        )
+    else:
+        dP0 = pth = P0_ref = xr.full_like(ds["hist"][{"time": 0}], np.nan)
 
     refn = u.apply_correction(ds.ref, u.invert(ds.ref.mean(dim), kind), kind)
     histn = u.apply_correction(ds.hist, u.invert(ds.hist.mean(dim), kind), kind)
@@ -94,8 +102,16 @@ def dqm_train(
     mu_ref = ds.ref.mean(dim)
     mu_hist = ds.hist.mean(dim)
     scaling = u.get_correction(mu_hist, mu_ref, kind=kind)
-
-    return xr.Dataset(data_vars={"af": af, "hist_q": hist_q, "scaling": scaling})
+    return xr.Dataset(
+        data_vars={
+            "af": af,
+            "hist_q": hist_q,
+            "scaling": scaling,
+            "dP0": dP0,
+            "P0_ref": P0_ref,
+            "pth": pth,
+        }
+    )
 
 
 @map_groups(
@@ -144,7 +160,7 @@ def eqm_train(
         else ds.hist
     )
     ds["hist"] = (
-        _adapt_freq_hist(ds, adapt_freq_thresh) if adapt_freq_thresh else ds.hist
+        _adapt_freq_sim(ds, adapt_freq_thresh) if adapt_freq_thresh else ds.hist
     )
     ref_q = nbu.quantile(ds.ref, quantiles, dim)
     hist_q = nbu.quantile(ds.hist, quantiles, dim)
@@ -486,6 +502,7 @@ def qm_adjust(
         Dataset variables:
             af : Adjustment factors
             hist_q : Quantiles over the training data
+            dP0 : Proportion of zeroes (may be a dummy)
             sim : Data to adjust.
     group : Grouper
         The grouper object.
@@ -524,6 +541,7 @@ def dqm_adjust(
     kind: str,
     extrapolation: str,
     detrend: int | PolyDetrend,
+    adapt_freq_thresh: str | None = None,
 ) -> xr.Dataset:
     """
     DQM adjustment on one block.
@@ -536,6 +554,9 @@ def dqm_adjust(
             af : Adjustment factors
             hist_q : Quantiles over the training data
             sim : Data to adjust
+            dP0 (optional) : Proportion of exceeding zeroes from training data
+            P0_ref (optional) : Proportion of zeroes in the reference
+            pth (optional) : The smallest value of `hist` that was not frequency-adjusted in the training.
     group : Grouper
         The grouper object.
     interp : str
@@ -546,12 +567,18 @@ def dqm_adjust(
         The extrapolation method to use.
     detrend : int | PolyDetrend
         The degree of the polynomial detrending to apply. If 0, no detrending is applied.
+    adapt_freq_thresh : str, optional
+        Threshold for frequency adaptation. See :py:class:`xsdba.processing.adapt_freq` for details.
+        Default is None, meaning that frequency adaptation is not performed.
 
     Returns
     -------
     xr.Dataset
         The adjusted data and the trend.
     """
+    if adapt_freq_thresh:
+        out = _adapt_freq_sim(ds, adapt_freq_thresh).sim_ad
+        ds["sim"] = out
     scaled_sim = u.apply_correction(
         ds.sim,
         u.broadcast(
@@ -1129,7 +1156,7 @@ def otc_adjust(
 
     if adapt_freq_thresh is not None:
         for var, thresh in adapt_freq_thresh.items():
-            hist.loc[var] = _adapt_freq_hist(
+            hist.loc[var] = _adapt_freq_sim(
                 xr.Dataset(
                     {"ref": ref.sel({pts_dim: var}), "hist": hist.sel({pts_dim: var})}
                 ),
@@ -1372,7 +1399,7 @@ def dotc_adjust(
 
     if adapt_freq_thresh is not None:
         for var, thresh in adapt_freq_thresh.items():
-            hist.loc[var] = _adapt_freq_hist(
+            hist.loc[var] = _adapt_freq_sim(
                 xr.Dataset(
                     {"ref": ref.sel({pts_dim: var}), "hist": hist.sel({pts_dim: var})}
                 ),
