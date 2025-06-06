@@ -33,7 +33,9 @@ __all__ = [
 ]
 
 units = pint.get_application_registry()
-
+# CF-xarray forces numpy arrays even for scalar values, not sure why.
+# We don't want that in xsdba, the magnitude of a scalar is a scalar (float).
+units.force_ndarray_like = False
 FREQ_UNITS = {
     "D": "d",
     "W": "week",
@@ -298,7 +300,25 @@ def pint2cfattrs(value: units.Quantity | units.Unit, is_difference=None) -> dict
     return attrs
 
 
-# XC simplified
+# Private function so it can be patched
+def _convert_units_to(  # noqa: C901
+    source: Quantified,
+    target: Quantified | units.Unit,
+) -> xr.DataArray | float:
+    target_unit = units2str(target)
+    source_unit = units2str(source)
+    if target_unit == source_unit:
+        return source if not isinstance(source, str) else float(str2pint(source).m)
+    else:  # Convert units
+        if isinstance(source, xr.DataArray):
+            out = source.copy(data=units.convert(source.data, source_unit, target_unit))
+            out = out.assign_attrs(units=target_unit)
+        else:  # scalar
+            # explicit float cast because cf-xarray registry outputting 0-dim arrays
+            out = str2pint(source).to(target_unit).m
+        return out
+
+
 def convert_units_to(  # noqa: C901
     source: Quantified,
     target: Quantified | units.Unit,
@@ -324,18 +344,7 @@ def convert_units_to(  # noqa: C901
         Attributes are preserved unless an automatic CF conversion is performed,
         in which case only the new `standard_name` appears in the result.
     """
-    target_unit = units2str(target)
-    source_unit = units2str(source)
-    if target_unit == source_unit:
-        return source if not isinstance(source, str) else float(str2pint(source).m)
-    else:  # Convert units
-        if isinstance(source, xr.DataArray):
-            out = source.copy(data=units.convert(source.data, source_unit, target_unit))
-            out = out.assign_attrs(units=target_unit)
-        else:  # scalar
-            # explicit float cast because cf-xarray registry outputting 0-dim arrays
-            out = float(str2pint(source).to(target_unit).m)
-        return out
+    return _convert_units_to(source, target)
 
 
 def extract_units(arg):
