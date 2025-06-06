@@ -15,6 +15,7 @@ Changes
 * New functions related to spectral properties in Fourier space:
     * Perform a spectral filter with ``xsdba.processing.spectral_filter`` with a low-pass filter with a cosine-squared profile by default. (:pull:`88`).
     * New spatial diagnostic to compute the spectral variance of a given field ``xsdba.properties.spectral_variance``. (:pull:`88`).
+* ``xsdba.jitter_over_thresh`` is available directly in training methods by passing the `jitter_over_thresh_value` and `jitter_over_thresh_upper_bnd`  arguments. (:pull:`110`).
 
 Fixes
 ^^^^^
