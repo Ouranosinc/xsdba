@@ -83,16 +83,18 @@ def dqm_train(
     ds["hist"] = (
         _adapt_freq_hist(ds, adapt_freq_thresh) if adapt_freq_thresh else ds.hist
     )
+    # Ensure we only reduce on valid dims, allows for extra dims like "realization" on the sim
+    ref_dim = Grouper.filter_dim(ds.ref, dim)
+    sim_dim = Grouper.filter_dim(ds.hist, dim)
+    refn = u.apply_correction(ds.ref, u.invert(ds.ref.mean(ref_dim), kind), kind)
+    histn = u.apply_correction(ds.hist, u.invert(ds.hist.mean(sim_dim), kind), kind)
 
-    refn = u.apply_correction(ds.ref, u.invert(ds.ref.mean(dim), kind), kind)
-    histn = u.apply_correction(ds.hist, u.invert(ds.hist.mean(dim), kind), kind)
-
-    ref_q = nbu.quantile(refn, quantiles, dim)
-    hist_q = nbu.quantile(histn, quantiles, dim)
+    ref_q = nbu.quantile(refn, quantiles, ref_dim)
+    hist_q = nbu.quantile(histn, quantiles, sim_dim)
 
     af = u.get_correction(hist_q, ref_q, kind)
-    mu_ref = ds.ref.mean(dim)
-    mu_hist = ds.hist.mean(dim)
+    mu_ref = ds.ref.mean(ref_dim)
+    mu_hist = ds.hist.mean(sim_dim)
     scaling = u.get_correction(mu_hist, mu_ref, kind=kind)
 
     return xr.Dataset(data_vars={"af": af, "hist_q": hist_q, "scaling": scaling})
@@ -146,9 +148,11 @@ def eqm_train(
     ds["hist"] = (
         _adapt_freq_hist(ds, adapt_freq_thresh) if adapt_freq_thresh else ds.hist
     )
-    ref_q = nbu.quantile(ds.ref, quantiles, dim)
-    hist_q = nbu.quantile(ds.hist, quantiles, dim)
-
+    # Ensure we only reduce on valid dims, allows for extra dims like "realization" on the sim
+    ref_dim = Grouper.filter_dim(ds.ref, dim)
+    sim_dim = Grouper.filter_dim(ds.hist, dim)
+    ref_q = nbu.quantile(ds.ref, quantiles, ref_dim)
+    hist_q = nbu.quantile(ds.hist, quantiles, sim_dim)
     af = u.get_correction(hist_q, ref_q, kind)
 
     return xr.Dataset(data_vars={"af": af, "hist_q": hist_q})
@@ -674,8 +678,10 @@ def scaling_train(ds: xr.Dataset, *, dim, kind) -> xr.Dataset:
             ref : training target
             hist : training data
     """
-    mhist = ds.hist.mean(dim)
-    mref = ds.ref.mean(dim)
+    ref_dim = Grouper.filter_dim(ds.ref, dim)
+    sim_dim = Grouper.filter_dim(ds.hist, dim)
+    mhist = ds.hist.mean(sim_dim)
+    mref = ds.ref.mean(ref_dim)
     af: xr.DataArray = u.get_correction(mhist, mref, kind).rename("af")
     out = af.to_dataset()
     return out
@@ -1136,10 +1142,12 @@ def otc_adjust(
                 thresh,
             )
 
-    ref_map = {d: f"ref_{d}" for d in dim}
+    ref_dim = Grouper.filter_dim(ref, dim)
+    ref_map = {d: f"ref_{d}" for d in ref_dim}
     ref = ref.rename(ref_map).stack(dim_ref=ref_map.values()).dropna(dim="dim_ref")
 
-    hist = hist.stack(dim_hist=dim).dropna(dim="dim_hist")
+    sim_dim = Grouper.filter_dim(hist, dim)
+    hist = hist.stack(dim_hist=sim_dim).dropna(dim="dim_hist")
 
     if isinstance(bin_width, dict):
         bin_width = {
@@ -1380,13 +1388,15 @@ def dotc_adjust(
             )
 
     # Drop data added by map_blocks and prepare for apply_ufunc
-    hist_map = {d: f"hist_{d}" for d in dim}
+    sim_dim = Grouper.filter_dim(sim, dim)
+    hist_map = {d: f"hist_{d}" for d in sim_dim}
     hist = hist.rename(hist_map).stack(dim_hist=hist_map.values())
 
-    ref_map = {d: f"ref_{d}" for d in dim}
+    ref_dim = Grouper.filter_dim(ref, dim)
+    ref_map = {d: f"ref_{d}" for d in ref_dim}
     ref = ref.rename(ref_map).stack(dim_ref=ref_map.values())
 
-    sim = sim.stack(dim_sim=dim)
+    sim = sim.stack(dim_sim=sim_dim)
 
     if kind is not None:
         kind = {

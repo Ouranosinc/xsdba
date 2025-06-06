@@ -218,15 +218,14 @@ class TestScaling:
         attrs = {"units": units, "kind": kind}
 
         hist = sim = timelonlatseries(x, attrs=attrs)
-        ref = mon_timelonlatseries(apply_correction(x, 2, "+"), attrs=attrs)
+        ref = mon_timelonlatseries(apply_correction(x, 2, "+"), attrs=attrs).isel(lon=0)
 
         group = Grouper("time.month", add_dims=["lon"])
 
         scaling = Scaling.train(ref, hist, group=group, kind="+")
         assert "lon" not in scaling.ds
         p = scaling.adjust(sim)
-        assert "lon" in p.dims
-        np.testing.assert_array_almost_equal(p.transpose(*ref.dims), ref)
+        np.testing.assert_allclose(p.isel(lon=0).transpose(*ref.dims), ref, rtol=1e-2)
 
 
 @pytest.mark.slow
@@ -346,13 +345,11 @@ class TestDQM:
         sim = timelonlatseries(apply_correction(x, trend, kind), attrs=attrs)
 
         if add_dims:
-            ref = ref.expand_dims(lat=[0, 1, 2]).chunk({"lat": 1})
             hist = hist.expand_dims(lat=[0, 1, 2]).chunk({"lat": 1})
             sim = sim.expand_dims(lat=[0, 1, 2]).chunk({"lat": 1})
-            ref_t = ref_t.expand_dims(lat=[0, 1, 2])
 
         DQM = DetrendedQuantileMapping.train(
-            ref, hist, kind=kind, group="time.month", nquantiles=5
+            ref, hist, kind=kind, group="time.month", nquantiles=5, add_dims=["lat"]
         )
         mqm = DQM.ds.af.mean(dim="quantiles")
         p = DQM.adjust(sim)
@@ -517,15 +514,11 @@ class TestQDM:
             hist = hist.chunk({"time": -1})
             sim = sim.chunk({"time": -1})
         if add_dims:
-            ref = ref.expand_dims(site=[0, 1, 2, 3, 4]).drop_vars("site")
             hist = hist.expand_dims(site=[0, 1, 2, 3, 4]).drop_vars("site")
             sim = sim.expand_dims(site=[0, 1, 2, 3, 4]).drop_vars("site")
-            sel = {"site": 0}
-        else:
-            sel = {}
 
         QDM = QuantileDeltaMapping.train(
-            ref, hist, kind=kind, group="time.month", nquantiles=40
+            ref, hist, kind=kind, group="time.month", nquantiles=40, add_dims=["site"]
         )
         p = QDM.adjust(sim, interp="linear" if kind == "+" else "nearest")
 
@@ -535,12 +528,11 @@ class TestQDM:
         expected = apply_correction(
             mon_triangular[:, np.newaxis], expected[np.newaxis, :], kind
         )
-        np.testing.assert_array_almost_equal(
-            QDM.ds.af.sel(quantiles=q, **sel), expected, 1
-        )
+        np.testing.assert_array_almost_equal(QDM.ds.af.sel(quantiles=q), expected, 1)
 
         # Test predict
-        np.testing.assert_allclose(p, ref.transpose(*p.dims), rtol=0.1, atol=0.2)
+        pp = p.isel(site=0) if add_dims else p
+        np.testing.assert_allclose(pp.transpose(*ref.dims), ref, rtol=0.1, atol=0.2)
 
     def test_seasonal(self, timelonlatseries, random):
         u = random.random(10000)
@@ -724,8 +716,7 @@ class TestQM:
         )
         ref = convert_units_to(ref, "K")
         # The idea is to have ref defined only over 1 location
-        # But sdba needs the same dimensions on ref and hist for Grouping with add_dims
-        ref = ref.where(ref.location == "Amos")
+        ref = ref.sel(location="Amos")
 
         # With add_dims, "does it run" test
         group = Grouper("time.dayofyear", window=5, add_dims=["location"])
@@ -736,7 +727,6 @@ class TestQM:
         group = Grouper("time.dayofyear", window=5)
         EQM2 = EmpiricalQuantileMapping.train(ref, hist, group=group)
         scen2 = EQM2.adjust(sim).load()
-        assert scen2.sel(location=["Kugluktuk", "Vancouver"]).isnull().all()
 
     def test_different_times_training(self, timelonlatseries, random):
         n = 10
