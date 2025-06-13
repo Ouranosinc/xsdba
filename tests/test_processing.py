@@ -8,6 +8,7 @@ import xarray as xr
 from xsdba.adjustment import EmpiricalQuantileMapping
 from xsdba.base import Grouper
 from xsdba.processing import (
+    _normalized_radial_wavenumber,
     adapt_freq,
     escore,
     from_additive_space,
@@ -16,6 +17,7 @@ from xsdba.processing import (
     jitter_under_thresh,
     normalize,
     reordering,
+    spectral_filter,
     stack_variables,
     standardize,
     to_additive_space,
@@ -145,8 +147,8 @@ def test_escore():
     x = np.array([1, 4, 3, 6, 4, 7, 5, 8, 4, 5, 3, 7]).reshape(2, 6)
     y = np.array([6, 6, 3, 8, 5, 7, 3, 7, 3, 6, 4, 3]).reshape(2, 6)
 
-    x = xr.DataArray(x, dims=("variables", "time"))
-    y = xr.DataArray(y, dims=("variables", "time"))
+    x = xr.DataArray(x, dims=("variables", "time")).astype(np.float64)
+    y = xr.DataArray(y, dims=("variables", "time")).astype(np.float64)
 
     # Value taken from escore of Cannon's MBC R package.
     out = escore(x, y)
@@ -265,6 +267,24 @@ def test_from_additive(timeseries):
     np.testing.assert_allclose(hurs[1:-1], hurs2[1:-1])
 
 
+def test_from_additive_with_args(timeseries):
+    pr = timeseries(np.array([0, 1e-5, 1, np.e**10]), units="mm/d")
+    prlog = np.log(pr).assign_attrs({"units": 1})
+    pr2 = from_additive_space(prlog, lower_bound="0 mm/d", trans="log", units="mm/d")
+    np.testing.assert_allclose(pr[1:], pr2[1:])
+    pr2.attrs.pop("history")
+    assert pr.attrs == pr2.attrs
+
+    # logit
+    hurs = timeseries(np.array([0, 1e-5, 0.9, 1]), units="%")
+    hurslogit = (np.log(hurs / (100 - hurs))).assign_attrs({"units": 1})
+    hurs2 = from_additive_space(
+        hurslogit, lower_bound="0 %", trans="logit", upper_bound="100 %", units="%"
+    )
+    np.testing.assert_allclose(hurs[1:-1], hurs2[1:-1])
+    assert hurs2.attrs["units"] == "%"
+
+
 def test_normalize(timeseries, random):
     tas = timeseries(
         random.standard_normal((int(365.25 * 36),)) + 273.15,
@@ -303,3 +323,100 @@ def test_stack_variables(gosset):
     ds1p = unstack_variables(da1)
 
     xr.testing.assert_equal(ds1, ds1p)
+
+
+class TestSpectralUtils:
+    @pytest.mark.parametrize(
+        "expected",
+        # values obtained in xsdba v0.5
+        [
+            (
+                [
+                    267.061139,
+                    267.347475,
+                    267.58364,
+                    267.816278,
+                    268.093685,
+                    268.326505,
+                    268.485636,
+                    268.684414,
+                    268.863002,
+                    268.969267,
+                ]
+            ),
+        ],
+    )
+    def test_spectral_filter(self, gosset, expected):
+        ds = xr.open_dataset(
+            gosset.fetch("NRCANdaily/nrcan_canada_daily_tasmax_1990.nc"),
+            engine="h5netcdf",
+        )
+        # select lat/lon without nan values
+        # spectral_filter not working if nan values are present (for now?)
+        tx = ds.tasmax.isel(time=0).sel(lat=slice(50, 47), lon=slice(-80, -74))
+        # using the default filter
+        tx_filt = spectral_filter(
+            tx,
+            lam_long=None,
+            lam_short=None,
+            dims=["lon", "lat"],
+            alpha_low_high=[0.9, 0.99],  # dummy value
+        ).isel(lon=0)
+        # performing dctn & idctn has a small inherent imprecision
+        np.testing.assert_allclose(expected, tx_filt.values[0:10], rtol=1e-5)
+
+    def test_spectral_filter_identity(self, gosset):
+        ds = xr.open_dataset(
+            gosset.fetch("NRCANdaily/nrcan_canada_daily_tasmax_1990.nc"),
+            engine="h5netcdf",
+        )
+        # select lat/lon without nan values
+        # spectral_filter not working in this case, for now
+        tx = ds.tasmax.isel(time=0).sel(lat=slice(50, 47), lon=slice(-80, -74))
+        tx_filt = spectral_filter(
+            tx,
+            lam_long=None,
+            lam_short=None,
+            dims=["lon", "lat"],
+            alpha_low_high=[0.9, 0.99],  # dummy value
+            mask_func=lambda da, _1, _2: 0 * da + 1,  # identity function, mask =1
+        )
+        # performing dctn & idctn has a small inherent imprecision
+        np.testing.assert_allclose(tx.values, tx_filt.values, rtol=1e-5)
+
+    def test_spectral_filter_everthing(self, gosset):
+        ds = xr.open_dataset(
+            gosset.fetch("NRCANdaily/nrcan_canada_daily_tasmax_1990.nc"),
+            engine="h5netcdf",
+        )
+        tx = ds.tasmax.isel(time=0).sel(lat=slice(50, 47), lon=slice(-80, -74))
+        tx_filt = spectral_filter(
+            tx,
+            lam_long=None,
+            lam_short=None,
+            dims=["lon", "lat"],
+            alpha_low_high=[0.9, 0.99],  # dummy value
+            mask_func=lambda da, _1, _2: 0 * da,  # mask =0
+        )
+        assert ((0 * tx).values == tx_filt.values).all()
+
+    def test_normalized_radial_wavenumber(self, gosset):
+        ds = xr.open_dataset(
+            gosset.fetch("NRCANdaily/nrcan_canada_daily_tasmax_1990.nc"),
+            engine="h5netcdf",
+        )
+
+        ds_sim = ds.tasmax.isel(time=0).sel(lat=slice(50, 49.5), lon=slice(-80, -79.5))
+        alpha = _normalized_radial_wavenumber(ds_sim, ["lat", "lon"])
+        # it is similar to the function itself, but a bit more human readable with the numpy notation
+        # I think it's a good check
+        alpha_by_hand = np.array(
+            [
+                [
+                    np.sqrt((i / ds_sim.lon.size) ** 2 + (j / ds_sim.lat.size) ** 2)
+                    for i in np.arange(ds_sim.lon.size)
+                ]
+                for j in np.arange(ds_sim.lat.size)
+            ]
+        )
+        np.testing.assert_allclose(alpha.values, alpha_by_hand)

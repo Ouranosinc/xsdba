@@ -78,6 +78,7 @@ class BaseAdjustment(ParametrizableWithDataset):
     _allow_diff_calendars = True
     _allow_diff_training_times = True
     _allow_diff_time_sizes = True
+    _allow_5d_grouping = False
     _attribute = "_xsdba_adjustment"
 
     def __init__(self, *args, _trained=False, **kwargs):
@@ -95,6 +96,12 @@ class BaseAdjustment(ParametrizableWithDataset):
 
         Also raises if :py:attr:`BaseAdjustment._allow_diff_calendars` is False and calendars differ.
         """
+        # Grouper("5D", window) is a special grouping only implemented for MBCn
+        if not cls._allow_5d_grouping and group.name == "5D":
+            raise NotImplementedError(
+                "`group=Grouper('5D', window)` is a special grouping currently only supported for MBCn."
+            )
+
         for inda in inputs:
             if uses_dask(inda) and len(inda.chunks[inda.get_axis_num(group.dim)]) > 1:
                 raise ValueError(
@@ -153,14 +160,26 @@ class BaseAdjustment(ParametrizableWithDataset):
                 }
                 if input_units == _internal_target:
                     return _input_da
+                # standard name is reinjected so that xclim's special unit
+                #  conversion `context="infer` can be used if need be`
+                if "_standard_name" not in _input_da[_internal_dim].attrs:
+                    _input_da[_internal_dim].attrs["_standard_name"] = [None] * len(
+                        varss
+                    )
+                input_standard_names = {
+                    v: _input_da[_internal_dim].attrs["_standard_name"][iv]
+                    for iv, v in enumerate(varss)
+                }
                 for iv, v in enumerate(varss):
                     _input_da.attrs["units"] = input_units[v]
+                    _input_da.attrs["standard_name"] = input_standard_names[v]
                     _input_da[{_internal_dim: iv}] = convert_units_to(
                         _input_da[{_internal_dim: iv}],
                         _internal_target[v],
                     )
                     _input_da[_internal_dim].attrs["_units"][iv] = _internal_target[v]
                 _input_da.attrs["units"] = ""
+                _input_da.attrs.pop("standard_name")
                 return _input_da
 
             if _target is None:
@@ -496,6 +515,8 @@ class EmpiricalQuantileMapping(TrainAdjust):
         group: str | Grouper = "time",
         adapt_freq_thresh: str | None = None,
         jitter_under_thresh_value: str | None = None,
+        jitter_over_thresh_value: str | None = None,
+        jitter_over_thresh_upper_bnd: str | None = None,
     ) -> tuple[xr.Dataset, dict[str, Any]]:
         if np.isscalar(nquantiles):
             quantiles = equally_spaced_nodes(nquantiles).astype(ref.dtype)
@@ -509,6 +530,8 @@ class EmpiricalQuantileMapping(TrainAdjust):
             quantiles=quantiles,
             adapt_freq_thresh=adapt_freq_thresh,
             jitter_under_thresh_value=jitter_under_thresh_value,
+            jitter_over_thresh_value=jitter_over_thresh_value,
+            jitter_over_thresh_upper_bnd=jitter_over_thresh_upper_bnd,
         )
 
         ds.af.attrs.update(
@@ -599,6 +622,8 @@ class DetrendedQuantileMapping(TrainAdjust):
         group: str | Grouper = "time",
         adapt_freq_thresh: str | None = None,
         jitter_under_thresh_value: str | None = None,
+        jitter_over_thresh_value: str | None = None,
+        jitter_over_thresh_upper_bnd: str | None = None,
     ):
         if group.prop not in ["group", "dayofyear"]:
             warn(
@@ -617,6 +642,8 @@ class DetrendedQuantileMapping(TrainAdjust):
             kind=kind,
             adapt_freq_thresh=adapt_freq_thresh,
             jitter_under_thresh_value=jitter_under_thresh_value,
+            jitter_over_thresh_value=jitter_over_thresh_value,
+            jitter_over_thresh_upper_bnd=jitter_over_thresh_upper_bnd,
         )
 
         ds.af.attrs.update(
@@ -1030,8 +1057,10 @@ class PrincipalComponents(TrainAdjust):
         The data dimension along which the multiple simulation space dimensions are taken.
         For a multivariate adjustment, this usually is "multivar", as returned by `sdba.stack_variables`.
         For a multisite adjustment, this should be the spatial dimension.
-        The training algorithm currently doesn't support any chunking
-        along either `crd_dim`. `group.dim` and `group.add_dims`.
+        The training algorithm currently doesn't fully support chunking.
+        Chunking is maintained along other dimensions than `crd_dim`.
+        `crd_dim` has to be a single chunk and will be converted if necessary.
+        Chunking along `group.dim` and `group.add_dims` is not supported.
 
     Warnings
     --------
@@ -1130,6 +1159,10 @@ class PrincipalComponents(TrainAdjust):
             else:
                 reference = ds.ref.rename({dim[0]: lblP})
                 historical = ds.hist.rename({dim[0]: lblP})
+            if reference.chunks is not None:
+                reference = reference.chunk({lblR: -1})
+            if historical.chunks is not None:
+                historical = historical.chunk({lblM: -1})
             transformation = xr.apply_ufunc(
                 _compute_transform_matrix,
                 reference,
@@ -1790,6 +1823,7 @@ class MBCn(TrainAdjust):
     _allow_diff_calendars = False
     _allow_diff_training_times = False
     _allow_diff_time_sizes = False
+    _allow_5d_grouping = True
 
     @classmethod
     def _train(
@@ -1871,6 +1905,16 @@ class MBCn(TrainAdjust):
         adj_kws: dict[str, Any] | None = None,
         period_dim=None,
     ):
+        # Usually matching times  is done in `train`, but since we must
+        # use again `ref` and `hist` in MBCn.adjust, this should be checked again
+        if not self._allow_diff_training_times:
+            self._check_matching_times(ref, hist)
+        # We may also use a different time period for `hist` but still require
+        # it has the same size as `ref`'s time.
+        elif not self._allow_diff_time_sizes:
+            self._check_matching_time_sizes(ref, hist)
+            hist["time"] = ref.time
+
         # set default values for non-specified parameters
         base_kws_vars = {} if base_kws_vars is None else deepcopy(base_kws_vars)
         pts_dim = self.pts_dims[0]

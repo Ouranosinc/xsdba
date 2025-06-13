@@ -13,13 +13,20 @@ from typing import cast
 import dask.array as dsk
 import numpy as np
 import xarray as xr
+from scipy.fft import dctn, idctn
+from xarray.core import dtypes
 from xarray.core.utils import get_temp_dimname
 
 from xsdba._processing import _adapt_freq, _normalize, _reordering
 from xsdba.base import Grouper, uses_dask
 from xsdba.formatting import update_xsdba_history
 from xsdba.nbutils import _escore
-from xsdba.units import harmonize_units
+from xsdba.units import (
+    convert_units_to,
+    harmonize_units,
+    normalized_wavenumber_to_wavelength,
+    wavelength_to_normalized_wavenumber,
+)
 from xsdba.utils import ADDITIVE, copy_all_attrs
 
 __all__ = [
@@ -32,6 +39,7 @@ __all__ = [
     "jitter_under_thresh",
     "normalize",
     "reordering",
+    "spectral_filter",
     "stack_variables",
     "standardize",
     "to_additive_space",
@@ -220,7 +228,10 @@ def jitter(
         jitter_min = jitter_min + np.finfo(x.dtype).eps
         if uses_dask(x):
             jitter_dist = dsk.random.uniform(
-                low=jitter_min, high=jitter_lower, size=x.shape, chunks=x.chunks
+                low=dsk.from_array(jitter_min),
+                high=dsk.from_array(jitter_lower),
+                size=x.shape,
+                chunks=x.chunks,
             )
         else:
             jitter_dist = np.random.uniform(
@@ -468,6 +479,7 @@ def escore(
         input_core_dims=[[pts_dim, obs_dim], [pts_dim, new_dim]],
         output_dtypes=[sim.dtype],
         dask="parallelized",
+        vectorize=True,
     )
 
     out.name = "escores"
@@ -592,7 +604,6 @@ def to_additive_space(
 
 
 @update_xsdba_history
-@harmonize_units(["units", "lower_bound", "upper_bound"])
 def from_additive_space(
     data: xr.DataArray,
     lower_bound: str | None = None,
@@ -684,9 +695,11 @@ def from_additive_space(
         and (upper_bound is not None or trans == "log")
     ):
         # FIXME: convert_units_to is causing issues since it can't handle all variations of Quantified here
-        lower_bound_array = np.array(lower_bound).astype(float)
+        lower_bound_array = np.array(convert_units_to(lower_bound, units)).astype(float)
         if trans == "logit":
-            upper_bound_array = np.array(upper_bound).astype(float)
+            upper_bound_array = np.array(convert_units_to(upper_bound, units)).astype(
+                float
+            )
     else:
         raise ValueError(
             "Parameters missing. Either all parameters are given as attributes of data, "
@@ -902,3 +915,220 @@ def grouped_time_indexes(times, group):
     gw_idxs.attrs["time_dim"] = win_dim
     gw_idxs.attrs["group_dim"] = [d for d in g_idxs.dims if d != win_dim][0]
     return g_idxs, gw_idxs
+
+
+# spectral utils
+def _make_mask(template, cond_vals):
+    """
+    Create a mask from a series of conditions.
+
+    Parameters
+    ----------
+    template: xr.DataArray
+        Array with the dimensions to be filtered.
+    cond_vals: tuple
+        The list of (condition, value) pairs applied to create the mask.
+
+    Returns
+    -------
+    xarray.DataArray, [unitless]
+        Mask based on the condition values.
+
+    Notes
+    -----
+    Conditions are allowed to have any values. The idea is to create a
+    soft mask with values between 0 and 1, which allows to implement smooth
+    filters.
+    """
+    mask = xr.full_like(template, 1)
+    for cond, val in cond_vals:
+        mask = mask.where(cond == False, val)
+    return mask
+
+
+def cos2_mask_func(da, low, high):
+    """
+    Create a mask applied Fourier coefficient with a cosine squared filter
+    between given thresholds .
+
+    Parameters
+    ----------
+    da : np.ndarray
+        Fourier coefficients.
+    low : float
+        Low frequency threshold (Long wavelength).
+    high : float
+        High frequency threshold (Short wavelength).
+
+    Returns
+    -------
+    np.ndarray
+        A mask used to apply a low-pass filter.
+
+    Notes
+    -----
+    The mask is 1 below `low`, 0 above `high`, and transitions from 1 to 0
+    following a cosine profile between `low` and `high`.
+    """
+    cond_vals = [
+        # This first condition could be remove, the mask starts as an array of 1's
+        (da < low, 1),
+        (da > high, 0),
+        (
+            (da >= low) & (da <= high),
+            np.cos(((da - low) / (high - low)) * (np.pi / 2)) ** 2,
+        ),
+    ]
+    return _make_mask(da, cond_vals)
+
+
+def _normalized_radial_wavenumber(da, dims):
+    r"""
+    Compute a normalized radial wavenumber.
+
+    Parameters
+    ----------
+    da: xr.DataArray or xr.Dataset
+        Input field to be transformed in reciprocal space.
+    dims: list[str]
+        Dimensions on which to perform the Discrete Cosine Transform.
+
+    Returns
+    -------
+    xr.DataArray
+        Normalized radial wavenumber.
+
+    Notes
+    -----
+    The normalized radial wavenumber is obtained at each point of the lattice in reciprocal space following
+    the Fourier transformation along dimensions `dims`. For example, if :math:`i,j` are the wavenumbers of
+    the discrete cosine transform along longitude and latitude, respectively, and :math:`N_i, N_j` are
+    the total number of grid points along longitude and latitude, then the normalized wavenumber
+    :math:`\alpha` is given by:
+
+    .. math::
+
+        \alpha = \sqrt{\left(\frac{i}{N_i}\right)^2 + \left(\frac{j}{N_j}\right)^2}
+
+    Each coordinate point takes integer values.
+
+    References
+    ----------
+    :cite:cts:`denis_spectral_2002`
+    """
+    # Replace lat/lon coordinates with integers (wavenumbers in reciprocal space)
+    ds_dims = da[dims] if isinstance(da, xr.Dataset) else (da.to_dataset())[dims]
+    da0 = xr.Dataset(coords={d: range(sh) for d, sh in ds_dims.dims.items()})
+    # Radial distance in Fourier space
+    alpha = sum([da0[d] ** 2 / da0[d].size ** 2 for d in da0.dims]) ** 0.5
+    alpha = alpha.assign_coords({d: ds_dims[d] for d in ds_dims.dims}).rename("alpha")
+    alpha = alpha.assign_attrs(
+        {
+            "units": "",
+            "standard_name": "normalized_wavenumber",
+            "long_name": "Normalized wavenumber",
+        }
+    )
+    return alpha
+
+
+def _dctn_filter(arr, mask):
+    """Multiply the Fourier (Discrete cosine transform) coefficients by a filter which takes values between 0 and 1."""
+    coeffs = (dctn(arr, norm="ortho"),)
+    return idctn(coeffs * mask, norm="ortho")
+
+
+def spectral_filter(
+    da,
+    lam_long,
+    lam_short,
+    dims=["lat", "lon"],
+    delta=None,
+    mask_func=cos2_mask_func,
+    alpha_low_high=None,
+):
+    """
+    Filter coefficients of a Discrete Cosine Fourier transform between given thresholds and invert back to real space.
+
+    Parameters
+    ----------
+    da : xr.DataArray
+        Input physical field.
+    lam_long : str | optional
+        Long wavelength threshold.
+    lam_short : str | optional
+        Short wavelength threshold.
+    dims: list
+        Dimensions on which to perform the spectral filter.
+    delta: str, Optional
+        Nominal resolution of the grid. A string with units, e.g. `delta=="55.5 km"`. This converts `alpha` to `wavelength`.
+        If `delta` is not specified, a dimension named `rlat` or `lat` is expected to be in `da` and will be used to
+        deduce an appropriate length scale.
+    mask_func: function
+        Function used to create the mask. Default is `cos2_mask_func`, which applies a cosine squared filter
+        to Fourier coefficients in momentum space.
+    alpha_low_high : tuple[float,float] | optional
+        Low and high frequencies threshold (Long and short wavelength) for the
+        radial normalized wavenumber (`alpha`). It should be numbers between 0 and 1.
+
+    Returns
+    -------
+    xr.DataArray
+        Filtered physical field.
+
+    Notes
+    -----
+    * If `delta` is specified, the normalized wavenumber `alpha` will be converted to a `wavelength`.
+    * If the input field contains any `nan`, the output will be all `nan` values.
+
+    References
+    ----------
+    :cite:cts:`denis_spectral_2002`
+    """
+    dims = [dims] if isinstance(dims, str) else dims
+
+    if isinstance(da, xr.Dataset):
+        out = da.copy()
+        for v in da.data_vars:
+            out[v] = spectral_filter(da[v], lam_long, lam_short, dims, delta=delta)
+        return out.assign_attrs(da.attrs)
+
+    if delta is None and alpha_low_high is None:
+        if "rlat" in da.dims:
+            lat = da.rlat
+        else:
+            lat = da.lat
+        # is this a good approximation?
+        delta = f"{(lat[1] - lat[0]).values.item() * 111} km"
+    if alpha_low_high is None and None in set(lam_long, lam_short):
+        raise ValueError(
+            "`lam_long` or `lam_short` can only be None if `alpha_low_high` is provided."
+        )
+    if alpha_low_high is not None:
+        alpha_low, alpha_high = alpha_low_high
+    else:
+        alpha_low = wavelength_to_normalized_wavenumber(lam_long, delta=delta)
+        alpha_high = wavelength_to_normalized_wavenumber(lam_short, delta=delta)
+    alpha = _normalized_radial_wavenumber(da, dims)
+    mask = mask_func(alpha, alpha_low, alpha_high)
+    out = xr.apply_ufunc(
+        _dctn_filter,
+        da,
+        mask,
+        input_core_dims=[dims, dims],
+        output_core_dims=[dims],
+        vectorize=True,
+        dask="parallelized",
+        dask_gufunc_kwargs={"allow_rechunk": True},
+        keep_attrs=True,
+    )
+    filter_bounds = alpha_low_high or (lam_long, lam_short)
+    out = out.assign_attrs(
+        {
+            "filter_bounds": filter_bounds,
+            "mask_func": mask_func.__name__,
+        }
+    ).transpose(
+        *da.dims
+    )  # reimplement original order, if needed
+    return out

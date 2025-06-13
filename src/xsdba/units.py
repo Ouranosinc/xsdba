@@ -33,7 +33,9 @@ __all__ = [
 ]
 
 units = pint.get_application_registry()
-
+# CF-xarray forces numpy arrays even for scalar values, not sure why.
+# We don't want that in xsdba, the magnitude of a scalar is a scalar (float).
+units.force_ndarray_like = False
 FREQ_UNITS = {
     "D": "d",
     "W": "week",
@@ -298,7 +300,25 @@ def pint2cfattrs(value: units.Quantity | units.Unit, is_difference=None) -> dict
     return attrs
 
 
-# XC simplified
+# Private function so it can be patched
+def _convert_units_to(  # noqa: C901
+    source: Quantified,
+    target: Quantified | units.Unit,
+) -> xr.DataArray | float:
+    target_unit = units2str(target)
+    source_unit = units2str(source)
+    if target_unit == source_unit:
+        return source if not isinstance(source, str) else float(str2pint(source).m)
+    else:  # Convert units
+        if isinstance(source, xr.DataArray):
+            out = source.copy(data=units.convert(source.data, source_unit, target_unit))
+            out = out.assign_attrs(units=target_unit)
+        else:  # scalar
+            # explicit float cast because cf-xarray registry outputting 0-dim arrays
+            out = str2pint(source).to(target_unit).m
+        return out
+
+
 def convert_units_to(  # noqa: C901
     source: Quantified,
     target: Quantified | units.Unit,
@@ -324,18 +344,7 @@ def convert_units_to(  # noqa: C901
         Attributes are preserved unless an automatic CF conversion is performed,
         in which case only the new `standard_name` appears in the result.
     """
-    target_unit = units2str(target)
-    source_unit = units2str(source)
-    if target_unit == source_unit:
-        return source if not isinstance(source, str) else float(str2pint(source).m)
-    else:  # Convert units
-        if isinstance(source, xr.DataArray):
-            out = source.copy(data=units.convert(source.data, source_unit, target_unit))
-            out = out.assign_attrs(units=target_unit)
-        else:  # scalar
-            # explicit float cast because cf-xarray registry outputting 0-dim arrays
-            out = float(str2pint(source).to(target_unit).m)
-        return out
+    return _convert_units_to(source, target)
 
 
 def extract_units(arg):
@@ -428,3 +437,64 @@ def harmonize_units(params_to_check):
         return _wrapper
 
     return _decorator
+
+
+def wavelength_to_normalized_wavenumber(
+    lam: xr.DataArray | str,
+    delta: str | None = None,
+) -> xr.DataArray | float:
+    """
+    Convert a wavelength `lam` to a normalized wavenumber.
+
+    Parameters
+    ----------
+    lam : xr.DataArray or float
+        Wavelength.
+    delta: str, Optional
+        Nominal resolution of the grid.
+
+    Returns
+    -------
+    xr.DataArray or float
+        Normalized wavenumber.
+    """
+    if isinstance(lam, str):
+        lam, u = _parse_str(lam)
+        lam = float(lam)
+    else:
+        u = lam.units
+    delta = convert_units_to(delta, u)
+    alpha = 2 * delta / lam
+    if isinstance(lam, xr.DataArray):
+        alpha.attrs["units"] = ""
+    return alpha
+
+
+def normalized_wavenumber_to_wavelength(
+    alpha: xr.DataArray | float, delta: str | None = None, out_units: str | None = None
+) -> xr.DataArray | str:
+    """
+    Convert a normalized wavenumber `alpha` to a wavelength.
+
+    Parameters
+    ----------
+    alpha : xr.DataArray or float
+        Normalized wavelength number.
+    delta: str, Optional
+        Nominal resolution of the grid.
+
+    Returns
+    -------
+    xr.DataArray or float
+        Wavelength.
+    """
+    delta, u = (
+        _parse_str(delta) if out_units is None else convert_units_to(delta, out_units)
+    ), out_units
+    delta = np.abs(delta)
+    lam = 2 * delta / alpha
+    if isinstance(alpha, xr.DataArray):
+        lam = lam.assign_attrs({"units": u})
+    else:
+        lam = f"{lam} {u}"
+    return lam

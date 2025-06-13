@@ -7,7 +7,7 @@ xsdba: Statistical Downscaling and Bias Adjustment library
 +----------------------------+-----------------------------------------------------+
 | Documentation and Support  | |docs|                                              |
 +----------------------------+-----------------------------------------------------+
-| Open Source                | |license| |ossf-score|                              |
+| Open Source                | |license| |ossf-score| |zenodo|                     |
 +----------------------------+-----------------------------------------------------+
 | Coding Standards           | |black| |isort| |ruff| |ossf-bp| |pre-commit|       |
 +----------------------------+-----------------------------------------------------+
@@ -114,6 +114,10 @@ This package was created with Cookiecutter_ and the `Ouranosinc/cookiecutter-pyp
 .. |versions| image:: https://img.shields.io/pypi/pyversions/xsdba.svg
         :target: https://pypi.python.org/pypi/xsdba
         :alt: Supported Python Versions
+
+.. |zenodo| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.14983948.svg
+        :target: https://doi.org/10.5281/zenodo.14983948
+        :alt: DOI
 
 .. |logo| image:: https://raw.githubusercontent.com/Ouranosinc/xsdba/main/docs/logos/xsdba-logo-small-light.png
         :target: https://github.com/Ouranosinc/xsdba

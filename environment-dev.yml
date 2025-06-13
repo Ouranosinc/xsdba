@@ -8,6 +8,7 @@ dependencies:
 - cf_xarray >=0.10.0 # not sure if we need to be that strict
 - cftime >=1.4.1
 - dask >=2024.8.1
+- importlib-metadata != 8.7.0 # conda-forge version is broken
 - jsonpickle >=3.1.0
 - numba >=0.57.0
 - numpy >=1.24.0
@@ -19,7 +20,10 @@ dependencies:
 # Extras
 - fastnanquantile >=0.0.2
 - pot >=0.9.4
-- xclim >=0.55.1
+- xclim >=0.56.0
+# SBCK
+- eigen ==3.4.0
+- pybind11 >=2.12.0
 # Dev tools and testing
 - black >=25.1.0
 - blackdoc ==0.3.9
@@ -45,4 +49,5 @@ dependencies:
 - vulture >=2.14
 - watchdog >=4.0.0
 - xdoctest>=1.1.5
+- matplotlib >=3.6.0
 - yamllint >=1.35.1

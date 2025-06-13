@@ -14,6 +14,13 @@ For `xclim` users, it will still be possible to import `sdba` if `xsdba` is inst
 
     from xclim import sdba
 
+Internally, `xclim` simply imports `xsdba` as `sdba`, so there is no different between an import within `xclim` or a direct import of `xsdba`.
+
+.. note::
+
+    This behaviour in `xclim` may change in the future.
+
+
 Units handling
 --------------
 
@@ -51,3 +58,23 @@ Under the hood, `xsdba` picks whichever unit registry has been declared the "app
 .. _cf-xarray unit registry: https://cf-xarray.readthedocs.io/en/latest/units.html
 .. _pint registry documentation: https://pint.readthedocs.io/en/stable/api/base.html#pint.get_application_registry
 .. _xclim: https://xclim.readthedocs.io/
+
+xsdba global options
+--------------------
+
+It used to be possible to control certain global functionalities of `sdba` with `xclim` global options. `SDBA_ENCODE_CF` was
+removed as it was not necessary. The option `SDBA_EXTRA_OUTPUT` is now simply called `EXTRA_OUTPUT` within `xsdba`
+and can be activated in two ways, either from `xclim`, or directly from `xsdba`
+
+.. code-block:: python
+
+    import xsdba
+
+    with xsdba.set_options(extra_output=True):
+        adj = xsdba.MBCn.train(...)
+
+    # or, using the legacy way of importing
+    from xclim import sdba
+
+    with sdba.set_options(extra_output=True):
+        adj = sdba.MBCn.train(...)

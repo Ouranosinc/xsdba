@@ -7,6 +7,7 @@ Numba-accelerated Utilities
 
 from __future__ import annotations
 
+import warnings
 from collections.abc import Hashable, Sequence
 
 import numpy as np
@@ -25,7 +26,7 @@ except ImportError:
 @njit(
     fastmath={"arcp", "contract", "reassoc", "nsz", "afn"},
     nogil=True,
-    cache=False,
+    cache=True,
 )
 def _get_indexes(
     arr: np.array, virtual_indexes: np.array, valid_values_count: np.array
@@ -74,7 +75,7 @@ def _get_indexes(
 @njit(
     fastmath={"arcp", "contract", "reassoc", "nsz", "afn"},
     nogil=True,
-    cache=False,
+    cache=True,
 )
 def _linear_interpolation(
     left: np.array,
@@ -111,7 +112,7 @@ def _linear_interpolation(
 @njit(
     fastmath={"arcp", "contract", "reassoc", "nsz", "afn"},
     nogil=True,
-    cache=False,
+    cache=True,
 )
 def _nan_quantile_1d(
     arr: np.array,
@@ -161,7 +162,7 @@ def _nan_quantile_1d(
     [(float32[:], float32, float32[:]), (float64[:], float64, float64[:])],
     "(n),()->()",
     nopython=True,
-    cache=False,
+    cache=True,
 )
 def _vecquantiles(arr, rnk, res):
     if np.isnan(rnk):
@@ -251,7 +252,16 @@ def quantile(da: DataArray, q: np.ndarray, dim: str | Sequence[Hashable]) -> Dat
         The quantiles computed along the `dim` dimension.
     """
     if USE_FASTNANQUANTILE is True:
-        return xr_apply_nanquantile(da, dim=dim, q=q).rename({"quantile": "quantiles"})
+        if len(q) <= 1000:
+            return xr_apply_nanquantile(da, dim=dim, q=q).rename(
+                {"quantile": "quantiles"}
+            )
+        else:
+            warnings.warn(
+                "`fastnanquantile` is installed and would thus normally be used by default. However, it doesn't "
+                f"work with more than 1000 quantiles (`len(q) = {len(q)}` was given). `xsdba` built-in functions will "
+                "be used instead."
+            )
 
     qc = np.array(q, dtype=da.dtype)
     dims = [dim] if isinstance(dim, str) else dim
@@ -281,7 +291,7 @@ def quantile(da: DataArray, q: np.ndarray, dim: str | Sequence[Hashable]) -> Dat
     ],
     fastmath=False,
     nogil=True,
-    cache=False,
+    cache=True,
 )
 def remove_NaNs(x):  # noqa: N802
     """Remove NaN values from series."""
@@ -298,7 +308,7 @@ def remove_NaNs(x):  # noqa: N802
     ],
     fastmath=True,
     nogil=True,
-    cache=False,
+    cache=True,
 )
 def _correlation(X, Y):
     """
@@ -324,7 +334,7 @@ def _correlation(X, Y):
     ],
     fastmath=True,
     nogil=True,
-    cache=False,
+    cache=True,
 )
 def _autocorrelation(X):
     """
@@ -349,7 +359,7 @@ def _autocorrelation(X):
     ],
     "(k, n),(k, m)->()",
     nopython=True,
-    cache=False,
+    cache=True,
 )
 def _escore(tgt, sim, out):
     """
@@ -364,19 +374,21 @@ def _escore(tgt, sim, out):
 
     n1 = sim.shape[1]
     n2 = tgt.shape[1]
+    if 0 in [n1, n2]:
+        out[0] = np.nan
+    else:
+        sXY = _correlation(tgt, sim)
+        sXX = _autocorrelation(tgt)
+        sYY = _autocorrelation(sim)
 
-    sXY = _correlation(tgt, sim)
-    sXX = _autocorrelation(tgt)
-    sYY = _autocorrelation(sim)
-
-    w = n1 * n2 / (n1 + n2)
-    out[0] = w * (sXY + sXY - sXX - sYY) / 2
+        w = n1 * n2 / (n1 + n2)
+        out[0] = w * (sXY + sXY - sXX - sYY) / 2
 
 
 @njit(
     fastmath=False,
     nogil=True,
-    cache=False,
+    cache=True,
 )
 def _first_and_last_nonnull(arr):
     """For each row of arr, get the first and last non NaN elements."""
@@ -393,7 +405,7 @@ def _first_and_last_nonnull(arr):
 @njit(
     fastmath=False,
     nogil=True,
-    cache=False,
+    cache=True,
 )
 def _extrapolate_on_quantiles(interp, oldx, oldg, oldy, newx, newg, method="constant"):
     """
@@ -420,7 +432,7 @@ def _extrapolate_on_quantiles(interp, oldx, oldg, oldy, newx, newg, method="cons
 @njit(
     fastmath=False,
     nogil=True,
-    cache=False,
+    cache=True,
 )
 def _pairwise_haversine_and_bins(lond, latd, transpose=False):
     """Inter-site distances with the haversine approximation."""

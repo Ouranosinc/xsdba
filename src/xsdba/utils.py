@@ -1,8 +1,4 @@
-"""
-# noqa: SS01
-Statistical Downscaling and Bias Adjustment Utilities
-=====================================================
-"""
+"""Testing utilities for xsdba (test data management)"""
 
 from __future__ import annotations
 
@@ -254,6 +250,14 @@ def broadcast(
 
     if group.prop == "group" and "group" in grouped.dims:
         grouped = grouped.squeeze("group", drop=True)
+    if x.chunks is not None:
+        grouped = grouped.chunk(
+            {
+                dim: chunk
+                for dim, chunk in zip(x.dims, x.chunks)
+                if dim in [sel_idx.dims[0] for sel_idx in sel.values()]
+            }
+        )
     return grouped
 
 

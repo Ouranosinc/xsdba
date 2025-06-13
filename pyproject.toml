@@ -46,6 +46,7 @@ dependencies = [
   "packaging",
   "pandas >=2.2.0",
   "pint>=0.24.4",
+  "rich >=13.7.0",
   "scipy >=1.11.0",
   "statsmodels >=0.14.2",
   "typer >=0.12.3",
@@ -67,6 +68,7 @@ dev = [
   "h5netcdf >=1.3.0",
   "isort ==6.0.1",
   "mypy >=1.14.1",
+  "matplotlib >=3.6.0",
   "numpydoc >=1.8.0",
   "pip >=25.0",
   "pooch >=1.8.0",
@@ -87,14 +89,15 @@ docs = [
   "ipykernel",
   "ipython >=8.5.0",
   "jupyter_client",
-  "nbsphinx >=0.9.5",
+  "matplotlib >=3.6.0",
+  "nbsphinx >=0.9.7",
   "nc-time-axis >=1.4.1",
   "pooch >=1.8.0",
   "pygments",
-  "sphinx >=7.1.0,<8.2.0", # pinned until nbsphinx supports sphinx 8.2
+  "sphinx >=8.2.2",
   "sphinx-autobuild >=2024.4.16",
-  "sphinx-autodoc-typehints",
-  "sphinx-codeautolink",
+  "sphinx-autodoc-typehints >=3.1.0",
+  "sphinx-codeautolink >=0.16.2",
   "sphinx-copybutton",
   "sphinx-intl",
   "sphinx-mdinclude",
@@ -103,9 +106,14 @@ docs = [
 extras = [
   "fastnanquantile >=0.0.2",
   "POT >=0.9.4",
-  "xclim >= 0.55.1"
+  "xclim >=0.56.0"
 ]
-all = ["xsdba[dev]", "xsdba[docs]", "xsdba[extras]"]
+sbck = [
+  # The sbck dependency requires the "eigen3"/"libeigen3-dev" package to be installed on the system.
+  # "pybind11" is SBCK a setup dependency and should be installed prior to building the package.
+  "sbck >=1.4.0"
+]
+all = ["xsdba[dev]", "xsdba[docs]", "xsdba[extras]", "xsdba[sbck]"]
 
 [project.scripts]
 xsdba = "xsdba.cli:app"
@@ -128,7 +136,7 @@ target-version = [
 ]
 
 [tool.bumpversion]
-current_version = "0.3.2"
+current_version = "0.4.1-dev.6"
 commit = true
 commit_args = "--no-verify"
 tag = false
@@ -208,16 +216,15 @@ source = ["xsdba"]
 [tool.deptry]
 extend_exclude = ["docs"]
 ignore_notebooks = true
-pep621_dev_dependency_groups = ["all", "dev", "docs"]
+pep621_dev_dependency_groups = ["all", "dev", "docs", "extras", "sbck"]
 
 [tool.deptry.package_module_name_map]
 "scikit-learn" = "sklearn"
 "POT" = "ot"
+"sbck" = "SBCK"
 
 [tool.deptry.per_rule_ignores]
-DEP001 = ["SBCK"]
-DEP003 = ["rich"]
-DEP004 = ["fastnanquantile", "ot", "pooch", "xclim"] # remove some of these in xsdba>=0.4.0
+DEP004 = ["fastnanquantile", "ot", "matplotlib", "pooch", "SBCK", "xclim"]
 
 [tool.flit.sdist]
 include = [
@@ -360,6 +367,7 @@ ignore = [
   "D401", # non-imperative-mood
   # WIP xsdba
   "E402", # top import module
+  "E712", # use cond == False
   "D200",
   "FLY002",
   "N801",

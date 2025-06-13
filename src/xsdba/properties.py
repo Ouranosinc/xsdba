@@ -19,6 +19,7 @@ import numpy as np
 import xarray as xr
 import xclim.indices.run_length as rl
 from scipy import stats
+from scipy.fft import dctn
 from statsmodels.tsa import stattools
 from xclim.core.indicator import Indicator, base_registry
 from xclim.indices.generic import compare, select_resample_op
@@ -26,10 +27,13 @@ from xclim.indices.stats import fit, parametric_quantile
 
 from xsdba.base import Grouper, map_groups, parse_group, uses_dask
 from xsdba.nbutils import _pairwise_haversine_and_bins
+from xsdba.processing import _normalized_radial_wavenumber
 from xsdba.units import (
     convert_units_to,
     infer_sampling_units,
+    normalized_wavenumber_to_wavelength,
     pint2cfattrs,
+    str2pint,
     units,
     units2pint,
 )
@@ -1603,3 +1607,91 @@ def first_eof():
         "Please excuse the inconvenience. "
         "For more information, see: https://github.com/Ouranosinc/xclim/issues/1620"
     )
+
+
+def _spectral_variance_alpha(da, dims):
+    """
+    Compute spectral variance with a radial normalized wavenumber.
+
+    References
+    ----------
+    :cite:cts:`denis_spectral_2002`
+    """
+    # compute variance as a function of alpha
+    Fmn = xr.apply_ufunc(
+        lambda x: dctn(x, norm="ortho"),
+        da,
+        input_core_dims=[dims],
+        output_core_dims=[dims],
+        dask="parallelized",
+        dask_gufunc_kwargs={"allow_rechunk": True},
+        vectorize=True,  # Errors in values if set to False! investigate?
+        keep_attrs=True,
+    )
+    sizes = [da[d].size for d in dims]
+    # \sigma = \sum_{m,n} F_{m,n} / (M*N)
+    sigmn = (1 / np.prod(sizes)) * (Fmn**2)
+    sigmn["alpha"] = _normalized_radial_wavenumber(da, dims)
+
+    # eq.13 and 14 of the reference
+    # alpha should increase in integer steps of 1/min(N_i,N_j)
+    sigmn["alpha"] = (sigmn["alpha"] // (1 / min(sizes))) * (1 / min(sizes))
+    return sigmn.groupby("alpha").sum(keep_attrs=True)
+
+
+# TODO: Why can't I make `dims` as positional argument?
+def _spectral_variance(
+    da: xr.DataArray,
+    *,
+    dims: str = ["lat", "lon"],
+    delta: str | None = None,
+    group: xr.Coordinate | str | None = "time",  # FIXME: this needs to be clarified
+):
+    r"""
+    Compute spectral variance
+
+    If `delta` is specified, the normalized wavenumber `alpha` will be converted to a `wavelength`
+
+    Parameters
+    ----------
+    da : xr.DataArray
+        Input physical field.
+    dims: list
+        Dimensions on which to perform the DCT.
+    delta: str, Optional
+        Nominal resolution of the grid. It should be a string with units.
+    group: xr.Coordinate | str | None = "time"
+        Useless for now # FIXME: this needs to be clarified.
+
+    Notes
+    -----
+    If the input field contains any `nan`, the output will be all `nan` values.
+
+    References
+    ----------
+    :cite:cts:`denis_spectral_2002`
+    """
+    var = _spectral_variance_alpha(da, dims)
+    # The grid is incomplete for alpha>1, so we restrain to alpha<=1
+    # alpha=0 was excluded simply  because it's excluded from
+    # the total variance \sigma = \sum_{m,n \neq (0,0)} \sigma_{m,n}
+    var = var.where((var.alpha > 0) & (var.alpha <= 1), drop=True)
+    if delta is not None:
+        var["alpha"] = normalized_wavenumber_to_wavelength(var.alpha, delta=delta)
+        var = var.rename({"alpha": "wavelength"})
+    var = var.assign_attrs(da.attrs)
+    if "units" in da.attrs:
+        var.attrs["units"] = str(str2pint(da.units) ** 2)
+    name = "variance"
+    if var.name:
+        name = f"{var.name}_{name}"
+    var = var.to_dataset(name=name)[name]
+    return var
+
+
+spectral_variance = StatisticalProperty(
+    identifier="spectral_variance",
+    aspect="spatial",
+    compute=_spectral_variance,
+    allowed_groups=["group"],  # FIXME: this needs to be clarified
+)

@@ -195,6 +195,13 @@ Before you submit a pull request, check that it meets these guidelines:
 Tips
 ----
 
+If you are working on numba-accelerated functions, consider disabling caching during the development phase and reactivating it once all changes are ready for review. This is done by commenting ``cache=True`` in the decorator.
+If the developing environment in installed interactively
+```bash
+pip install -e .
+```
+then another possibility is to remove the `__pycache__` with `rm -rf src/xsdba/__pycache__`. This will force the re-compilation of numba-accelerated functions and allow to incorporate changes made in the development.
+
 To run a subset of tests:
 
 .. code-block:: console
@@ -227,3 +234,11 @@ Code of Conduct
 
 Please note that this project is released with a `Contributor Code of Conduct <https://github.com/Ouranosinc/xsdba/blob/main/CODE_OF_CONDUCT.md>`_.
 By participating in this project you agree to abide by its terms.
+
+
+General notes for implementing new bias-adjustment methods
+----------------------------------------------------------
+
+* Method are implemented as classes in ``src/xsdba/adjustment.py``.
+* If the algorithm is complex and would generate many `dask` tasks, it should be implemented as functions wrapped by :py:func:`~xsdba.map_blocks` or :py:func:`~xsdba.map_groups` in ``src/xsdba/_adjustment.py``.
+* If you are working on `numba`-accelerated functions that use ``@guvectorize``, consider disabling caching during the development phase and reactivating it once all changes are ready for review. This is done by commenting ``cache=True`` in the decorator.

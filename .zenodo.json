@@ -1,5 +1,5 @@
 {
-  "title": "xsdba",
+  "title": "xsdba: statistical downscaling and bias adjustment library",
   "creators": [
     {
       "name": "Bourgault, Pascal",
@@ -17,13 +17,18 @@
       "orcid": "0000-0001-5393-8359"
     },
     {
-      "name": "Lavoie, Juliette",
-      "affiliation": "Ouranos, Montréal, Québec, Canada",
-      "orcid": "0000-0002-4708-5182"
+      "name": "Aoun, Abel",
+      "affiliation": "Centre européen de recherche et de formation avancée en calcul scientifique (CERFACS), Toulouse, France",
+      "orcid": "0000-0003-2289-2890"
     },
     {
-      "name": "Lamarche, Adrien",
-      "orcid": "0009-0002-9078-8358"
+      "name": "Beaupré Laperrière, Alexis",
+      "affiliation": "Ouranos, Montréal, Québec, Canada"
+    },
+    {
+      "name": "Braun, Marco",
+      "affiliation": "Ouranos Consortium, Montréal, Québec, Canada",
+      "orcid": "0000-0001-5061-3217"
     },
     {
       "name": "Gammon, Sarah",
@@ -36,18 +41,13 @@
       "orcid": "0000-0003-0311-5498"
     },
     {
-      "name": "Beaupré Laperrière, Alexis",
-      "affiliation": "Ouranos, Montréal, Québec, Canada"
+      "name": "Lamarche, Adrien",
+      "orcid": "0009-0002-9078-8358"
     },
     {
-      "name": "Aoun, Abel",
-      "affiliation": "Centre européen de recherche et de formation avancée en calcul scientifique (CERFACS), Toulouse, France",
-      "orcid": "0000-0003-2289-2890"
-    },
-    {
-      "name": "Braun, Marco",
-      "affiliation": "Ouranos Consortium, Montréal, Québec, Canada",
-      "orcid": "0000-0001-5061-3217"
+      "name": "Lavoie, Juliette",
+      "affiliation": "Ouranos, Montréal, Québec, Canada",
+      "orcid": "0000-0002-4708-5182"
     },
     {
       "name": "Rondeau-Genesse, Gabriel",

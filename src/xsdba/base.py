@@ -6,6 +6,7 @@ Base Classes and Developer Tools
 
 from __future__ import annotations
 
+import operator
 from collections import UserDict
 from collections.abc import Callable, Sequence
 from inspect import _empty, signature
@@ -108,6 +109,21 @@ class ParametrizableWithDataset(Parametrizable):
         self.ds.attrs[self._attribute] = jsonpickle.encode(self)
 
 
+# XC: calendar
+# TODO: remove this and use `ds[self.dim].dt.days_in_year.max().item()` when minimum xarray is 2024.09
+max_doy = {
+    "standard": 366,
+    "gregorian": 366,
+    "proleptic_gregorian": 366,
+    "julian": 366,
+    "noleap": 365,
+    "365_day": 365,
+    "all_leap": 366,
+    "366_day": 366,
+    "360_day": 360,
+}
+
+
 class Grouper(Parametrizable):
     """Grouper inherited class for parameterizable classes."""
 
@@ -141,6 +157,12 @@ class Grouper(Parametrizable):
             by the `main_only` parameter of the `apply` method. If any of these dimensions are absent from the
             DataArrays, they will be omitted.
         """
+        if group == "time" and window > 1:
+            raise ValueError(
+                "The group given is 'time', but the window given is greater than 1. The `group = 'time'` option "
+                "takes the complete series, thus the concept of window is not applicable in this case. When using `group = 'time'`, "
+                "`window=1` is expected."
+            )
         if "." in group:
             dim, prop = group.split(".")
         else:
@@ -208,10 +230,8 @@ class Grouper(Parametrizable):
         if self.prop == "dayofyear":
             if ds is not None:
                 cal = ds.time.dt.calendar
-                mdoy = max(
-                    xr.coding.calendar_ops._days_in_year(yr, cal)
-                    for yr in np.unique(ds[self.dim].dt.year)
-                )
+                # TODO : Change this to `ds[self.dim].dt.days_in_year.max().item()` when minimum xarray is 2024.09
+                mdoy = max_doy[cal]
             else:
                 mdoy = 365
             return xr.DataArray(
@@ -922,7 +942,7 @@ def get_op(op: str, constrain: Sequence[str] | None = None) -> Callable:
         if op not in constraints:
             raise ValueError(f"Operation `{op}` not permitted for indice.")
 
-    return xr.core.ops.get_op(binary_op)
+    return getattr(operator, f"__{binary_op}__")
 
 
 # XC: calendar

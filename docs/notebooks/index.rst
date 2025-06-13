@@ -7,3 +7,4 @@ Examples
 
    example
    advanced_example
+   benchmarks/quantiles

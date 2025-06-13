@@ -20,7 +20,7 @@ If you don't have `pip`_ installed, this `Python installation guide`_ can guide 
 Stable release
 --------------
 
-To install xsdba, run this command in your terminal:
+To install `xsdba`, run this command in your terminal:
 
 .. code-block:: console
 
@@ -31,8 +31,7 @@ To install xsdba, run this command in your terminal:
 
         conda install xsdba
 
-This is the preferred method to install xsdba, as it will always install the most recent stable release.
-
+This is the preferred method to install `xsdba`, as it will always install the most recent stable release.
 
 From sources
 ------------
@@ -143,7 +142,8 @@ Afterwards, `SBCK` can be installed from PyPI using `pip`:
 
 .. code-block:: console
 
-    $ python -m pip install pybind11 sbck
+    $ python -m pip install pybind11  # must be installed before SBCK
+    $ python -m pip install SBCK
 
 .. _SBCK: https://github.com/yrobink/SBCK
 .. _Eigen3: https://eigen.tuxfamily.org/index.php

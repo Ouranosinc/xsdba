@@ -10,6 +10,7 @@ from scipy.stats import genpareto, norm, uniform
 from xsdba import adjustment
 from xsdba.adjustment import (
     LOCI,
+    OTC,
     BaseAdjustment,
     DetrendedQuantileMapping,
     EmpiricalQuantileMapping,
@@ -23,6 +24,7 @@ from xsdba.adjustment import (
 from xsdba.base import Grouper, stack_periods
 from xsdba.options import set_options
 from xsdba.processing import (
+    jitter_over_thresh,
     jitter_under_thresh,
     stack_variables,
     uniform_noise_like,
@@ -382,6 +384,45 @@ class TestDQM:
         p2 = dqm2.adjust(sim)
         np.testing.assert_array_equal(p, p2)
 
+    def test_360(self, timelonlatseries, random):
+        """
+        Train on
+        hist: U
+        ref: Normal
+
+        Predict on hist to get ref with cal 360 day and doy grouping
+        """
+        ns = 10000
+        u = random.random(ns)
+
+        # Define distributions
+        xd = uniform(loc=10, scale=1)
+        yd = norm(loc=12, scale=1)
+
+        # Generate random numbers with u so we get exact results for comparison
+        x = xd.ppf(u)
+        y = yd.ppf(u)
+
+        # Test train
+        attrs = {"units": "K", "kind": "+"}
+
+        hist = timelonlatseries(x, attrs=attrs)
+        ref = timelonlatseries(y, attrs=attrs)
+
+        ref = ref.convert_calendar("360_day", align_on="year")
+        hist = hist.convert_calendar("360_day", align_on="year")
+
+        group = {"group": "time.dayofyear", "window": 31}
+        group = Grouper.from_kwargs(**group)["group"]
+        DQM = DetrendedQuantileMapping.train(
+            ref,
+            hist,
+            kind="+",
+            group=group,
+            nquantiles=50,
+        )
+        assert DQM.ds.sizes == {"dayofyear": 360, "quantiles": 50}
+
 
 @pytest.mark.slow
 class TestQDM:
@@ -712,6 +753,58 @@ class TestQM:
         EmpiricalQuantileMapping._allow_diff_training_times = False
         assert (ds.af == ds_fut.af).all()
 
+    def test_jitter_under_thresh(self, gosset):
+        thr = "0.01 mm/d"
+        ref, hist = (
+            xr.open_dataset(
+                gosset.fetch(f"sdba/{file}"),
+            )
+            .isel(location=1)
+            .sel(time=slice("1950", "1980"))
+            .pr
+            for file in ["ahccd_1950-2013.nc", "CanESM2_1950-2100.nc"]
+        )
+        with xclim.core.units.units.context("hydro"):
+            np.random.seed(42)
+            af_jit_inside = EmpiricalQuantileMapping.train(
+                ref, hist, jitter_under_thresh_value=thr, group="time"
+            ).ds.af
+
+            np.random.seed(42)
+            hist_jit = jitter_under_thresh(hist, thr)
+            af_jit_outside = EmpiricalQuantileMapping.train(
+                ref, hist_jit, group="time"
+            ).ds.af
+        np.testing.assert_array_almost_equal(af_jit_inside, af_jit_outside, 2)
+
+    def test_jitter_over_thresh(self, gosset):
+        thr = "2 K"
+        ubnd = "3 K"
+        ref, hist = (
+            xr.open_dataset(
+                gosset.fetch(f"sdba/{file}"),
+            )
+            .isel(location=1)
+            .sel(time=slice("1950", "1980"))
+            .tasmax
+            for file in ["ahccd_1950-2013.nc", "CanESM2_1950-2100.nc"]
+        )
+        np.random.seed(42)
+        af_jit_inside = EmpiricalQuantileMapping.train(
+            ref,
+            hist,
+            jitter_over_thresh_value=thr,
+            jitter_over_thresh_upper_bnd=ubnd,
+            group="time",
+        ).ds.af
+
+        np.random.seed(42)
+        hist_jit = jitter_over_thresh(hist, thr, ubnd)
+        af_jit_outside = EmpiricalQuantileMapping.train(
+            ref, hist_jit, group="time"
+        ).ds.af
+        np.testing.assert_array_almost_equal(af_jit_inside, af_jit_outside, 2)
+
 
 @pytest.mark.slow
 class TestMBCn:
@@ -1001,14 +1094,18 @@ class TestOTC:
         attrs_pr = {"units": "kg m-2 s-1", "kind": MULTIPLICATIVE}
         ref_tas = timelonlatseries(ref_x, attrs=attrs_tas)
         ref_pr = timelonlatseries(ref_y, attrs=attrs_pr)
-        ref = xr.merge([ref_tas, ref_pr])
+        ref = xr.merge([ref_tas.to_dataset(name="tas"), ref_pr.to_dataset(name="=pr")])
         ref = stack_variables(ref)
 
         hist_tas = timelonlatseries(hist_x, attrs=attrs_tas)
         hist_pr = timelonlatseries(hist_y, attrs=attrs_pr)
-        hist = xr.merge([hist_tas, hist_pr])
+        hist = xr.merge(
+            [hist_tas.to_dataset(name="tas"), hist_pr.to_dataset(name="pr")]
+        )
         hist = stack_variables(hist)
-
+        # FIXME: Is multivar comparison too sensitive? I don't know why we would have an error here.
+        # For now I just force identifical multivar coordinates
+        hist["multivar"] = ref.multivar
         scen = OTC.adjust(ref, hist, bin_width=bin_width, jitter_inside_bins=False)
 
         otc_sbck = adjustment.SBCK_OTC
@@ -1078,9 +1175,11 @@ class TestdOTC:
             sim_tas = sim_tas.chunk({"time": -1})
             sim_pr = sim_pr.chunk({"time": -1})
 
-        ref = xr.merge([ref_tas, ref_pr])
-        hist = xr.merge([hist_tas, hist_pr])
-        sim = xr.merge([sim_tas, sim_pr])
+        ref = xr.merge([ref_tas.to_dataset(name="tas"), ref_pr.to_dataset(name="pr")])
+        hist = xr.merge(
+            [hist_tas.to_dataset(name="tas"), hist_pr.to_dataset(name="pr")]
+        )
+        sim = xr.merge([sim_tas.to_dataset(name="tas"), sim_pr.to_dataset(name="pr")])
 
         ref = stack_variables(ref)
         hist = stack_variables(hist)
@@ -1154,6 +1253,23 @@ def test_raise_on_multiple_chunks(timelonlatseries):
     )
     with pytest.raises(ValueError):
         EmpiricalQuantileMapping.train(ref, ref, group=Grouper("time.month"))
+
+
+@pytest.mark.parametrize(
+    "success",
+    [[True, False]],
+)
+def test_raise_on_5d_grouping(timelonlatseries, success):
+    attrs_tas = {"units": "K", "kind": ADDITIVE}
+    ref = timelonlatseries(np.arange(730).astype(float), attrs=attrs_tas).chunk(
+        {"time": -1}
+    )
+    if success:
+        ref = stack_variables(ref.to_dataset(name="tas"))
+        MBCn.train(ref, ref, base_kws={"group": Grouper("5D", 1)})
+    else:
+        with pytest.raises(NotImplementedError):
+            DetrendedQuantileMapping.train(ref, ref, group=Grouper("5D", 1))
 
 
 def test_default_grouper_understood(timelonlatseries):
