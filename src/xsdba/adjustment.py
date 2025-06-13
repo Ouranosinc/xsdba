@@ -535,6 +535,9 @@ class EmpiricalQuantileMapping(TrainAdjust):
             standard_name="Model quantiles",
             long_name="Quantiles of model on the reference period",
         )
+        if adapt_freq_thresh is None:
+            ds = ds.drop_vars(["dP0", "P0_ref", "pth"])
+
         return ds, {"group": group, "kind": kind}
 
     def _adjust(self, sim, interp="nearest", extrapolation="constant"):
@@ -638,6 +641,8 @@ class DetrendedQuantileMapping(TrainAdjust):
             jitter_over_thresh_value=jitter_over_thresh_value,
             jitter_over_thresh_upper_bnd=jitter_over_thresh_upper_bnd,
         )
+        if adapt_freq_thresh is None:
+            ds = ds.drop_vars(["dP0", "P0_ref", "pth"])
 
         ds.af.attrs.update(
             standard_name="Adjustment factors",
@@ -651,7 +656,11 @@ class DetrendedQuantileMapping(TrainAdjust):
             standard_name="Scaling factor",
             description="Scaling factor making the mean of hist match the one of hist.",
         )
-        return ds, {"group": group, "kind": kind}
+        return ds, {
+            "group": group,
+            "kind": kind,
+            "adapt_freq_thresh": adapt_freq_thresh,
+        }
 
     def _adjust(
         self,
@@ -667,6 +676,7 @@ class DetrendedQuantileMapping(TrainAdjust):
             detrend=detrend,
             group=self.group,
             kind=self.kind,
+            adapt_freq_thresh=self.adapt_freq_thresh,
         ).scen
         # Detrending needs units.
         scen.attrs["units"] = sim.units
@@ -728,6 +738,7 @@ class QuantileDeltaMapping(EmpiricalQuantileMapping):
         if OPTIONS[EXTRA_OUTPUT]:
             out.sim_q.attrs.update(long_name="Group-wise quantiles of `sim`.")
             return out
+
         return out.scen
 
 
