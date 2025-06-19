@@ -5,10 +5,11 @@ Changelog
 `Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
 ------------------------------------------------------------
 
-Contributors: Trevor James Smith (:user:`Zeitsperre`), Éric Dupuis (:user:`coxipi`), Juliette Lavoie (:user:`juliettelavoie`)
+Contributors: Trevor James Smith (:user:`Zeitsperre`), Éric Dupuis (:user:`coxipi`), Juliette Lavoie (:user:`juliettelavoie`), Pascal Bourgault (:user:`aulemahal`).
 
 Changes
 ^^^^^^^
+* Make additional grouping dimensions optional for methods accepting the ``group`` argument, except ``Loci`` and ``PrincipalComponents``. (:issue:`99`, :issue:`144`, :pull:`151`).
 * Speed up import by activating `cache=True` for in numba-accelerated functions from ``xsdba.nbutils``. (:pull:`135`).
 * Added a new installation recipe (``pip install xsdba[sbck]``) for installing the `SBCK` package. (:pull:`139`):
     * Note that `SBCK` support is experimental and that the `pybind11` library must be installed prior to installing `SBCK`.
