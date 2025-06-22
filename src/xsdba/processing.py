@@ -10,7 +10,6 @@ import types
 from collections.abc import Sequence
 from typing import cast
 
-import cftime
 import dask.array as dsk
 import numpy as np
 import xarray as xr
