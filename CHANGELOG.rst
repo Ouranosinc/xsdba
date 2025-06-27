@@ -19,6 +19,7 @@ Changes
 * ``xsdba.jitter_over_thresh`` is available directly in training methods by passing the `jitter_over_thresh_value` and `jitter_over_thresh_upper_bnd`  arguments. (:pull:`110`).
 * Throw an error if `group=Grouper('5D',window)` is used with a biasadjust method other than `MBCn`.
 * ``xsdba.processing.to_additive_space`` accepts `clip_next_to_bounds`, which avoids infinities by ensuring `lower_bound < data < upper_bound`. (:issue:`164`, :pull:`165`).
+* The adaptation of frequencies through `adapt_freq_thresh_value` is now applied in the adjusting step as well. (:pull:`160`).
 
 Fixes
 ^^^^^

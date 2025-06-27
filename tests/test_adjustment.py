@@ -423,6 +423,15 @@ class TestDQM:
         )
         assert DQM.ds.sizes == {"dayofyear": 360, "quantiles": 50}
 
+    @pytest.mark.parametrize("group", ["time", "time.month"])
+    def test_adapt_freq_grouping(self, cannon_2015_rvs, random, group):
+        ref, hist, sim = cannon_2015_rvs(15000, random=random)
+
+        dqm = DetrendedQuantileMapping.train(
+            ref, hist, kind="*", group=group, adapt_freq_thresh="1 kg m-2 d-1"
+        )
+        dqm.adjust(sim)
+
 
 @pytest.mark.slow
 class TestQDM:
