@@ -14,19 +14,21 @@ from collections.abc import Sequence
 import numpy as np
 import xarray as xr
 
+import xsdba
 from xsdba import nbutils as nbu
 from xsdba.base import Grouper, map_groups
-from xsdba.utils import ADDITIVE, apply_correction, ecdf, invert, rank
+from xsdba.utils import ADDITIVE, apply_correction, ecdf, get_correction, invert, rank
 
 
 @map_groups(
-    sim_ad=[Grouper.ADD_DIMS, Grouper.DIM], pth=[Grouper.PROP], dP0=[Grouper.PROP]
+    sim_ad=[Grouper.ADD_DIMS, Grouper.DIM],
+    dP0=[Grouper.PROP],
+    P0_ref=[Grouper.PROP],
+    P0_hist=[Grouper.PROP],
+    pth=[Grouper.PROP],
 )
 def _adapt_freq(
-    ds: xr.Dataset,
-    *,
-    dim: Sequence[str],
-    thresh: float = 0,
+    ds: xr.Dataset, *, dim: Sequence[str], thresh: float = 0, kind: str = "+"
 ) -> xr.Dataset:
     r"""
     Adapt frequency of values under thresh of `sim`, in order to match ref.
@@ -36,7 +38,12 @@ def _adapt_freq(
     Parameters
     ----------
     ds : xr.Dataset
-        With variables : "ref", Target/reference data, usually observed data and "sim", Simulated data.
+        Dataset variables:
+            sim : simulated data
+            ref (optional) : training target.
+            P0_ref (optional) : Proportion of zeros in the reference dataset.
+            P0_hist (optional) : Proportion of zeros in the historical dataset.
+            pth (optional) : The smallest value of sim that was not frequency-adjusted in the training.
     dim : str, or sequence of strings
         Dimension name(s).
         If more than one, the probabilities and quantiles are computed within all the dimensions.
@@ -54,39 +61,61 @@ def _adapt_freq(
       - `pth` : For each group, the smallest value of sim that was not frequency-adjusted.
         All values smaller were either left as zero values or given a random value between thresh and pth.
         NaN where frequency adaptation wasn't needed.
-      - `dP0` : For each group, the percentage of values that were corrected in sim.
+      - `P0_ref` : For each group, the percentage of values under threshold in ref.
+      - `P0_hist` : For each group, either the percentage of values under threshold in sim,
+        or simply repeating the input `ds.P0_hist`.
+
+    Notes
+    -----
+        `ds.ref` is optional: If `P0_ref`, `P0_hist`,`pth` are given, these values will be used and `ds.ref` is not necessary.
+        Either `ds.ref` or the triplet (`P0_ref`, `P0_hist`,`pth`)  must be given.
     """
+    ref, P0_ref, P0_hist, pth = (
+        ds.get(k, None) for k in ["ref", "P0_ref", "P0_hist", "pth"]
+    )
+    reuse_adapt_output = {P0_ref is not None, P0_hist is not None, pth is not None}
+    if len(reuse_adapt_output) != 1:
+        raise ValueError("`P0_ref`, `P0_hist`, `pth` must all be given, or be `None`.")
+    reuse_adapt_output = list(reuse_adapt_output)[0]
+    if len({ref is not None, reuse_adapt_output}) != 2:
+        raise ValueError(
+            "Either `ref` or the triplet (`P0_ref`,`P0_hist`,`pth`) must be None."
+        )
+    dim = [dim] if isinstance(dim, str) else dim
+    # map_groups quirk: datasets are broadcasted and must be sliced
+    P0_ref, P0_hist, pth = (
+        da if da is None else da[{d: 0 for d in set(dim).intersection(set(da.dims))}]
+        for da in [P0_ref, P0_hist, pth]
+    )
+
     # Compute the probability of finding a value <= thresh
     # This is the "dry-day frequency" in the precipitation case
     P0_sim = ecdf(ds.sim, thresh, dim=dim)
-    P0_ref = ecdf(ds.ref, thresh, dim=dim)
-
-    # The proportion of values <= thresh in sim that need to be corrected, compared to ref
-    dP0 = (P0_sim - P0_ref) / P0_sim
-
+    P0_hist = P0_sim if P0_hist is None else P0_hist
+    P0_ref = ecdf(ref, thresh, dim=dim) if P0_ref is None else P0_ref
+    dP0 = (P0_hist - P0_ref) / P0_hist
     if dP0.isnull().all():
-        # All NaN slice.
         pth = dP0.copy()
         sim_ad = ds.sim.copy()
     else:
         # Compute : ecdf_ref^-1( ecdf_sim( thresh ) )
         # The value in ref with the same rank as the first non-zero value in sim.
         # pth is meaningless when freq. adaptation is not needed
-        pth = nbu.vecquantiles(ds.ref, P0_sim, dim).where(dP0 > 0)
-
+        pth = nbu.vecquantiles(ref, P0_hist, dim).where(dP0 > 0) if pth is None else pth
         # Probabilities and quantiles computed within all dims, but correction along the first one only.
         sim = ds.sim
         # Get the percentile rank of each value in sim.
         rnk = rank(sim, dim=dim, pct=True)
-
         # Frequency-adapted sim
         sim_ad = sim.where(
             dP0 < 0,  # dP0 < 0 means no-adaptation.
             sim.where(
-                (rnk < P0_ref) | (rnk > P0_sim),  # Preserve current values
+                (rnk < (P0_ref / P0_hist) * P0_sim)
+                | (rnk > P0_sim)
+                | sim.isnull(),  # Preserve current values
                 # Generate random numbers ~ U[T0, Pth]
                 (pth.broadcast_like(sim) - thresh)
-                * np.random.random_sample(size=sim.shape)
+                * np.random.random_sample(size=sim.shape).astype(sim.dtype)
                 + thresh,
             ),
         )
@@ -96,7 +125,18 @@ def _adapt_freq(
     # the whole output is broadcasted back to the original dims.
     pth.attrs["_group_apply_reshape"] = True
     dP0.attrs["_group_apply_reshape"] = True
-    return xr.Dataset(data_vars={"pth": pth, "dP0": dP0, "sim_ad": sim_ad})
+    P0_ref.attrs["_group_apply_reshape"] = True
+    P0_hist.attrs["_group_apply_reshape"] = True
+
+    return xr.Dataset(
+        data_vars={
+            "pth": pth,
+            "dP0": dP0,
+            "P0_ref": P0_ref,
+            "P0_hist": P0_hist,
+            "sim_ad": sim_ad,
+        }
+    )
 
 
 @map_groups(

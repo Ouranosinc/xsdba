@@ -20,6 +20,7 @@ Changes
 * Throw an error if `group=Grouper('5D',window)` is used with a biasadjust method other than `MBCn`.
 * ``xsdba.processing.to_additive_space`` accepts `clip_next_to_bounds`, which avoids infinities by ensuring `lower_bound < data < upper_bound`. (:issue:`164`, :pull:`165`).
 * Allow nan values in ``xsdba.measures.rmse`` and ``xsdba.measures.mae``. (:pull:`170`).
+* The adaptation of frequencies through `adapt_freq_thresh_value` is now applied in the adjusting step as well. (:pull:`160`).
 
 Fixes
 ^^^^^

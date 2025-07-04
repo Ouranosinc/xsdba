@@ -31,19 +31,70 @@ from .units import convert_units_to
 from .utils import _fitfunc_1d
 
 
-def _adapt_freq_hist(ds: xr.Dataset, adapt_freq_thresh: str):
-    """Adapt frequency of null values of `hist`    in order to match `ref`."""
-    thresh = convert_units_to(adapt_freq_thresh, ds.ref)
-    dim = ["time"] + ["window"] * ("window" in ds.hist.dims)
-    return _adapt_freq.func(
-        xr.Dataset({"sim": ds.hist, "ref": ds.ref}), thresh=thresh, dim=dim
-    ).sim_ad
+def _adapt_freq_preprocess(
+    ds, adapt_freq_thresh, group: Grouper | None, dim: str | None
+):
+    if adapt_freq_thresh is None:
+        return ds
+    if (group is None) ^ (dim is None) is False:
+        raise ValueError("Either `group` or `dim` must be None.")
+    thresh = convert_units_to(adapt_freq_thresh, ds.sim)
+    if group:
+        out = _adapt_freq(ds, group=group, thresh=thresh).rename({"sim_ad": "sim"})
+    else:
+        out = _adapt_freq.func(ds, dim=dim, thresh=thresh).rename({"sim_ad": "sim"})
+    ds = ds.assign({v: out[v] for v in out.data_vars})
+    # `P0_ref` and `P0_hist` give enough information
+    ds = ds.drop_vars("dP0")
+    return ds
+
+
+def _preprocess_dataset(
+    ds: xr.Dataset,
+    dim: str | list,
+    adapt_freq_thresh: str | None = None,
+    jitter_under_thresh_value: str | None = None,
+    jitter_over_thresh_value: str | None = None,
+    jitter_over_thresh_upper_bnd: str | None = None,
+):
+    dim = dim if isinstance(dim, list) else [dim]
+    # uniformize the notation, change back at the end
+    if rename_hist := ("hist" in ds):
+        ds = ds.rename({"hist": "sim"})
+
+    if jitter_under_thresh_value:
+        ds["sim"] = jitter_under_thresh(ds.sim, jitter_under_thresh_value)
+
+    if (jitter_over_thresh_value is None) ^ (jitter_over_thresh_upper_bnd is None):
+        raise ValueError(
+            "`jitter_over_thresh_value` and `jitter_over_thresh_upper_bnd` must "
+            "both be specified or both be `None` (default)"
+        )
+    if jitter_over_thresh_value:
+        ds["sim"] = jitter_over_thresh(
+            ds.sim, jitter_over_thresh_value, jitter_over_thresh_upper_bnd
+        )
+
+    if adapt_freq_thresh:
+        ds = _adapt_freq_preprocess(ds, adapt_freq_thresh, None, dim)
+
+    else:
+        dummy = xr.full_like(ds["sim"][{d: 0 for d in dim}], np.nan)
+        ds = ds.assign(P0_ref=dummy, P0_hist=dummy, pth=dummy)
+
+    if rename_hist:
+        ds = ds.rename({"sim": "hist"})
+
+    return ds
 
 
 @map_groups(
     af=[Grouper.PROP, "quantiles"],
     hist_q=[Grouper.PROP, "quantiles"],
     scaling=[Grouper.PROP],
+    P0_ref=[Grouper.PROP],
+    P0_hist=[Grouper.PROP],
+    pth=[Grouper.PROP],
 )
 def dqm_train(
     ds: xr.Dataset,
@@ -94,22 +145,14 @@ def dqm_train(
     `jitter_over_thresh_value` and `jitter_over_thresh_upper_bnd` must be both be specified to
     use `jitter_over_thresh`, or both be None (default) to skip it.
     """
-    if (
-        None in (s := {jitter_over_thresh_value, jitter_over_thresh_upper_bnd})
-        and len(s) > 1
-    ):
-        raise ValueError(
-            "`jitter_over_thresh_value` and `jitter_over_thresh_upper_bnd` must "
-            "be both specified or both `None` (default)"
-        )
-    if jitter_under_thresh_value:
-        ds["hist"] = jitter_under_thresh(ds.hist, jitter_under_thresh_value)
-    if jitter_over_thresh_value:
-        ds["hist"] = jitter_over_thresh(
-            ds.hist, jitter_over_thresh_value, jitter_over_thresh_upper_bnd
-        )
-    if adapt_freq_thresh:
-        ds["hist"] = _adapt_freq_hist(ds, adapt_freq_thresh)
+    ds = _preprocess_dataset(
+        ds,
+        dim,
+        adapt_freq_thresh,
+        jitter_under_thresh_value,
+        jitter_over_thresh_value,
+        jitter_over_thresh_upper_bnd,
+    )
 
     refn = u.apply_correction(ds.ref, u.invert(ds.ref.mean(dim), kind), kind)
     histn = u.apply_correction(ds.hist, u.invert(ds.hist.mean(dim), kind), kind)
@@ -121,13 +164,24 @@ def dqm_train(
     mu_ref = ds.ref.mean(dim)
     mu_hist = ds.hist.mean(dim)
     scaling = u.get_correction(mu_hist, mu_ref, kind=kind)
-
-    return xr.Dataset(data_vars={"af": af, "hist_q": hist_q, "scaling": scaling})
+    return xr.Dataset(
+        data_vars={
+            "af": af,
+            "hist_q": hist_q,
+            "scaling": scaling,
+            "P0_ref": ds.P0_ref,
+            "P0_hist": ds.P0_hist,
+            "pth": ds.pth,
+        }
+    )
 
 
 @map_groups(
     af=[Grouper.PROP, "quantiles"],
     hist_q=[Grouper.PROP, "quantiles"],
+    P0_ref=[Grouper.PROP],
+    P0_hist=[Grouper.PROP],
+    pth=[Grouper.PROP],
 )
 def eqm_train(
     ds: xr.Dataset,
@@ -175,29 +229,29 @@ def eqm_train(
     `jitter_over_thresh_value` and `jitter_over_thresh_upper_bnd` must be both be specified to
     use `jitter_over_thresh`, or both be None (default) to skip it.
     """
-    if (
-        None in (s := {jitter_over_thresh_value, jitter_over_thresh_upper_bnd})
-        and len(s) > 1
-    ):
-        raise ValueError(
-            "`jitter_over_thresh_value` and `jitter_over_thresh_upper_bnd` must "
-            "be both specified or both `None` (default)"
-        )
-    if jitter_under_thresh_value:
-        ds["hist"] = jitter_under_thresh(ds.hist, jitter_under_thresh_value)
-    if jitter_over_thresh_value:
-        ds["hist"] = jitter_over_thresh(
-            ds.hist, jitter_over_thresh_value, jitter_over_thresh_upper_bnd
-        )
-    if adapt_freq_thresh:
-        ds["hist"] = _adapt_freq_hist(ds, adapt_freq_thresh)
+    ds = _preprocess_dataset(
+        ds,
+        dim,
+        adapt_freq_thresh,
+        jitter_under_thresh_value,
+        jitter_over_thresh_value,
+        jitter_over_thresh_upper_bnd,
+    )
 
     ref_q = nbu.quantile(ds.ref, quantiles, dim)
     hist_q = nbu.quantile(ds.hist, quantiles, dim)
 
     af = u.get_correction(hist_q, ref_q, kind)
 
-    return xr.Dataset(data_vars={"af": af, "hist_q": hist_q})
+    return xr.Dataset(
+        data_vars={
+            "af": af,
+            "hist_q": hist_q,
+            "P0_ref": ds.P0_ref,
+            "P0_hist": ds.P0_hist,
+            "pth": ds.pth,
+        }
+    )
 
 
 def _npdft_train(ref, hist, rots, quantiles, method, extrap, n_escore, standardize):
@@ -521,7 +575,13 @@ def mbcn_adjust(
 
 @map_blocks(reduces=[Grouper.PROP, "quantiles"], scen=[])
 def qm_adjust(
-    ds: xr.Dataset, *, group: Grouper, interp: str, extrapolation: str, kind: str
+    ds: xr.Dataset,
+    *,
+    group: Grouper,
+    interp: str,
+    extrapolation: str,
+    kind: str,
+    adapt_freq_thresh: str | None = None,
 ) -> xr.Dataset:
     """
     QM (DQM and EQM): Adjust step on one block.
@@ -533,6 +593,9 @@ def qm_adjust(
             af : Adjustment factors
             hist_q : Quantiles over the training data
             sim : Data to adjust.
+            P0_ref (optional) : Proportion of zeroes in the reference
+            P0_hist (optional) : Proportion of zeroes in the historical period of the simulation
+            pth (optional) : The smallest value of `hist` that was not frequency-adjusted in the training.
     group : Grouper
         The grouper object.
     interp : str
@@ -541,12 +604,23 @@ def qm_adjust(
         The extrapolation method to use.
     kind : str
         The kind of correction to compute. See :py:func:`xsdba.utils.get_correction`.
+    adapt_freq_thresh : str, optional
+        Threshold for frequency adaptation. See :py:class:`xsdba.processing.adapt_freq` for details.
+        Default is None, meaning that frequency adaptation is not performed.
 
     Returns
     -------
     xr.Dataset
         The adjusted data.
     """
+    if adapt_freq_thresh:
+        ds["sim"] = _adapt_freq_preprocess(
+            ds[["sim", "P0_ref", "P0_hist", "pth"]],
+            adapt_freq_thresh,
+            group=Grouper(group.name),
+            dim=None,
+        ).sim
+
     af = u.interp_on_quantiles(
         ds.sim,
         ds.hist_q,
@@ -570,6 +644,7 @@ def dqm_adjust(
     kind: str,
     extrapolation: str,
     detrend: int | PolyDetrend,
+    adapt_freq_thresh: str | None = None,
 ) -> xr.Dataset:
     """
     DQM adjustment on one block.
@@ -582,6 +657,9 @@ def dqm_adjust(
             af : Adjustment factors
             hist_q : Quantiles over the training data
             sim : Data to adjust
+            P0_ref (optional) : Proportion of zeroes in the reference
+            P0_hist (optional) : Proportion of zeroes in the historical period of the simulation
+            pth (optional) : The smallest value of `hist` that was not frequency-adjusted in the training.
     group : Grouper
         The grouper object.
     interp : str
@@ -592,12 +670,22 @@ def dqm_adjust(
         The extrapolation method to use.
     detrend : int | PolyDetrend
         The degree of the polynomial detrending to apply. If 0, no detrending is applied.
+    adapt_freq_thresh : str, optional
+        Threshold for frequency adaptation. See :py:class:`xsdba.processing.adapt_freq` for details.
+        Default is None, meaning that frequency adaptation is not performed.
 
     Returns
     -------
     xr.Dataset
         The adjusted data and the trend.
     """
+    if adapt_freq_thresh:
+        ds["sim"] = _adapt_freq_preprocess(
+            ds[["sim", "P0_ref", "P0_hist", "pth"]],
+            adapt_freq_thresh,
+            group=Grouper(group.name),
+            dim=None,
+        ).sim
     scaled_sim = u.apply_correction(
         ds.sim,
         u.broadcast(
@@ -630,9 +718,17 @@ def dqm_adjust(
 
 
 @map_blocks(reduces=[Grouper.PROP, "quantiles"], scen=[], sim_q=[])
-def qdm_adjust(ds: xr.Dataset, *, group, interp, extrapolation, kind) -> xr.Dataset:
+def qdm_adjust(
+    ds: xr.Dataset,
+    *,
+    group: Grouper,
+    interp: str,
+    extrapolation: str,
+    kind: str,
+    adapt_freq_thresh: str | None = None,
+) -> xr.Dataset:
     """
-    QDM: Adjust process on one block.
+    QDM adjustment on one block.
 
     Parameters
     ----------
@@ -641,7 +737,33 @@ def qdm_adjust(ds: xr.Dataset, *, group, interp, extrapolation, kind) -> xr.Data
             af : Adjustment factors
             hist_q : Quantiles over the training data
             sim : Data to adjust.
+    group : Grouper
+        The grouper object.
+    interp : str
+        The interpolation method to use.
+    kind : str
+        The kind of correction to compute. See :py:func:`xsdba.utils.get_correction`.
+    extrapolation : str
+        The extrapolation method to use.
+    detrend : int | PolyDetrend
+        The degree of the polynomial detrending to apply. If 0, no detrending is applied.
+    adapt_freq_thresh : str, optional
+        Threshold for frequency adaptation. See :py:class:`xsdba.processing.adapt_freq` for details.
+        Default is None, meaning that frequency adaptation is not performed.
+
+    Returns
+    -------
+    xr.Dataset
+        The adjusted data.
     """
+    if adapt_freq_thresh:
+        ds["sim"] = _adapt_freq_preprocess(
+            ds[["sim", "P0_ref", "P0_hist", "pth"]],
+            adapt_freq_thresh,
+            group=Grouper(group.name),
+            dim=None,
+        ).sim
+
     sim_q = group.apply(u.rank, ds.sim, main_only=True, pct=True)
     af = u.interp_on_quantiles(
         sim_q,
@@ -1175,12 +1297,12 @@ def otc_adjust(
 
     if adapt_freq_thresh is not None:
         for var, thresh in adapt_freq_thresh.items():
-            hist.loc[var] = _adapt_freq_hist(
-                xr.Dataset(
-                    {"ref": ref.sel({pts_dim: var}), "hist": hist.sel({pts_dim: var})}
-                ),
-                thresh,
+            ds0 = xr.Dataset(
+                {"ref": ref.sel({pts_dim: var}), "sim": hist.sel({pts_dim: var})}
             )
+            hist.loc[{pts_dim: var}] = _preprocess_dataset(
+                ds0, adapt_freq_thresh=thresh
+            ).sim
 
     ref_map = {d: f"ref_{d}" for d in dim}
     ref = ref.rename(ref_map).stack(dim_ref=ref_map.values()).dropna(dim="dim_ref")
@@ -1418,12 +1540,19 @@ def dotc_adjust(
 
     if adapt_freq_thresh is not None:
         for var, thresh in adapt_freq_thresh.items():
-            hist.loc[var] = _adapt_freq_hist(
-                xr.Dataset(
-                    {"ref": ref.sel({pts_dim: var}), "hist": hist.sel({pts_dim: var})}
-                ),
-                thresh,
-            )
+            if thresh is not None:
+                ds0 = xr.Dataset(
+                    {"ref": ref.sel({pts_dim: var}), "sim": hist.sel({pts_dim: var})}
+                )
+                # add the `dP0, P0_ref, P0_hist, pth` datasets
+                ds0 = _preprocess_dataset(ds0, dim=dim, adapt_freq_thresh=thresh)
+                hist.loc[{pts_dim: var}] = ds0.sim
+                ds0["sim"] = sim.loc[{pts_dim: var}]
+                # remove the `ref` dataset since we already have `P0_ref` and other datasets
+                ds0 = ds0.drop("ref")
+                sim.loc[{pts_dim: var}] = _preprocess_dataset(
+                    ds0, dim=dim, adapt_freq_thresh=thresh
+                ).sim
 
     # Drop data added by map_blocks and prepare for apply_ufunc
     hist_map = {d: f"hist_{d}" for d in dim}

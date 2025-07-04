@@ -203,7 +203,7 @@ def vecquantiles(
         dims=rnk.dims,
         coords=rnk.coords,
         attrs=da.attrs,
-    )
+    ).astype(da.dtype)
     return res
 
 
