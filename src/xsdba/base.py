@@ -451,7 +451,7 @@ class Grouper(Parametrizable):
         if main_only:
             dims = self.dim
         else:
-            dims = [self.dim] + self.add_dims
+            dims = [self.dim] + [d for d in self.add_dims if d in grpd.dims]
             if self.window > 1:
                 dims += ["window"]
 
@@ -498,6 +498,29 @@ class Grouper(Parametrizable):
             out = out.chunk({self.prop: -1})
 
         return out
+
+    @staticmethod
+    def filter_dim(da: xr.DataArray, dim: str | list[str]):
+        """
+        Filter the dimensions to be reduced by removing those not on the variable.
+
+        The first dimension is never removed as it is considered the "main" dimension and not having it is an error.
+        This is meant to be used within a function sent to :py:meth:`Grouper.apply`, like those decorated with :py:func:`map_groups`.
+
+        Parameters
+        ----------
+        da: DataArray
+          A dataarray from which we get the list of valid dimensions.
+        dim: str or sequence of str
+          Dimension(s) to reduce. The first one is not removed, the others are kept only if they appear on `da`.
+
+        Returns
+        -------
+        list of str, the filtered dimensions list
+        """
+        if isinstance(dim, str):
+            return dim
+        return [dim[0]] + [d for d in dim[1:] if d in da.dims]
 
 
 def parse_group(func: Callable, kwargs=None, allow_only=None) -> Callable:
