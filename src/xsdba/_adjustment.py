@@ -954,7 +954,7 @@ def npdf_transform(ds: xr.Dataset, **kwargs) -> xr.Dataset:
     )
 
 
-def _fit_on_cluster(data, thresh, dist, cluster_thresh):
+def _fit_on_cluster(data, thresh, cluster_thresh, dist):
     """Extract clusters on 1D data and fit "dist" on the maximums."""
     _, _, _, maximums = u.get_clusters_1d(data, thresh, cluster_thresh)
     params = list(
@@ -965,7 +965,7 @@ def _fit_on_cluster(data, thresh, dist, cluster_thresh):
     return params
 
 
-def _extremes_train_1d(ref, hist, ref_params, *, q_thresh, cluster_thresh, dist, N):
+def _extremes_train_1d(ref, hist, ref_params, cluster_thresh, *, q_thresh, dist, N):
     """Train for method ExtremeValues, only for 1D input along time."""
     # Fast-track, do nothing for all-nan slices
     if all(np.isnan(ref)) or all(np.isnan(hist)):
@@ -979,9 +979,9 @@ def _extremes_train_1d(ref, hist, ref_params, *, q_thresh, cluster_thresh, dist,
 
     # Fit genpareto on cluster maximums on ref (if needed) and hist.
     if np.isnan(ref_params).all():
-        ref_params = _fit_on_cluster(ref, thresh, dist, cluster_thresh)
+        ref_params = _fit_on_cluster(ref, thresh, cluster_thresh, dist)
 
-    hist_params = _fit_on_cluster(hist, thresh, dist, cluster_thresh)
+    hist_params = _fit_on_cluster(hist, thresh, cluster_thresh, dist)
 
     # Find probabilities of extremes according to fitted dist
     Px_ref = dist.cdf(ref[ref >= thresh], *ref_params)
@@ -1015,7 +1015,6 @@ def extremes_train(
     *,
     group: Grouper,
     q_thresh: float,
-    cluster_thresh: float,
     dist,
     quantiles: np.ndarray,
 ) -> xr.Dataset:
@@ -1025,13 +1024,11 @@ def extremes_train(
     Parameters
     ----------
     ds : xr.Dataset
-        Dataset containing the reference and historical data.
+        Dataset containing the reference and historical data, and cluster thresholds.
     group : Grouper
         The grouper object.
     q_thresh : float
         The quantile threshold to use.
-    cluster_thresh : float
-        The threshold for clustering.
     dist : Any
         The distribution to fit.
     quantiles : array-like
@@ -1047,12 +1044,12 @@ def extremes_train(
         ds.ref,
         ds.hist,
         ds.ref_params or np.nan,
-        input_core_dims=[("time",), ("time",), ()],
+        ds.cluster_thresh,
+        input_core_dims=[("time",), ("time",), (), ()],
         output_core_dims=[("quantiles",), ("quantiles",), ()],
         vectorize=True,
         kwargs={
             "q_thresh": q_thresh,
-            "cluster_thresh": cluster_thresh,
             "dist": dist,
             "N": len(quantiles),
         },
@@ -1067,9 +1064,9 @@ def extremes_train(
     )
 
 
-def _fit_cluster_and_cdf(data, thresh, dist, cluster_thresh):
+def _fit_cluster_and_cdf(data, thresh, cluster_thresh, dist):
     """Fit 1D cluster maximums and immediately compute CDF."""
-    fut_params = _fit_on_cluster(data, thresh, dist, cluster_thresh)
+    fut_params = _fit_on_cluster(data, thresh, cluster_thresh, dist)
     return dist.cdf(data, *fut_params)
 
 
@@ -1083,7 +1080,6 @@ def extremes_adjust(
     dist,
     interp: str,
     extrapolation: str,
-    cluster_thresh: float,
 ) -> xr.Dataset:
     """
     Adjust extremes to reflect many distribution factors.
@@ -1091,7 +1087,7 @@ def extremes_adjust(
     Parameters
     ----------
     ds : xr.Dataset
-        Dataset containing the reference and historical data.
+        Dataset containing the reference and historical data, and cluster thresholds.
     group : Grouper
         The grouper object.
     frac : float
@@ -1104,8 +1100,6 @@ def extremes_adjust(
         The interpolation method to use.
     extrapolation : str
         The extrapolation method to use.
-    cluster_thresh : float
-        The threshold for clustering.
 
     Returns
     -------
@@ -1117,9 +1111,10 @@ def extremes_adjust(
         _fit_cluster_and_cdf,
         ds.sim,
         ds.thresh,
-        input_core_dims=[["time"], []],
+        ds.cluster_thresh,
+        input_core_dims=[["time"], [], []],
         output_core_dims=[["time"]],
-        kwargs={"dist": dist, "cluster_thresh": cluster_thresh},
+        kwargs={"dist": dist},
         vectorize=True,
     )
 

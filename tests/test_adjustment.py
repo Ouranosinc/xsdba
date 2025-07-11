@@ -1019,6 +1019,25 @@ class TestExtremeValues:
             scen.where(exval) > EX.ds.thresh
         ).sum()
 
+    def test_quantified_cluster_thresh(self, gosset):
+        dsim = xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"))  # .chunk()
+        dref = xr.open_dataset(gosset.fetch("sdba/ahccd_1950-2013.nc"))  # .chunk()
+        ref = dref.sel(time=slice("1950", "2009")).pr
+        hist = dsim.sel(time=slice("1950", "2009")).pr
+        # TODO: Do we want to include standard conversions in xsdba tests?
+        # this is just convenient for now to keep those tests
+        hist = pint_multiply(hist, "1e-03 m^3/kg")
+        hist = convert_units_to(hist, ref)
+
+        EX = ExtremeValues.train(ref, hist, cluster_thresh="1 mm/day", q_thresh=0.97)
+        scen = EX.adjust(hist, hist, frac=0.000000001)
+        cluster_thresh = xr.DataArray(1, attrs={"units": "mm/d"})
+        EXQ = ExtremeValues.train(
+            ref, hist, cluster_thresh=cluster_thresh, q_thresh=0.97
+        )
+        scenQ = EXQ.adjust(hist, hist, frac=0.000000001)
+        assert (scen.values == scenQ.values).all()
+
     @pytest.mark.slow
     def test_real_data(self, gosset):
         dsim = xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"))  # .chunk()
