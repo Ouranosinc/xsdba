@@ -1084,6 +1084,7 @@ def extremes_adjust(
     interp: str,
     extrapolation: str,
     cluster_thresh: float,
+    reorder_sim: bool,
 ) -> xr.Dataset:
     """
     Adjust extremes to reflect many distribution factors.
@@ -1113,9 +1114,12 @@ def extremes_adjust(
         The dataset containing the adjusted data.
     """
     # Find probabilities of extremes of fut according to its own cluster-fitted dist.
+    sim = ds.sim
+    if reorder_sim:
+        sim = reordering(ref=ds.scen, sim=ds.sim)
     px_fut = xr.apply_ufunc(
         _fit_cluster_and_cdf,
-        ds.sim,
+        sim,
         ds.thresh,
         input_core_dims=[["time"], []],
         output_core_dims=[["time"]],
@@ -1127,12 +1131,10 @@ def extremes_adjust(
     af = u.interp_on_quantiles(
         px_fut, ds.px_hist, ds.af, method=interp, extrapolation=extrapolation
     )
-    scen = u.apply_correction(ds.sim, af, "*")
+    scen = u.apply_correction(sim, af, "*")
 
     # Smooth transition function between simulation and scenario.
-    transition = (
-        ((ds.sim - ds.thresh) / ((ds.sim.max("time")) - ds.thresh)) / frac
-    ) ** power
+    transition = (((sim - ds.thresh) / ((sim.max("time")) - ds.thresh)) / frac) ** power
     transition = transition.clip(0, 1)
 
     adjusted: xr.DataArray = (transition * scen) + ((1 - transition) * ds.scen)

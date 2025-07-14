@@ -791,6 +791,9 @@ class ExtremeValues(TrainAdjust):
         See Notes, ]0, 1]. Defaults to 0.25.
     power : float
         Shape of the correction strength, see Notes. Defaults to 1.0.
+    reorder_sim: bool
+        If `True`, the raw simulation is reordered to reproduce the ranks
+        of `scen`. Defaults to `False`.
 
     Notes
     -----
@@ -893,6 +896,7 @@ class ExtremeValues(TrainAdjust):
         power: float = 1.0,
         interp: str = "linear",
         extrapolation: str = "constant",
+        reorder_sim: bool = False,
     ):
         # TODO: `extrapolate_qm` doesn't exist anymore, is this cheat still relevant?
         # Quantiles coord : cheat and assign 0 - 1, so we can use `extrapolate_qm`.
@@ -910,6 +914,7 @@ class ExtremeValues(TrainAdjust):
             interp=interp,
             extrapolation=extrapolation,
             group="time",
+            reorder_sim=reorder_sim,
         )
 
         return scen

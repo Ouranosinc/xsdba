@@ -853,10 +853,7 @@ class TestMBCn:
             .expand_dims(location=["Amos"])
             for file in ["ahccd_1950-2013.nc", "CanESM2_1950-2100.nc"]
         )
-        water_density_inverse = "1e-03 m^3/kg"
-        dsim["pr"] = convert_units_to(
-            pint_multiply(dsim.pr, water_density_inverse), ref.pr
-        )
+        dsim["pr"] = xclim.units.convert_units_to(dsim.pr, ref.pr, context="hydro")
         ref, hist = (
             ds.sel(time=slice("1981", "2010")).isel(time=slice(365 * 4))
             for ds in [ref, dsim]
@@ -1025,10 +1022,7 @@ class TestExtremeValues:
         dref = xr.open_dataset(gosset.fetch("sdba/ahccd_1950-2013.nc"))  # .chunk()
         ref = dref.sel(time=slice("1950", "2009")).pr
         hist = dsim.sel(time=slice("1950", "2009")).pr
-        # TODO: Do we want to include standard conversions in xsdba tests?
-        # this is just convenient for now to keep those tests
-        hist = pint_multiply(hist, "1e-03 m^3/kg")
-        hist = convert_units_to(hist, ref)
+        hist = xclim.core.units.convert_units_to(hist, ref, context="hydro")
 
         quantiles = np.linspace(0.01, 0.99, num=50)
 
@@ -1059,6 +1053,36 @@ class TestExtremeValues:
         with pytest.warns(RuntimeWarning, match="All-nan slice encountered"):
             new_scen = EX.adjust(sim=hist, scen=ref)
         assert new_scen.isnull().all()
+
+    @pytest.mark.parametrize("reorder_sim", [True, False])
+    def test_reorder_sim(self, gosset, reorder_sim):
+        dsim = xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc")).isel(
+            location=2
+        )
+        dref = xr.open_dataset(gosset.fetch("sdba/ahccd_1950-2013.nc")).isel(location=2)
+        ref = dref.sel(time=slice("1950", "2009")).pr
+        hist = dsim.sel(time=slice("1950", "2009")).pr
+        ref = xclim.core.units.convert_units_to(ref, "mm/d", context="hydro")
+        hist = xclim.core.units.convert_units_to(hist, "mm/d", context="hydro")
+        QDM = QuantileDeltaMapping.train(
+            ref,
+            hist,
+            adapt_freq_thresh="0.1 mm/d",
+            jitter_under_thresh_value="0.01 mm/d",
+            kind="*",
+            group=Grouper("time.dayofyear", 31),
+        )
+        adj = QDM.adjust(hist)
+        EX = ExtremeValues.train(ref, hist, cluster_thresh="10 mm/day", q_thresh=0.9)
+        adj_GEV = EX.adjust(sim=hist, scen=adj, reorder_sim=reorder_sim)
+
+        # For reorder_sim == True, the assert should always work by construction
+        # For reorder_sim == False, there might be case where maximum in adj_GEV and adj occur
+        # simultaneously. But for the specific case chosen, it should not be the case, so it this changes
+        # in future versions, we should be notified
+        assert (
+            adj_GEV.argmax().values.item() == adj.argmax().values.item()
+        ) is reorder_sim
 
 
 class TestOTC:

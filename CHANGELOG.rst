@@ -121,6 +121,7 @@ Changes
 * `xclim` migration guide added. (:issue:`62`, :pull:`86`).
 * Add a missing `dOTC` example to documentation. (:pull:`86`).
 * Add a new grouping method specific for `MBCn` which called by passing `group=Grouper("5D", window=n)` where `n` is an odd positive integer. (:pull:`79`).
+* In `ExtremeValues.adjust`, the new option `reorder_sim` can be set to `True`, and `sim` is reordered to match the ranks of `scen`. (:pull:`84`).
 
 Fixes
 ^^^^^
