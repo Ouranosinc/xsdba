@@ -1879,7 +1879,7 @@ class MBCn(TrainAdjust):
             )
         if base_kws["group"].add_dims != []:
             raise NotImplementedError(
-                "'add_dims' option was passed to Grouper. This is not currently supported in the MBCn class."
+                "`add_dims` option was passed to Grouper. This is not currently supported in the MBCn class."
             )
         # stack variables and prepare rotations
         if rot_matrices is not None:
