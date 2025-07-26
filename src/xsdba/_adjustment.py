@@ -154,7 +154,7 @@ def dqm_train(
     ref = ds.ref.expand_dims({d: [0] for d in extra_dim})
     # modifying ds in-place and re-assign the unmodified ref
     ds = _preprocess_dataset(
-        xr.merge([ref, ds.hist], compat="override"),
+        xr.Dataset({"ref": ref, "hist": ds.hist}),
         sim_dim,
         adapt_freq_thresh,
         jitter_under_thresh_value,
@@ -241,17 +241,19 @@ def eqm_train(
     # Ensure we only reduce on valid dims, allows for extra dims like "realization" on the sim
     ref_dim = Grouper.filter_dim(ds.ref, dim)
     sim_dim = Grouper.filter_dim(ds.hist, dim)
-    # accounts for the possibility of extra dims
-    ref = ds.ref
-    extra_dims = set(sim_dim) - set(ref_dim)
-    ds["hist"] = _preprocess_dataset(
-        xr.Dataset(dict(ref=ref, hist=ds.hist)),
-        dim,
+
+    # this might be empty, in which case this does nothing
+    extra_dim = list(set(sim_dim) - set(ref_dim))
+    ref = ds.ref.expand_dims({d: [0] for d in extra_dim})
+    # modifying ds in-place and re-assign the unmodified ref
+    ds = _preprocess_dataset(
+        xr.merge([ref, ds.hist], compat="override"),
+        sim_dim,
         adapt_freq_thresh,
         jitter_under_thresh_value,
         jitter_over_thresh_value,
         jitter_over_thresh_upper_bnd,
-    )
+    ).assign(ref=ds.ref)
 
     ref_q = nbu.quantile(ds.ref, quantiles, ref_dim)
     hist_q = nbu.quantile(ds.hist, quantiles, sim_dim)
