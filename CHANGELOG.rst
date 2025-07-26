@@ -2,11 +2,11 @@
 Changelog
 =========
 
-..
-    `Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
-    ------------------------------------------------------------
 
-    Contributors:
+`Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
+------------------------------------------------------------
+
+    Contributors: Éric Dupuis (:user:`coxipi`).
 
     Changes
     ^^^^^^^
@@ -14,7 +14,7 @@ Changelog
 
     Fixes
     ^^^^^
-    * No change.
+    * Fix `adapt_freq` processing in training when ``xsdba.Grouper`` uses `add_dims`. (:issue:`182`, :pull:`183`).
 
 .. _changes_0.5.0:
 
@@ -46,7 +46,6 @@ Fixes
 * Fix ``xsdba.base.get_coordinates`` to avoid using a private xarray function.(:pull:`147`, :issue:`148`).
 * Fix ``xsdba.processing.from_additive_space`` to handles units correctly by using `convert_units_to` instead of `harmonize_units`. (:pull:`146`).
 * Fix the order of `clip_next_to_bounds` in ``xsdba.processing.to_additive_space``. (:pull:`169`).
-* Fix `adapt_freq` processing in training when ``xsdba.Grouper`` uses `add_dims`. (:issue:`182`, :pull:`183`).
 
 Internal changes
 ^^^^^^^^^^^^^^^^
