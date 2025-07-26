@@ -145,18 +145,22 @@ def dqm_train(
     `jitter_over_thresh_value` and `jitter_over_thresh_upper_bnd` must be both be specified to
     use `jitter_over_thresh`, or both be None (default) to skip it.
     """
+    # Ensure we only reduce on valid dims, allows for extra dims like "realization" on the sim
+    ref_dim = Grouper.filter_dim(ds.ref, dim)
+    sim_dim = Grouper.filter_dim(ds.hist, dim)
+
+    # this might be empty, in which case this does nothing
+    extra_dim = list(set(sim_dim) - set(ref_dim))
+    ref = ds.ref.expand_dims({d: [0] for d in extra_dim})
     ds = _preprocess_dataset(
-        ds,
-        dim,
+        xr.merge([ref, ds.hist], compat="override"),
+        sim_dim,
         adapt_freq_thresh,
         jitter_under_thresh_value,
         jitter_over_thresh_value,
         jitter_over_thresh_upper_bnd,
-    )
+    ).assign(ref=ds.ref)
 
-    # Ensure we only reduce on valid dims, allows for extra dims like "realization" on the sim
-    ref_dim = Grouper.filter_dim(ds.ref, dim)
-    sim_dim = Grouper.filter_dim(ds.hist, dim)
     refn = u.apply_correction(ds.ref, u.invert(ds.ref.mean(ref_dim), kind), kind)
     histn = u.apply_correction(ds.hist, u.invert(ds.hist.mean(sim_dim), kind), kind)
 
@@ -167,6 +171,7 @@ def dqm_train(
     mu_ref = ds.ref.mean(ref_dim)
     mu_hist = ds.hist.mean(sim_dim)
     scaling = u.get_correction(mu_hist, mu_ref, kind=kind)
+
     return xr.Dataset(
         data_vars={
             "af": af,
@@ -232,8 +237,14 @@ def eqm_train(
     `jitter_over_thresh_value` and `jitter_over_thresh_upper_bnd` must be both be specified to
     use `jitter_over_thresh`, or both be None (default) to skip it.
     """
-    ds = _preprocess_dataset(
-        ds,
+    # Ensure we only reduce on valid dims, allows for extra dims like "realization" on the sim
+    ref_dim = Grouper.filter_dim(ds.ref, dim)
+    sim_dim = Grouper.filter_dim(ds.hist, dim)
+    # accounts for the possibility of extra dims
+    ref = ds.ref
+    extra_dims = set(sim_dim) - set(ref_dim)
+    ds["hist"] = _preprocess_dataset(
+        xr.Dataset(dict(ref=ref, hist=ds.hist)),
         dim,
         adapt_freq_thresh,
         jitter_under_thresh_value,
@@ -241,9 +252,6 @@ def eqm_train(
         jitter_over_thresh_upper_bnd,
     )
 
-    # Ensure we only reduce on valid dims, allows for extra dims like "realization" on the sim
-    ref_dim = Grouper.filter_dim(ds.ref, dim)
-    sim_dim = Grouper.filter_dim(ds.hist, dim)
     ref_q = nbu.quantile(ds.ref, quantiles, ref_dim)
     hist_q = nbu.quantile(ds.hist, quantiles, sim_dim)
     af = u.get_correction(hist_q, ref_q, kind)
