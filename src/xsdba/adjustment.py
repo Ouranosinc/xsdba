@@ -1872,9 +1872,14 @@ class MBCn(TrainAdjust):
             base_kws["nquantiles"] = equally_spaced_nodes(base_kws["nquantiles"])
         if isinstance(base_kws["group"], str):
             base_kws["group"] = Grouper(base_kws["group"], 1)
+
         if base_kws["group"].name == "time.month":
             raise NotImplementedError(
                 "Received `group==time.month` in `base_kws`. Monthly grouping is not currently supported in the MBCn class."
+            )
+        if base_kws["group"].add_dims != []:
+            raise NotImplementedError(
+                "'add_dims' option was passed to Grouper. This is not currently supported in the MBCn class."
             )
         # stack variables and prepare rotations
         if rot_matrices is not None:

@@ -152,6 +152,7 @@ def dqm_train(
     # this might be empty, in which case this does nothing
     extra_dim = list(set(sim_dim) - set(ref_dim))
     ref = ds.ref.expand_dims({d: [0] for d in extra_dim})
+    # modifying ds in-place and re-assign the unmodified ref
     ds = _preprocess_dataset(
         xr.merge([ref, ds.hist], compat="override"),
         sim_dim,
