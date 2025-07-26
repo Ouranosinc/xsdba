@@ -90,10 +90,6 @@ def _adapt_freq(
 
     # Compute the probability of finding a value <= thresh
     # This is the "dry-day frequency" in the precipitation case
-    print("!!!! HEHE !!!!! ")
-    print(ds.sim.dims)
-    print(ds.ref.dims)
-    print(dim)
     P0_sim = ecdf(ds.sim, thresh, dim=dim)
     P0_hist = P0_sim if P0_hist is None else P0_hist
     P0_ref = ecdf(ref, thresh, dim=dim) if P0_ref is None else P0_ref
