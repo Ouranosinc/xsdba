@@ -2,11 +2,11 @@
 Changelog
 =========
 
-..
-    `Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
-    ------------------------------------------------------------
 
-    Contributors:
+`Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
+------------------------------------------------------------
+
+    Contributors: Éric Dupuis (:user:`coxipi`).
 
     Changes
     ^^^^^^^
@@ -14,7 +14,7 @@ Changelog
 
     Fixes
     ^^^^^
-    * No change.
+    * Fix `adapt_freq` processing in training when ``xsdba.Grouper`` uses `add_dims`. (:issue:`182`, :pull:`183`).
 
 .. _changes_0.5.0:
 

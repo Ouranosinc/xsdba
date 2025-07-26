@@ -236,6 +236,45 @@ class TestDQM:
     @pytest.mark.parametrize(
         "kind,units", [(ADDITIVE, "K"), (MULTIPLICATIVE, "kg m-2 s-1")]
     )
+    def test_add_dims(self, timelonlatseries, kind, units, random):
+        """
+        Train on
+        hist: U
+        ref: Normal
+
+        Predict on hist to get ref
+        """
+        ns = 10000
+        u = random.random(ns)
+
+        # Define distributions
+        xd = uniform(loc=10, scale=1)
+        yd = norm(loc=12, scale=1)
+
+        # Generate random numbers with u so we get exact results for comparison
+        x = xd.ppf(u)
+        y = yd.ppf(u)
+
+        # Test train
+        attrs = {"units": units, "kind": kind}
+
+        hist = sim = (
+            timelonlatseries(x, attrs=attrs).expand_dims(tt=[0, 1]).chunk({"tt": 1})
+        )
+        ref = timelonlatseries(y, attrs=attrs).expand_dims(tt=[0, 1]).chunk({"tt": 1})
+        group = Grouper("time.dayofyear", 31, add_dims=["number"])
+        DQM = DetrendedQuantileMapping.train(
+            ref,
+            hist,
+            kind=kind,
+            group=group,
+            nquantiles=50,
+        )
+        p = DQM.adjust(sim, interp="linear")
+
+    @pytest.mark.parametrize(
+        "kind,units", [(ADDITIVE, "K"), (MULTIPLICATIVE, "kg m-2 s-1")]
+    )
     def test_quantiles(self, timelonlatseries, kind, units, random):
         """
         Train on
