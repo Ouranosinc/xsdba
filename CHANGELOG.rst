@@ -2,19 +2,19 @@
 Changelog
 =========
 
-..
-    `Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
-    ------------------------------------------------------------
 
-    Contributors:
+`Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
+------------------------------------------------------------
 
-    Changes
-    ^^^^^^^
-    * No change.
+Contributors: Éric Dupuis (:user:`coxipi`).
 
-    Fixes
-    ^^^^^
-    * No change.
+Changes
+^^^^^^^
+* No change.
+
+Fixes
+^^^^^
+* ``xsdba.adjustment.ExtremeValues`` throws an error with a clear message when the clustered precipitation exceed `1-q_thresh`. This happens when `cluster_thresh` is too small (still in the bulk of the distribution). (:issue:`177`, :pull:`184`).
 
 .. _changes_0.5.0:
 
