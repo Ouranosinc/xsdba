@@ -24,6 +24,7 @@ from xsdba.adjustment import (
 from xsdba.base import Grouper, stack_periods
 from xsdba.options import set_options
 from xsdba.processing import (
+    adapt_freq,
     jitter_over_thresh,
     jitter_under_thresh,
     stack_variables,
@@ -220,15 +221,14 @@ class TestScaling:
         attrs = {"units": units, "kind": kind}
 
         hist = sim = timelonlatseries(x, attrs=attrs)
-        ref = mon_timelonlatseries(apply_correction(x, 2, "+"), attrs=attrs)
+        ref = mon_timelonlatseries(apply_correction(x, 2, "+"), attrs=attrs).isel(lon=0)
 
         group = Grouper("time.month", add_dims=["lon"])
 
         scaling = Scaling.train(ref, hist, group=group, kind="+")
         assert "lon" not in scaling.ds
         p = scaling.adjust(sim)
-        assert "lon" in p.dims
-        np.testing.assert_array_almost_equal(p.transpose(*ref.dims), ref)
+        np.testing.assert_allclose(p.isel(lon=0).transpose(*ref.dims), ref, rtol=1e-2)
 
 
 @pytest.mark.slow
@@ -348,13 +348,11 @@ class TestDQM:
         sim = timelonlatseries(apply_correction(x, trend, kind), attrs=attrs)
 
         if add_dims:
-            ref = ref.expand_dims(lat=[0, 1, 2]).chunk({"lat": 1})
             hist = hist.expand_dims(lat=[0, 1, 2]).chunk({"lat": 1})
             sim = sim.expand_dims(lat=[0, 1, 2]).chunk({"lat": 1})
-            ref_t = ref_t.expand_dims(lat=[0, 1, 2])
 
         DQM = DetrendedQuantileMapping.train(
-            ref, hist, kind=kind, group="time.month", nquantiles=5
+            ref, hist, kind=kind, group="time.month", nquantiles=5, add_dims=["lat"]
         )
         mqm = DQM.ds.af.mean(dim="quantiles")
         p = DQM.adjust(sim)
@@ -422,6 +420,29 @@ class TestDQM:
             nquantiles=50,
         )
         assert DQM.ds.sizes == {"dayofyear": 360, "quantiles": 50}
+
+    @pytest.mark.parametrize("group", ["time", "time.month"])
+    def test_adapt_freq_grouping(self, cannon_2015_rvs, random, group):
+        ref, hist, sim = cannon_2015_rvs(15000, random=random)
+
+        dqm = DetrendedQuantileMapping.train(
+            ref, hist, kind="*", group=group, adapt_freq_thresh="1 kg m-2 d-1"
+        )
+        dqm.adjust(sim)
+
+    def test_adapt_freq_time_explicit(self, cannon_2015_rvs, random):
+        ref, hist, _ = cannon_2015_rvs(15000, random=random)
+        thr = "1 kg m-2/d"
+        ref = jitter_under_thresh(ref, "0.1   kg m-2 / d")
+        hist = jitter_under_thresh(hist, "0.1 kg m-2 / d")
+        hist_ad, _, _ = adapt_freq(ref, hist, group="time", thresh=thr)
+        ADJ = DetrendedQuantileMapping.train(
+            ref, hist, kind="*", group="time", adapt_freq_thresh=thr
+        )
+        out = ADJ.adjust(hist)
+        ADJ.adapt_freq_thresh = None
+        out_ad = ADJ.adjust(hist_ad)
+        np.testing.assert_allclose(out.values, out_ad.values)
 
 
 @pytest.mark.slow
@@ -519,15 +540,11 @@ class TestQDM:
             hist = hist.chunk({"time": -1})
             sim = sim.chunk({"time": -1})
         if add_dims:
-            ref = ref.expand_dims(site=[0, 1, 2, 3, 4]).drop_vars("site")
             hist = hist.expand_dims(site=[0, 1, 2, 3, 4]).drop_vars("site")
             sim = sim.expand_dims(site=[0, 1, 2, 3, 4]).drop_vars("site")
-            sel = {"site": 0}
-        else:
-            sel = {}
 
         QDM = QuantileDeltaMapping.train(
-            ref, hist, kind=kind, group="time.month", nquantiles=40
+            ref, hist, kind=kind, group="time.month", nquantiles=40, add_dims=["site"]
         )
         p = QDM.adjust(sim, interp="linear" if kind == "+" else "nearest")
 
@@ -537,12 +554,11 @@ class TestQDM:
         expected = apply_correction(
             mon_triangular[:, np.newaxis], expected[np.newaxis, :], kind
         )
-        np.testing.assert_array_almost_equal(
-            QDM.ds.af.sel(quantiles=q, **sel), expected, 1
-        )
+        np.testing.assert_array_almost_equal(QDM.ds.af.sel(quantiles=q), expected, 1)
 
         # Test predict
-        np.testing.assert_allclose(p, ref.transpose(*p.dims), rtol=0.1, atol=0.2)
+        pp = p.isel(site=0) if add_dims else p
+        np.testing.assert_allclose(pp.transpose(*ref.dims), ref, rtol=0.1, atol=0.2)
 
     def test_seasonal(self, timelonlatseries, random):
         u = random.random(10000)
@@ -726,8 +742,7 @@ class TestQM:
         )
         ref = convert_units_to(ref, "K")
         # The idea is to have ref defined only over 1 location
-        # But sdba needs the same dimensions on ref and hist for Grouping with add_dims
-        ref = ref.where(ref.location == "Amos")
+        ref = ref.sel(location="Amos")
 
         # With add_dims, "does it run" test
         group = Grouper("time.dayofyear", window=5, add_dims=["location"])
@@ -738,7 +753,6 @@ class TestQM:
         group = Grouper("time.dayofyear", window=5)
         EQM2 = EmpiricalQuantileMapping.train(ref, hist, group=group)
         scen2 = EQM2.adjust(sim).load()
-        assert scen2.sel(location=["Kugluktuk", "Vancouver"]).isnull().all()
 
     def test_different_times_training(self, timelonlatseries, random):
         n = 10
@@ -994,6 +1008,25 @@ class TestExtremeValues:
         assert (scen2.where(exval) > EX.ds.thresh).sum() > (
             scen.where(exval) > EX.ds.thresh
         ).sum()
+
+    def test_quantified_cluster_thresh(self, gosset):
+        dsim = xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"))  # .chunk()
+        dref = xr.open_dataset(gosset.fetch("sdba/ahccd_1950-2013.nc"))  # .chunk()
+        ref = dref.sel(time=slice("1950", "2009")).pr
+        hist = dsim.sel(time=slice("1950", "2009")).pr
+        # TODO: Do we want to include standard conversions in xsdba tests?
+        # this is just convenient for now to keep those tests
+        hist = pint_multiply(hist, "1e-03 m^3/kg")
+        hist = convert_units_to(hist, ref)
+
+        EX = ExtremeValues.train(ref, hist, cluster_thresh="1 mm/day", q_thresh=0.97)
+        scen = EX.adjust(hist, hist, frac=0.000000001)
+        cluster_thresh = xr.DataArray(1, attrs={"units": "mm/d"})
+        EXQ = ExtremeValues.train(
+            ref, hist, cluster_thresh=cluster_thresh, q_thresh=0.97
+        )
+        scenQ = EXQ.adjust(hist, hist, frac=0.000000001)
+        assert (scen.values == scenQ.values).all()
 
     @pytest.mark.slow
     def test_real_data(self, gosset):

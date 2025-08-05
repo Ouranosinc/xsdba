@@ -84,6 +84,28 @@ def test_rmse(gosset):
     np.testing.assert_array_almost_equal(test, [5.4499755, 18.124086, 12.387193], 4)
 
 
+def test_rmse_nan(timeseries):
+    sim = timeseries([1, 1, 1], start="2000-01-01")
+    sim.attrs["units"] = "K"
+
+    ref = timeseries([1, 1, np.nan], start="2000-01-01")
+    ref.attrs["units"] = "K"
+
+    test = measures.rmse(sim, ref).values
+    np.testing.assert_array_almost_equal(test, [0], 4)
+
+
+def test_mae_nan(timeseries):
+    sim = timeseries([1, 1, 1], start="2000-01-01")
+    sim.attrs["units"] = "K"
+
+    ref = timeseries([1, 1, np.nan], start="2000-01-01")
+    ref.attrs["units"] = "K"
+
+    test = measures.mae(sim, ref).values
+    np.testing.assert_array_almost_equal(test, [0], 4)
+
+
 def test_mae(gosset):
     sim = (
         xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"))

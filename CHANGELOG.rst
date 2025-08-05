@@ -2,13 +2,30 @@
 Changelog
 =========
 
-`Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
-------------------------------------------------------------
+..
+    `Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
+    ------------------------------------------------------------
 
-Contributors: Trevor James Smith (:user:`Zeitsperre`), Éric Dupuis (:user:`coxipi`), Juliette Lavoie (:user:`juliettelavoie`)
+    Contributors:
+
+    Changes
+    ^^^^^^^
+    * No change.
+
+    Fixes
+    ^^^^^
+    * No change.
+
+.. _changes_0.5.0:
+
+`v0.5.0 <https://github.com/Ouranosinc/xsdba/tree/0.5.0>`_ (2025-07-21)
+-----------------------------------------------------------------------
+
+Contributors: Trevor James Smith (:user:`Zeitsperre`), Éric Dupuis (:user:`coxipi`), Juliette Lavoie (:user:`juliettelavoie`), Pascal Bourgault (:user:`aulemahal`).
 
 Changes
 ^^^^^^^
+* Make additional grouping dimensions optional for methods accepting the ``group`` argument, except ``Loci`` and ``PrincipalComponents``. (:issue:`99`, :issue:`144`, :pull:`151`).
 * Speed up import by activating `cache=True` for in numba-accelerated functions from ``xsdba.nbutils``. (:pull:`135`).
 * Added a new installation recipe (``pip install xsdba[sbck]``) for installing the `SBCK` package. (:pull:`139`):
     * Note that `SBCK` support is experimental and that the `pybind11` library must be installed prior to installing `SBCK`.
@@ -19,6 +36,10 @@ Changes
 * ``xsdba.jitter_over_thresh`` is available directly in training methods by passing the `jitter_over_thresh_value` and `jitter_over_thresh_upper_bnd`  arguments. (:pull:`110`).
 * Throw an error if `group=Grouper('5D',window)` is used with a biasadjust method other than `MBCn`.
 * ``xsdba.processing.to_additive_space`` accepts `clip_next_to_bounds`, which avoids infinities by ensuring `lower_bound < data < upper_bound`. (:issue:`164`, :pull:`165`).
+* Allow nan values in ``xsdba.measures.rmse`` and ``xsdba.measures.mae``. (:pull:`170`).
+* The adaptation of frequencies through `adapt_freq_thresh_value` is now applied in the adjusting step as well. (:pull:`160`).
+* ``xsdba.adjustment.ExtremeValues`` now accepts a DataArray for `cluster_thresh`, letting specify distinct thresholds for multiple locations. (:issue:`177`, :pull:`179`).
+* Updated minimum supported versions of `SBCK` (v1.4.2) and `numpy` (v1.25). (:pull:`180`).
 
 Fixes
 ^^^^^
@@ -30,6 +51,8 @@ Internal changes
 ^^^^^^^^^^^^^^^^
 * The `tox` and CI configurations now support the installation of `SBCK` and `Eigen3` for testing purposes. (:pull:`139`).
 * The `coveralls` tox keyword has been renamed to `coverage` to avoid confusion with the `coveralls` service. (:pull:`139`).
+* The order of arguments in the following private functions was changed: ``xsdba._adjustment.{_fit_on_cluster,_fit_cluster_and_cdf, _extremes_train_1d}``.
+* Updated the package metadata to reflect development progress and list user :user:`aulemahal` as a primary developer (:pull:`180`).
 
 .. _changes_0.4.0:
 

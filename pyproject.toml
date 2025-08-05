@@ -6,7 +6,7 @@ build-backend = "flit_core.buildapi"
 name = "xsdba"
 authors = [
   {name = "Éric Dupuis", email = "dupuis.eric@ouranos.ca"},
-  {name = "Trevor James Smith", email = "smith.trevorj@ouranos.ca"}
+  {name = "Pascal Bourgault", email = "bourgault.pascal@ouranos.ca"}
 ]
 maintainers = [
   {name = "Éric Dupuis", email = "dupuis.eric@ouranos.ca"},
@@ -14,11 +14,12 @@ maintainers = [
 ]
 readme = {file = "README.rst", content-type = "text/x-rst"}
 requires-python = ">=3.10.0"
-keywords = ["xsdba"]
+keywords = ["xsdba", "bias adjustment", "statistics", "statistical downscaling", "xarray", "xclim"]
 license = {file = "LICENSE"}
 classifiers = [
-  "Development Status :: 3 - Alpha",
+  "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
   "License :: OSI Approved :: Apache Software License",
   "Natural Language :: English",
   "Operating System :: OS Independent",
@@ -29,6 +30,7 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: Implementation :: CPython",
+  "Topic :: Scientific/Engineering :: Atmospheric Science",
   "Topic :: Scientific/Engineering :: Information Analysis",
   "Topic :: Scientific/Engineering :: Mathematics"
 ]
@@ -42,7 +44,7 @@ dependencies = [
   "filelock >=3.14.0",
   "jsonpickle >=3.1.0",
   "numba >=0.57.0",
-  "numpy >=1.24.0",
+  "numpy >=1.25.0",
   "packaging",
   "pandas >=2.2.0",
   "pint>=0.24.4",
@@ -95,10 +97,10 @@ docs = [
   "nc-time-axis >=1.4.1",
   "pooch >=1.8.0",
   "pygments",
-  "sphinx >=8.2.2",
+  "sphinx >=7.1.0,<8.2.0", # pinned until nbsphinx supports sphinx 8.2
   "sphinx-autobuild >=2024.4.16",
-  "sphinx-autodoc-typehints >=3.1.0",
-  "sphinx-codeautolink >=0.16.2",
+  "sphinx-autodoc-typehints",
+  "sphinx-codeautolink>=0.16.2",
   "sphinx-copybutton",
   "sphinx-intl",
   "sphinx-mdinclude",
@@ -111,8 +113,7 @@ extras = [
 ]
 sbck = [
   # The sbck dependency requires the "eigen3"/"libeigen3-dev" package to be installed on the system.
-  # "pybind11" is SBCK a setup dependency and should be installed prior to building the package.
-  "sbck >=1.4.0"
+  "sbck >=1.4.2"
 ]
 all = ["xsdba[dev]", "xsdba[docs]", "xsdba[extras]", "xsdba[sbck]"]
 
@@ -137,7 +138,7 @@ target-version = [
 ]
 
 [tool.bumpversion]
-current_version = "0.4.1-dev.9"
+current_version = "0.5.0"
 commit = true
 commit_args = "--no-verify"
 tag = false

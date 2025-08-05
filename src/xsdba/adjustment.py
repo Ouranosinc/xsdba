@@ -39,6 +39,7 @@ from xsdba.base import Grouper, ParametrizableWithDataset, parse_group, uses_das
 from xsdba.formatting import gen_call_string, update_history
 from xsdba.options import EXTRA_OUTPUT, OPTIONS, set_options
 from xsdba.processing import grouped_time_indexes
+from xsdba.typing import Quantified
 from xsdba.units import convert_units_to
 from xsdba.utils import (
     ADDITIVE,
@@ -542,15 +543,23 @@ class EmpiricalQuantileMapping(TrainAdjust):
             standard_name="Model quantiles",
             long_name="Quantiles of model on the reference period",
         )
-        return ds, {"group": group, "kind": kind}
+        if adapt_freq_thresh is None:
+            ds = ds.drop_vars(["P0_ref", "P0_hist", "pth"])
+
+        return ds, {
+            "group": group,
+            "kind": kind,
+            "adapt_freq_thresh": adapt_freq_thresh,
+        }
 
     def _adjust(self, sim, interp="nearest", extrapolation="constant"):
         return qm_adjust(
-            xr.Dataset({"af": self.ds.af, "hist_q": self.ds.hist_q, "sim": sim}),
+            self.ds.assign(sim=sim),
             group=self.group,
             interp=interp,
             extrapolation=extrapolation,
             kind=self.kind,
+            adapt_freq_thresh=self.adapt_freq_thresh,
         ).scen
 
 
@@ -645,6 +654,8 @@ class DetrendedQuantileMapping(TrainAdjust):
             jitter_over_thresh_value=jitter_over_thresh_value,
             jitter_over_thresh_upper_bnd=jitter_over_thresh_upper_bnd,
         )
+        if adapt_freq_thresh is None:
+            ds = ds.drop_vars(["P0_ref", "P0_hist", "pth"])
 
         ds.af.attrs.update(
             standard_name="Adjustment factors",
@@ -658,7 +669,11 @@ class DetrendedQuantileMapping(TrainAdjust):
             standard_name="Scaling factor",
             description="Scaling factor making the mean of hist match the one of hist.",
         )
-        return ds, {"group": group, "kind": kind}
+        return ds, {
+            "group": group,
+            "kind": kind,
+            "adapt_freq_thresh": adapt_freq_thresh,
+        }
 
     def _adjust(
         self,
@@ -674,6 +689,7 @@ class DetrendedQuantileMapping(TrainAdjust):
             detrend=detrend,
             group=self.group,
             kind=self.kind,
+            adapt_freq_thresh=self.adapt_freq_thresh,
         ).scen
         # Detrending needs units.
         scen.attrs["units"] = sim.units
@@ -726,15 +742,17 @@ class QuantileDeltaMapping(EmpiricalQuantileMapping):
 
     def _adjust(self, sim, interp="nearest", extrapolation="constant"):
         out = qdm_adjust(
-            xr.Dataset({"sim": sim, "af": self.ds.af, "hist_q": self.ds.hist_q}),
+            self.ds.assign(sim=sim),
             group=self.group,
             interp=interp,
             extrapolation=extrapolation,
             kind=self.kind,
+            adapt_freq_thresh=self.adapt_freq_thresh,
         )
         if OPTIONS[EXTRA_OUTPUT]:
             out.sim_q.attrs.update(long_name="Group-wise quantiles of `sim`.")
             return out
+
         return out.scen
 
 
@@ -753,7 +771,7 @@ class ExtremeValues(TrainAdjust):
     ----------
     Train step :
 
-    cluster_thresh : Quantity (str with units)
+    cluster_thresh : Quantified (str with units or DataArray with units)
         The threshold value for defining clusters.
     q_thresh : float
         The quantile of "extreme" values, [0, 1[. Defaults to 0.95.
@@ -826,11 +844,16 @@ class ExtremeValues(TrainAdjust):
         ref: xr.DataArray,
         hist: xr.DataArray,
         *,
-        cluster_thresh: str,
+        cluster_thresh: Quantified,
         ref_params: xr.Dataset | None = None,
         q_thresh: float = 0.95,
     ):
         cluster_thresh = convert_units_to(cluster_thresh, ref)
+
+        if np.isscalar(cluster_thresh):
+            cluster_thresh = xr.DataArray(cluster_thresh).assign_attrs(
+                {"units": ref.units}
+            )
 
         # Approximation of how many "quantiles" values we will get:
         N = (1 - q_thresh) * ref.time.size * 1.05  # extra padding for safety
@@ -843,10 +866,10 @@ class ExtremeValues(TrainAdjust):
                     "ref": ref,
                     "hist": hist,
                     "ref_params": ref_params or np.float32(np.nan),
+                    "cluster_thresh": cluster_thresh,
                 }
             ),
             q_thresh=q_thresh,
-            cluster_thresh=cluster_thresh,
             dist=stats.genpareto,
             quantiles=np.arange(int(N)),
             group="time",
@@ -864,8 +887,13 @@ class ExtremeValues(TrainAdjust):
             long_name=f"{q_thresh * 100}th percentile extreme value threshold",
             description=f"Mean of the {q_thresh * 100}th percentile of large values (x > {cluster_thresh}) of ref and hist.",
         )
+        ds["cluster_thresh"] = cluster_thresh
+        ds.cluster_thresh.attrs.update(
+            long_name=f"Cluster threshold",
+            description=f"The threshold value for defining clusters.",
+        )
 
-        return ds.drop_vars(["quantiles"]), {"cluster_thresh": cluster_thresh}
+        return ds.drop_vars(["quantiles"]), {}
 
     def _adjust(
         self,
@@ -886,7 +914,6 @@ class ExtremeValues(TrainAdjust):
 
         scen = extremes_adjust(
             ds.assign(sim=sim, scen=scen),
-            cluster_thresh=self.cluster_thresh,
             dist=stats.genpareto,
             frac=frac,
             power=power,
