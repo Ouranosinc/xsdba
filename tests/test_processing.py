@@ -342,6 +342,34 @@ def test_to_additive_clipping(timeseries):
     assert np.isfinite(hurslogit).all()
 
 
+def test_to_additive_clipping_float32(timeseries):
+    # log
+    pr = timeseries(np.array([0]), units="kg m^-2 s^-1").astype(np.float32)
+    prlog = to_additive_space(
+        pr, lower_bound="0 kg m^-2 s^-1", trans="log", clip_next_to_bounds=True
+    )
+    assert np.isfinite(prlog).all()
+
+    with xr.set_options(keep_attrs=True):
+        pr1 = pr + 1
+    lower_bound = "1 kg m^-2 s^-1"
+    prlog2 = to_additive_space(
+        pr1, trans="log", lower_bound=lower_bound, clip_next_to_bounds=True
+    )
+    assert np.isfinite(prlog2).all()
+
+    # logit
+    hurs = timeseries(np.array([0, 100]), units="%").astype(np.float32)
+    hurslogit = to_additive_space(
+        hurs,
+        lower_bound="0 %",
+        trans="logit",
+        upper_bound="100 %",
+        clip_next_to_bounds=True,
+    )
+    assert np.isfinite(hurslogit).all()
+
+
 def test_from_additive(timeseries):
     # log
     pr = timeseries(np.array([0, 1e-5, 1, np.e**10]), units="mm/d")

@@ -603,7 +603,7 @@ def to_additive_space(
     if clip_next_to_bounds:
         if (
             (data < lower_bound).any() or (data > (upper_bound or np.nan)).any()
-        ) and clip_next_to_bounds == "strict":
+        ) and clip_next_to_bounds != "permissive":
             raise ValueError(
                 "The input dataset contains values outside of the range [lower_bound, upper_bound] "
                 "(with upper_bound given by infinity if it is not specified). Clipping the values to the range "
