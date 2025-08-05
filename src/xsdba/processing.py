@@ -528,7 +528,7 @@ def to_additive_space(
     lower_bound: str,
     upper_bound: str | None = None,
     trans: str = "log",
-    clip_next_to_bounds: bool = False,
+    clip_next_to_bounds: str = False,
 ):
     r"""
     Transform a non-additive variable into an additive space by the means of a log or logit transformation.
@@ -548,9 +548,10 @@ def to_additive_space(
         The data should only have values strictly smaller than this bound.
     trans : {'log', 'logit'}
         The transformation to use. See notes.
-    clip_next_to_bounds : bool
-        If `True`, values are clipped to ensure `data > lower_bound`  and `data < upper_bound` (if specified).
-        Defaults to `False`. `data` must be in the range [lower_bound, upper_bound], else an error is thrown.
+    clip_next_to_bounds : {False, 'strict', 'permissive'}
+        If not False, values are clipped to ensure `data > lower_bound`  and `data < upper_bound` (if specified).
+        Defaults to `False`. If 'strict`, `data` must be in the range [lower_bound, upper_bound], else an error is thrown.
+        If 'permissive', `data` will be clipped no matter the maximum and minimum.
 
     See Also
     --------
@@ -600,7 +601,9 @@ def to_additive_space(
 
     # clip bounds
     if clip_next_to_bounds:
-        if (data < lower_bound).any() or (data > (upper_bound or np.nan)).any():
+        if (
+            (data < lower_bound).any() or (data > (upper_bound or np.nan)).any()
+        ) and clip_next_to_bounds == "strict":
             raise ValueError(
                 "The input dataset contains values outside of the range [lower_bound, upper_bound] "
                 "(with upper_bound given by infinity if it is not specified). Clipping the values to the range "
@@ -608,11 +611,11 @@ def to_additive_space(
                 "if your input dataset has unphysical values."
             )
 
-        low = np.nextafter(lower_bound, np.inf, dtype=np.float32)
+        low = np.nextafter(lower_bound, np.inf, dtype=np.float32).astype(float)
         high = (
             None
             if upper_bound is None
-            else np.nextafter(upper_bound, -np.inf, dtype=np.float32)
+            else np.nextafter(upper_bound, -np.inf, dtype=np.float32).astype(float)
         )
         data = data.clip(low, high)
 
