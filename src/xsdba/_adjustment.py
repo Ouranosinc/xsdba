@@ -152,9 +152,14 @@ def dqm_train(
     # this might be empty, in which case this does nothing
     extra_dim = list(set(sim_dim) - set(ref_dim))
     ref = ds.ref.expand_dims({d: [0] for d in extra_dim})
-    # modifying ds in-place and re-assign the unmodified ref
+    hist = ds.hist
+
+    # This ensures we can merge ref and hist even if they have
+    # different sizes for extra_dim
+    ref = ref.assign_coords({d: ref[d] for d in ref.dims})
+    hist = hist.assign_coords({d: hist[d] for d in hist.dims})
     ds = _preprocess_dataset(
-        xr.Dataset({"ref": ref, "hist": ds.hist}),
+        xr.Dataset({"ref": ref, "hist": hist}),
         sim_dim,
         adapt_freq_thresh,
         jitter_under_thresh_value,
@@ -245,9 +250,14 @@ def eqm_train(
     # this might be empty, in which case this does nothing
     extra_dim = list(set(sim_dim) - set(ref_dim))
     ref = ds.ref.expand_dims({d: [0] for d in extra_dim})
-    # modifying ds in-place and re-assign the unmodified ref
+    hist = ds.hist
+
+    # This ensures we can merge ref and hist even if they have
+    # different sizes for extra_dim
+    ref = ref.assign_coords({d: ref[d] for d in ref.dims})
+    hist = hist.assign_coords({d: hist[d] for d in hist.dims})
     ds = _preprocess_dataset(
-        xr.merge([ref, ds.hist], compat="override"),
+        xr.Dataset({"ref": ref, "hist": hist}),
         sim_dim,
         adapt_freq_thresh,
         jitter_under_thresh_value,
@@ -1019,8 +1029,10 @@ def _extremes_train_1d(ref, hist, ref_params, cluster_thresh, *, q_thresh, dist,
     af = hist_in_ref / hist[Pcommon]
     # sort them in Px order, and pad to have N values.
     order = np.argsort(Px_hist)
-    px_hist = np.pad(Px_hist[order], ((0, N - af.size),), constant_values=np.nan)
-    af = np.pad(af[order], ((0, N - af.size),), constant_values=np.nan)
+    px_hist = np.pad(
+        Px_hist[order], ((0, max(0, N - af.size)),), constant_values=np.nan
+    )
+    af = np.pad(af[order], ((0, max(0, N - af.size)),), constant_values=np.nan)
 
     return px_hist, af, thresh
 
