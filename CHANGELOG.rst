@@ -14,7 +14,9 @@ Changes
 
 Fixes
 ^^^^^
+* ``xsdba.adjustment.ExtremeValues`` throws an error with a clear message when the clustered precipitation exceed `1-q_thresh`. This happens when `cluster_thresh` is too small (still in the bulk of the distribution). (:issue:`177`, :pull:`184`).
 * Fix `adapt_freq` processing in training when ``xsdba.Grouper`` uses `add_dims`. (:issue:`182`, :pull:`183`).
+
 
 .. _changes_0.5.0:
 
