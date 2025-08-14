@@ -1029,10 +1029,8 @@ def _extremes_train_1d(ref, hist, ref_params, cluster_thresh, *, q_thresh, dist,
     af = hist_in_ref / hist[Pcommon]
     # sort them in Px order, and pad to have N values.
     order = np.argsort(Px_hist)
-    px_hist = np.pad(
-        Px_hist[order], ((0, max(0, N - af.size)),), constant_values=np.nan
-    )
-    af = np.pad(af[order], ((0, max(0, N - af.size)),), constant_values=np.nan)
+    px_hist = np.pad(Px_hist[order], ((0, N - af.size),), constant_values=np.nan)
+    af = np.pad(af[order], ((0, N - af.size),), constant_values=np.nan)
 
     return px_hist, af, thresh
 
