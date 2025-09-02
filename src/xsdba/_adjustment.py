@@ -1008,6 +1008,12 @@ def _extremes_train_1d(ref, hist, ref_params, cluster_thresh, *, q_thresh, dist,
     af = hist_in_ref / hist[Pcommon]
     # sort them in Px order, and pad to have N values.
     order = np.argsort(Px_hist)
+    if af.size > N:
+        raise ValueError(
+            "The number of precipitations part of a cluster is larger than `q_thresh`, which "
+            "likely indicates that `cluster_thresh` is too small for `ref` and/or `hist`, i.e."
+            "`cluster_thresh` is still in the bulk of the distribution."
+        )
     px_hist = np.pad(Px_hist[order], ((0, N - af.size),), constant_values=np.nan)
     af = np.pad(af[order], ((0, N - af.size),), constant_values=np.nan)
 
