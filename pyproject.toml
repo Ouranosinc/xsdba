@@ -58,8 +58,8 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
   # Dev tools and testing
-  "black ==25.1.0",
-  "blackdoc ==0.4.1",
+  "black ==25.9.0",
+  "blackdoc ==0.4.3",
   "bump-my-version >=0.30.1",
   "codespell >=2.4.1",
   "coverage >=7.5.0",
