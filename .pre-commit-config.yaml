@@ -21,7 +21,7 @@ repos:
       - id: check-yaml
         args: [ '--allow-multiple-documents' ]
   - repo: https://github.com/pappasam/toml-sort
-    rev: v0.24.2
+    rev: v0.24.3
     hooks:
       - id: toml-sort-fix
   - repo: https://github.com/adrienverge/yamllint.git
@@ -41,17 +41,17 @@ repos:
       - id: rst-inline-touching-normal
       - id: text-unicode-replacement-char
   - repo: https://github.com/psf/black-pre-commit-mirror
-    rev: 25.1.0
+    rev: 25.9.0
     hooks:
       - id: black
         exclude: ^docs/
   - repo: https://github.com/PyCQA/isort
-    rev: 6.0.1
+    rev: 6.1.0
     hooks:
       - id: isort
         exclude: ^docs/
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.12.11
+    rev: v0.13.3
     hooks:
       - id: ruff
         args: [ '--fix' ]
@@ -85,7 +85,7 @@ repos:
         files: '.ipynb'
         args: [ '--extra-keys=metadata.kernelspec' ]
   - repo: https://github.com/keewis/blackdoc
-    rev: v0.4.1
+    rev: v0.4.3
     hooks:
       - id: blackdoc
         additional_dependencies: [ 'black==25.1.0' ]
@@ -102,12 +102,12 @@ repos:
       - id: numpydoc-validation
         exclude: ^docs/|^tests/
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0.33.3
+    rev: 0.34.0
     hooks:
       - id: check-github-workflows
       - id: check-readthedocs
   - repo: https://github.com/woodruffw/zizmor-pre-commit
-    rev: v1.12.1
+    rev: v1.14.2
     hooks:
       - id: zizmor
         args: [ '--config=.zizmor.yml' ]
