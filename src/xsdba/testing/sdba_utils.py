@@ -1,7 +1,6 @@
 """Testing utilities for xsdba (bias adjustment)"""
 
 from __future__ import annotations
-
 import collections
 
 import numpy as np
@@ -10,6 +9,7 @@ import xarray as xr
 from scipy.stats import gamma
 
 from xsdba.utils import equally_spaced_nodes
+
 
 __all__ = ["cannon_2015_dist", "cannon_2015_rvs", "timelonlatseries"]
 

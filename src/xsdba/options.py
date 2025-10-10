@@ -3,8 +3,8 @@ Global or contextual options for xsdba, similar to xarray.set_options.
 """
 
 from __future__ import annotations
-
 from collections.abc import Callable
+
 
 EXTRA_OUTPUT = "extra_output"
 AS_DATASET = "as_dataset"
@@ -43,7 +43,6 @@ class set_options:
     >>> ds = xr.open_dataset(path_to_tas_file).tas
     >>> with xsdba.set_options(extra_output=True):
     ...     out = xsdba.MBCn.train(ref, hist)
-    ...
 
     Or to set global options:
 

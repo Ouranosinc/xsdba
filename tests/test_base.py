@@ -6,7 +6,6 @@ import numpy as np
 import pytest
 import xarray as xr
 
-from xsdba import set_options
 from xsdba.base import Grouper, Parametrizable, map_blocks, map_groups
 
 
@@ -16,17 +15,12 @@ class ATestSubClass(Parametrizable):
 
 def test_param_class():
     gr = Grouper(group="time.month")
-    in_params = dict(
-        anint=4, abool=True, astring="a string", adict={"key": "val"}, group=gr
-    )
+    in_params = dict(anint=4, abool=True, astring="a string", adict={"key": "val"}, group=gr)
     obj = Parametrizable(**in_params)
 
     assert obj.parameters == in_params
 
-    assert repr(obj).startswith(
-        "Parametrizable(anint=4, abool=True, astring='a string', adict={'key': 'val'}, "
-        "group=Grouper("
-    )
+    assert repr(obj).startswith("Parametrizable(anint=4, abool=True, astring='a string', adict={'key': 'val'}, group=Grouper(")
 
     s = jsonpickle.encode(obj)
     obj2 = jsonpickle.decode(s)  # noqa: S301
@@ -121,9 +115,7 @@ def test_grouper_apply(timeseries, use_dask, group, n):
     if group != "time":
         win_grouper = Grouper(group, window=5)
         out = win_grouper.apply("mean", da0)
-        rolld = da0.rolling({win_grouper.dim: 5}, center=True).construct(
-            window_dim="window"
-        )
+        rolld = da0.rolling({win_grouper.dim: 5}, center=True).construct(window_dim="window")
         if grouper.prop != "group":
             exp = rolld.groupby(group).mean(dim=[win_grouper.dim, "window"])
         else:
@@ -165,9 +157,7 @@ def test_grouper_apply(timeseries, use_dask, group, n):
     def normalize_from_precomputed(grpds, dim=None):
         return (grpds.da0 / grpds.da1_mean).mean(dim=dim)
 
-    out = grouper.apply(
-        normalize_from_precomputed, {"da0": da0, "da1_mean": out.da1_mean}
-    ).isel(lat=0)
+    out = grouper.apply(normalize_from_precomputed, {"da0": da0, "da1_mean": out.da1_mean}).isel(lat=0)
     if grouper.prop == "group":
         exp = normed.mean("time").isel(lat=0)
     else:

@@ -21,9 +21,7 @@ class TestUnits:
 
 
 class TestConvertUnitsTo:
-    @pytest.mark.parametrize(
-        "alias", [units("Celsius"), units("degC"), units("C"), units("deg_C")]
-    )
+    @pytest.mark.parametrize("alias", [units("Celsius"), units("degC"), units("C"), units("deg_C")])
     def test_temperature_aliases(self, alias):
         assert alias == units("celsius")
 
@@ -93,7 +91,6 @@ class TestHarmonizeUnits:
 
     def test_wrong_input_catched_by_decorator(self):
         da = xr.DataArray([1, 2], attrs={"units": "K"})
-        thr = "1 K"
 
         @harmonize_units(["d", "t"])
         def gt(d, t):

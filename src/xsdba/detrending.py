@@ -172,9 +172,7 @@ class PolyDetrend(BaseDetrend):
 
     def __init__(self, group="time", kind=ADDITIVE, degree=4, preserve_mean=False):
         """Init."""
-        super().__init__(
-            group=group, kind=kind, degree=degree, preserve_mean=preserve_mean
-        )
+        super().__init__(group=group, kind=kind, degree=degree, preserve_mean=preserve_mean)
 
     def _get_trend(self, da):
         """Trend."""
@@ -265,9 +263,7 @@ class LoessDetrend(BaseDetrend):
 
 
 @map_groups(trend=[Grouper.DIM])
-def _loessdetrend_get_trend(
-    da, *, dim, f, niter, d, weights, equal_spacing, skipna, kind
-):
+def _loessdetrend_get_trend(da, *, dim, f, niter, d, weights, equal_spacing, skipna, kind):
     """Loessdetrend."""
     if len(dim) > 1:
         da = da.mean(dim[1:])
@@ -313,20 +309,14 @@ class RollingMeanDetrend(BaseDetrend):
     As for the :py:class:`LoessDetrend` detrending, important boundary effects are to be expected.
     """
 
-    def __init__(
-        self, group="time", kind=ADDITIVE, win=30, weights=None, min_periods=None
-    ):
+    def __init__(self, group="time", kind=ADDITIVE, win=30, weights=None, min_periods=None):
         """Init."""
         if weights is not None:
             weights = xr.DataArray(weights, dims=("window",))
             weights = weights / weights.sum()
             if min_periods is not None:
-                raise NotImplementedError(
-                    "Setting both `min_periods` and `weights` is not implemented yet."
-                )
-        super().__init__(
-            group=group, kind=kind, win=win, weights=weights, min_periods=min_periods
-        )
+                raise NotImplementedError("Setting both `min_periods` and `weights` is not implemented yet.")
+        super().__init__(group=group, kind=kind, win=win, weights=weights, min_periods=min_periods)
 
     def _get_trend(self, da):
         """Trend."""
