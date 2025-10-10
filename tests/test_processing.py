@@ -26,7 +26,6 @@ from xsdba.processing import (
     unstack_variables,
     unstandardize,
 )
-from xsdba.units import convert_units_to, pint_multiply, units
 
 
 def test_jitter_both():
@@ -147,14 +146,12 @@ def test_adapt_freq_adjust(gosset):
     assert ((hist <= 1).sum(dim="time") > (ref <= 1).sum(dim="time")).all()
 
     outh = _adapt_freq.func(xr.Dataset(dict(ref=ref, sim=hist)), dim="time", thresh=1)
-    hist_ad = outh.sim_ad
     outs = _adapt_freq.func(
         xr.merge([sim.to_dataset(name="sim"), outh]),
         dim="time",
         thresh=1,
     )
     sim_ad = outs.sim_ad
-    sim_f = sim.loc[future]
     sim_ad_f = sim_ad.loc[future]
     assert ((sim_ad_f <= 1).sum(dim="time") < (sim_ad <= 1).sum(dim="time")).all()
 

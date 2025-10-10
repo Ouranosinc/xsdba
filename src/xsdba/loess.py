@@ -5,7 +5,6 @@ LOESS Smoothing Submodule
 """
 
 from __future__ import annotations
-
 from collections.abc import Callable
 from warnings import warn
 
@@ -251,7 +250,7 @@ def loess_smoothing(
         if equal_spacing is None:
             equal_spacing = True
     elif equal_spacing:
-        warn("The equal spacing optimization was requested, but the x axis is not equally spaced. Strange results might occur.")
+        warn("The equal spacing optimization was requested, but the x axis is not equally spaced. Strange results might occur.", stacklevel=2)
     if equal_spacing:
         dx = float(x[1] - x[0])
     else:

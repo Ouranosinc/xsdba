@@ -6,7 +6,6 @@ import numpy as np
 import pytest
 import xarray as xr
 
-from xsdba import set_options
 from xsdba.base import Grouper, Parametrizable, map_blocks, map_groups
 
 

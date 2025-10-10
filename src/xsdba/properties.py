@@ -13,7 +13,6 @@ This module depends on `xclim`. Run `pip install xsdba['extras']` to install it.
 """
 
 from __future__ import annotations
-
 from collections.abc import Sequence
 
 import numpy as np
@@ -924,7 +923,7 @@ def _bivariate_spell_length_distribution(
 
         conds = []
         masks = []
-        for da, thresh, op, method in zip([ds.da1, ds.da2], threshs, ops, methods):
+        for da, thresh, op, method in zip([ds.da1, ds.da2], threshs, ops, methods, strict=False):
             masks.append(~(da.isel({dim: 0}).isnull()).drop_vars(dim))  # mask of the ocean with NaNs
             if method == "quantile":
                 thresh = da.quantile(thresh, dim=dim).drop_vars("quantile")

@@ -8,16 +8,14 @@ The user-facing, metadata-handling functions should be defined in processing.py.
 """
 
 from __future__ import annotations
-
 from collections.abc import Sequence
 
 import numpy as np
 import xarray as xr
 
-import xsdba
 from xsdba import nbutils as nbu
 from xsdba.base import Grouper, map_groups
-from xsdba.utils import ADDITIVE, apply_correction, ecdf, get_correction, invert, rank
+from xsdba.utils import ADDITIVE, apply_correction, ecdf, invert, rank
 
 
 @map_groups(

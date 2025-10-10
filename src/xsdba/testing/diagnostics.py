@@ -7,7 +7,6 @@ or to aid in creating figures illustrating the behaviour of SDBA methods and uti
 """
 
 from __future__ import annotations
-
 import warnings
 
 import numpy as np
@@ -21,10 +20,11 @@ from xsdba.adjustment import (
 from xsdba.processing import adapt_freq
 from xsdba.testing.sdba_utils import cannon_2015_rvs, timelonlatseries
 
+
 try:
     from matplotlib import pyplot as plt
 except ModuleNotFoundError:
-    warnings.warn("Matplotlib not found, plot-generating functions will not work.")
+    warnings.warn("Matplotlib not found, plot-generating functions will not work.", stacklevel=2)
     plt = None
 
 

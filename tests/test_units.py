@@ -91,7 +91,6 @@ class TestHarmonizeUnits:
 
     def test_wrong_input_catched_by_decorator(self):
         da = xr.DataArray([1, 2], attrs={"units": "K"})
-        thr = "1 K"
 
         @harmonize_units(["d", "t"])
         def gt(d, t):

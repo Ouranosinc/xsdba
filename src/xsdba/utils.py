@@ -1,9 +1,9 @@
 """Testing utilities for xsdba (test data management)"""
 
 from __future__ import annotations
-
 import itertools
 from collections.abc import Callable
+from typing import Any
 from warnings import warn
 
 import bottleneck as bn
@@ -23,6 +23,7 @@ from xsdba.base import (
     parse_group,
 )
 from xsdba.nbutils import _extrapolate_on_quantiles
+
 
 MULTIPLICATIVE = "*"
 ADDITIVE = "+"
@@ -225,7 +226,8 @@ def broadcast(
                 interp = "linear"
                 warn(
                     "Broadcasting operations in multiple dimensions can only be done with linear and nearest-neighbor"
-                    " interpolation, not cubic. Using linear."
+                    " interpolation, not cubic. Using linear.",
+                    stacklevel=2,
                 )
 
             grouped = grouped.interp(sel, method=interp).astype(grouped.dtype)
@@ -237,7 +239,9 @@ def broadcast(
     if group.prop == "group" and "group" in grouped.dims:
         grouped = grouped.squeeze("group", drop=True)
     if x.chunks is not None:
-        grouped = grouped.chunk({dim: chunk for dim, chunk in zip(x.dims, x.chunks) if dim in [sel_idx.dims[0] for sel_idx in sel.values()]})
+        grouped = grouped.chunk(
+            {dim: chunk for dim, chunk in zip(x.dims, x.chunks, strict=False) if dim in [sel_idx.dims[0] for sel_idx in sel.values()]}
+        )
     return grouped
 
 
@@ -348,6 +352,7 @@ def _interp_on_quantiles_1D(newx, oldx, oldy, method, extrap):  # noqa: N802
         warn(
             "All-nan slice encountered in interp_on_quantiles",
             category=RuntimeWarning,
+            stacklevel=2,
         )
         return out
 
@@ -377,6 +382,7 @@ def _interp_on_quantiles_2d(newx, newg, oldx, oldy, oldg, method, extrap):
         warn(
             "All-nan slice encountered in interp_on_quantiles",
             category=RuntimeWarning,
+            stacklevel=2,
         )
         return out
     out[~mask_new] = griddata(
@@ -892,16 +898,6 @@ def rand_rot_matrix(crd: xr.DataArray, num: int = 1, new_dim: str | None = None)
         .astype("float32")
         .assign_attrs({"crd_dim": dim, "new_dim": new_dim})
     )
-
-
-def copy_all_attrs(ds: xr.Dataset | xr.DataArray, ref: xr.Dataset | xr.DataArray):
-    """Copy all attributes of ds to ref, including attributes of shared coordinates, and variables in the case of Datasets."""
-    ds.attrs.update(ref.attrs)
-    extras = ds.variables if isinstance(ds, xr.Dataset) else ds.coords
-    others = ref.variables if isinstance(ref, xr.Dataset) else ref.coords
-    for name, var in extras.items():
-        if name in others:
-            var.attrs.update(ref[name].attrs)
 
 
 def _pairwise_spearman(da, dims):

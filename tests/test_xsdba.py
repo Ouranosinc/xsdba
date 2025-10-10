@@ -2,7 +2,6 @@
 """Tests for `xsdba` package."""
 
 from __future__ import annotations
-
 import pathlib
 from importlib.util import find_spec
 

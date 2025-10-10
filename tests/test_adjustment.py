@@ -582,7 +582,7 @@ class TestQDM:
 
         mean = np.trapz(pdf * pu, pu)
         mom2 = np.trapz(pdf * pu**2, pu)
-        std = np.sqrt(mom2 - mean**2)
+        std = np.sqrt(mom2 - mean**2)  # noqa: F841 # FIXME: Not used
         bc_sim = scends.scen
         np.testing.assert_almost_equal(bc_sim.mean(), 41.5, 1)
         np.testing.assert_almost_equal(bc_sim.std(), 16.7, 0)
@@ -610,7 +610,7 @@ class TestQM:
         y = yd.ppf(u)
 
         # Test train
-        attrs = {"units": units, "kind": kind}
+        attrs = {"units": units, "kind": kind}  # noqa: F841 # FIXME: Not used
 
         hist = sim = timelonlatseries(x, attrs={"units": units})
         ref = timelonlatseries(y, attrs={"units": units})
@@ -714,7 +714,7 @@ class TestQM:
         # Without, sanity test.
         group = Grouper("time.dayofyear", window=5)
         EQM2 = EmpiricalQuantileMapping.train(ref, hist, group=group)
-        scen2 = EQM2.adjust(sim).load()
+        EQM2.adjust(sim).load()
 
     def test_different_times_training(self, timelonlatseries, random):
         n = 10

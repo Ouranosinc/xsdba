@@ -6,17 +6,14 @@ Pre- and Post-Processing Submodule
 """
 
 from __future__ import annotations
-
 import types
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import cast
 
-import cftime
 import dask.array as dsk
 import numpy as np
 import xarray as xr
 from scipy.fft import dctn, idctn
-from xarray.core import dtypes
 from xarray.core.utils import get_temp_dimname
 
 from xsdba._processing import _adapt_freq, _normalize, _reordering
@@ -26,10 +23,10 @@ from xsdba.nbutils import _escore
 from xsdba.units import (
     convert_units_to,
     harmonize_units,
-    normalized_wavenumber_to_wavelength,
     wavelength_to_normalized_wavenumber,
 )
 from xsdba.utils import ADDITIVE, copy_all_attrs
+
 
 __all__ = [
     "adapt_freq",
@@ -498,7 +495,7 @@ def _get_number_of_elements_by_year(time):
 
     Only calendar with uniform year lengths are supported : 360_day, noleap, all_leap.
     """
-    mult, freq, _, _ = parse_offset(xr.infer_freq(time))
+    mult, freq, _, _ = parse_offset(xr.infer_freq(time))  # FIXME: Which parse_offset? xclim or xsdba?
     days_in_year = time.dt.days_in_year.max()
     elements_in_year = {"Q": 4, "M": 12, "D": days_in_year, "h": days_in_year * 24}
     N_in_year = elements_in_year.get(freq, 1) / mult
@@ -1025,13 +1022,13 @@ def _dctn_filter(arr, mask):
 
 
 def spectral_filter(
-    da,
-    lam_long,
-    lam_short,
-    dims=["lat", "lon"],
-    delta=None,
-    mask_func=cos2_mask_func,
-    alpha_low_high=None,
+    da: xr.DataArray,
+    lam_long: str | None = None,
+    lam_short: str | None = None,
+    dims: str | list[str] | None = None,
+    delta: str | None = None,
+    mask_func: Callable = cos2_mask_func,
+    alpha_low_high: tuple[float, float] | None = None,
 ):
     """
     Filter coefficients of a Discrete Cosine Fourier transform between given thresholds and invert back to real space.
@@ -1040,17 +1037,17 @@ def spectral_filter(
     ----------
     da : xr.DataArray
         Input physical field.
-    lam_long : str | optional
+    lam_long : str, optional
         Long wavelength threshold.
-    lam_short : str | optional
+    lam_short : str, optional
         Short wavelength threshold.
-    dims: list
+    dims : list, optional
         Dimensions on which to perform the spectral filter.
-    delta: str, Optional
+    delta : str, Optional
         Nominal resolution of the grid. A string with units, e.g. `delta=="55.5 km"`. This converts `alpha` to `wavelength`.
         If `delta` is not specified, a dimension named `rlat` or `lat` is expected to be in `da` and will be used to
         deduce an appropriate length scale.
-    mask_func: function
+    mask_func : Callable
         Function used to create the mask. Default is `cos2_mask_func`, which applies a cosine squared filter
         to Fourier coefficients in momentum space.
     alpha_low_high : tuple[float,float] | optional
@@ -1071,7 +1068,10 @@ def spectral_filter(
     ----------
     :cite:cts:`denis_spectral_2002`
     """
-    dims = [dims] if isinstance(dims, str) else dims
+    if dims is None:
+        dims = ["lat", "lon"]
+    if isinstance(dims, str):
+        dims = [dims]
 
     if isinstance(da, xr.Dataset):
         out = da.copy()

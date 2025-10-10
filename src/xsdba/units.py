@@ -5,7 +5,6 @@ Units Handling Submodule
 """
 
 from __future__ import annotations
-
 import inspect
 from functools import wraps
 from typing import cast
@@ -19,6 +18,7 @@ import xarray as xr
 
 from xsdba.base import parse_offset
 from xsdba.typing import Quantified
+
 
 __all__ = [
     "convert_units_to",
@@ -175,7 +175,7 @@ def units2pint(
     ]
     possibilities = [f"{d} {u}" for d in degree_ex for u in unit_ex]
     if unit.strip() in possibilities:
-        raise ValidationError("Remove white space from temperature units, e.g. use `degC`.")
+        raise ValidationError("Remove white space from temperature units, e.g. use `degC`.")  # FIXME: ValidationError not defined
 
     pu = units.parse_units(unit)
     if metadata == "temperature: difference":
@@ -363,9 +363,8 @@ def extract_units(arg):
 
 def _add_default_kws(params_dict, params_to_check, func):
     """Combine args and kwargs into a dict."""
-    args_dict = {}
     signature = inspect.signature(func)
-    for ik, (k, v) in enumerate(signature.parameters.items()):
+    for k, v in signature.parameters.items():
         if k not in params_dict and k in params_to_check:
             if v.default != inspect._empty:
                 params_dict[k] = v.default
@@ -388,7 +387,7 @@ def harmonize_units(params_to_check):
                     f"`{func.__name__}`'s arguments: `{params_func}` (arguments that can contain units)"
                 )
             arg_names = inspect.getfullargspec(func).args
-            args_dict = dict(zip(arg_names, args))
+            args_dict = dict(zip(arg_names, args, strict=False))
             params_dict = args_dict | {k: v for k, v in kwargs.items()}
             params_dict = {k: v for k, v in params_dict.items() if k in params_to_check}
             params_dict = _add_default_kws(params_dict, params_to_check, func)

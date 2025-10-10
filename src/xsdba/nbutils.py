@@ -6,7 +6,6 @@ Numba-accelerated Utilities
 """
 
 from __future__ import annotations
-
 import warnings
 from collections.abc import Hashable, Sequence
 
@@ -14,6 +13,7 @@ import numpy as np
 from numba import boolean, float32, float64, guvectorize, njit
 from xarray import DataArray, apply_ufunc
 from xarray.core import utils
+
 
 try:
     from fastnanquantile.xrcompat import xr_apply_nanquantile
@@ -248,7 +248,8 @@ def quantile(da: DataArray, q: np.ndarray, dim: str | Sequence[Hashable]) -> Dat
             warnings.warn(
                 "`fastnanquantile` is installed and would thus normally be used by default. However, it doesn't "
                 f"work with more than 1000 quantiles (`len(q) = {len(q)}` was given). `xsdba` built-in functions will "
-                "be used instead."
+                "be used instead.",
+                stacklevel=2,
             )
 
     qc = np.array(q, dtype=da.dtype)

@@ -1,7 +1,6 @@
 """Helper functions for testing purposes."""
 
 from __future__ import annotations
-
 import collections
 
 import numpy as np
@@ -10,6 +9,7 @@ import xarray as xr
 from scipy.stats import gamma
 
 from xsdba.utils import equally_spaced_nodes
+
 
 __all__ = [
     "test_cannon_2015_dist",
@@ -49,7 +49,7 @@ def test_timelonlatseries(values, attrs=None, start="2000-01-01"):
     """Create a DataArray with time, lon and lat dimensions."""
     attrs = {} if attrs is None else attrs
     coords = collections.OrderedDict()
-    for dim, n in zip(("time", "lon", "lat"), values.shape):
+    for dim, n in zip(("time", "lon", "lat"), values.shape, strict=False):
         if dim == "time":
             coords[dim] = pd.date_range(start, periods=n, freq="D")
         else:

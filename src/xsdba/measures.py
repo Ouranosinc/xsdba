@@ -12,7 +12,6 @@ This module depends on `xclim`. Run `pip install xsdba['extras']` to install it.
 """
 
 from __future__ import annotations
-
 from collections.abc import Sequence
 
 import numpy as np

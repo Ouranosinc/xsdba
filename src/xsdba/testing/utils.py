@@ -1,7 +1,6 @@
 """Testing utilities for xsdba."""
 
 from __future__ import annotations
-
 import importlib.resources as ilr
 import logging
 import os
@@ -22,10 +21,11 @@ from packaging.version import Version
 import xsdba
 from xsdba import __version__ as __xsdba_version__
 
+
 try:
     import pooch
 except ImportError:
-    warnings.warn("The `pooch` library is not installed. The default cache directory for testing data will not be set.")
+    warnings.warn("The `pooch` library is not installed. The default cache directory for testing data will not be set.", stacklevel=2)
     pooch = None
 
 
@@ -123,6 +123,7 @@ def testing_setup_warnings():
                 f"`xsdba` stable ({__xsdba_version__}) is running tests against a non-default branch of the testing data. "
                 "It is possible that changes to the testing data may be incompatible with some assertions in this version. "
                 f"Please be sure to check {TESTDATA_REPO_URL} for more information.",
+                stacklevel=2,
             )
 
     if re.match(r"^v\d+\.\d+\.\d+", TESTDATA_BRANCH):
@@ -138,6 +139,7 @@ def testing_setup_warnings():
                 f"The installation date of `xsdba` ({install_date.ctime()}) "
                 f"predates the last release of testing data ({TESTDATA_BRANCH}). "
                 "It is very likely that the testing data is incompatible with this build of `xsdba`.",
+                stacklevel=2,
             )
 
 
@@ -172,7 +174,7 @@ def load_registry(branch: str = TESTDATA_BRANCH, repo: str = TESTDATA_REPO_URL) 
     return registry
 
 
-def gosset(  # noqa: PR01
+def gosset(
     repo: str = TESTDATA_REPO_URL,
     branch: str = TESTDATA_BRANCH,
     cache_dir: str | Path = TESTDATA_CACHE_DIR,

@@ -1,6 +1,5 @@
 # noqa: D104
 from __future__ import annotations
-
 from collections.abc import Generator
 from pathlib import Path
 
@@ -20,11 +19,9 @@ from xsdba.testing.utils import (
     TESTDATA_REPO_URL,
     default_testdata_cache,
     gather_testing_data,
-)
-from xsdba.testing.utils import gosset as _gosset
-from xsdba.testing.utils import (
     testing_setup_warnings,
 )
+from xsdba.testing.utils import gosset as _gosset
 from xsdba.utils import apply_correction
 
 

@@ -6,7 +6,6 @@ Adjustment Methods
 """
 
 from __future__ import annotations
-
 from copy import deepcopy
 from importlib.util import find_spec
 from inspect import signature
@@ -50,6 +49,7 @@ from xsdba.utils import (
     pc_matrix,
     rand_rot_matrix,
 )
+
 
 __all__ = [
     "LOCI",
@@ -120,7 +120,10 @@ class BaseAdjustment(ParametrizableWithDataset):
             raise ValueError(f"Inputs have different multivariate coordinates: {', '.join(coords)}.")
 
         if group.prop == "dayofyear" and ("default" in calendars or "standard" in calendars):
-            warn("Strange results could be returned when using `dayofyear` grouping on data defined in the 'proleptic_gregorian' calendar.")
+            warn(
+                "Strange results could be returned when using `dayofyear` grouping on data defined in the 'proleptic_gregorian' calendar.",
+                stacklevel=2,
+            )
 
     @classmethod
     def _harmonize_units(cls, *inputs, target: dict[str] | str | None = None):
@@ -586,7 +589,7 @@ class DetrendedQuantileMapping(TrainAdjust):
         jitter_over_thresh_upper_bnd: str | None = None,
     ):
         if group.prop not in ["group", "dayofyear"]:
-            warn(f"Using DQM with a grouping other than 'dayofyear' is not recommended (received {group.name}).")
+            warn(f"Using DQM with a grouping other than 'dayofyear' is not recommended (received {group.name}).", stacklevel=2)
 
         if np.isscalar(nquantiles):
             quantiles = equally_spaced_nodes(nquantiles).astype(ref.dtype)
@@ -836,8 +839,8 @@ class ExtremeValues(TrainAdjust):
         )
         ds["cluster_thresh"] = cluster_thresh
         ds.cluster_thresh.attrs.update(
-            long_name=f"Cluster threshold",
-            description=f"The threshold value for defining clusters.",
+            long_name="Cluster threshold",
+            description="The threshold value for defining clusters.",
         )
 
         return ds.drop_vars(["quantiles"]), {}
@@ -1278,7 +1281,7 @@ class NpdfTransform(Adjust):
         if base_kws is None:
             base_kws = {}
         if "kind" in base_kws:
-            warn(f'The adjustment kind cannot be controlled when using {cls.__name__}, it defaults to "+".')
+            warn(f'The adjustment kind cannot be controlled when using {cls.__name__}, it defaults to "+".', stacklevel=2)
         base_kws.setdefault("kind", "+")
 
         # Assuming sim has the same coords as hist

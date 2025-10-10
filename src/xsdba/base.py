@@ -5,7 +5,6 @@ Base Classes and Developer Tools
 """
 
 from __future__ import annotations
-
 import operator
 from collections import UserDict
 from collections.abc import Callable, Sequence
@@ -20,7 +19,6 @@ import xarray as xr
 from boltons.funcutils import wraps
 from xarray.core import dtypes
 
-from xsdba.options import OPTIONS
 
 # TODO : Redistributes some functions in existing/new scripts
 
@@ -781,7 +779,7 @@ def ensure_chunk_size(da: xr.DataArray, **minchunks: int) -> xr.DataArray:
     if not uses_dask(da):
         return da
 
-    all_chunks = dict(zip(da.dims, da.chunks))
+    all_chunks = dict(zip(da.dims, da.chunks, strict=False))
     chunking = {}
     for dim, minchunk in minchunks.items():
         chunks = all_chunks[dim]
