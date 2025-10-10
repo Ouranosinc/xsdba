@@ -28,9 +28,7 @@ except ImportError:
     nogil=True,
     cache=True,
 )
-def _get_indexes(
-    arr: np.array, virtual_indexes: np.array, valid_values_count: np.array
-) -> tuple[np.array, np.array]:
+def _get_indexes(arr: np.array, virtual_indexes: np.array, valid_values_count: np.array) -> tuple[np.array, np.array]:
     """
     Get the valid indexes of arr neighbouring virtual_indexes.
 
@@ -134,13 +132,9 @@ def _nan_quantile_1d(
     valid_values_count = (~np.isnan(arr)).sum()
 
     # Computation of indexes
-    virtual_indexes = (
-        valid_values_count * quantiles + (alpha + quantiles * (1 - alpha - beta)) - 1
-    )
+    virtual_indexes = valid_values_count * quantiles + (alpha + quantiles * (1 - alpha - beta)) - 1
     virtual_indexes = np.asarray(virtual_indexes)
-    previous_indexes, next_indexes = _get_indexes(
-        arr, virtual_indexes, valid_values_count
-    )
+    previous_indexes, next_indexes = _get_indexes(arr, virtual_indexes, valid_values_count)
     # Sorting
     arr.sort()
 
@@ -152,9 +146,7 @@ def _nan_quantile_1d(
     interpolation = _linear_interpolation(previous, next_elements, gamma)
     # When an interpolation is in Nan range, (near the end of the sorted array) it means
     # we can clip to the array max value.
-    result = np.where(
-        np.isnan(interpolation), arr[np.intp(valid_values_count) - 1], interpolation
-    )
+    result = np.where(np.isnan(interpolation), arr[np.intp(valid_values_count) - 1], interpolation)
     return result
 
 
@@ -171,9 +163,7 @@ def _vecquantiles(arr, rnk, res):
         res[0] = np.nanquantile(arr, rnk)
 
 
-def vecquantiles(
-    da: DataArray, rnk: DataArray, dim: str | Sequence[Hashable]
-) -> DataArray:
+def vecquantiles(da: DataArray, rnk: DataArray, dim: str | Sequence[Hashable]) -> DataArray:
     """
     For when the quantile (rnk) is different for each point.
 
@@ -253,9 +243,7 @@ def quantile(da: DataArray, q: np.ndarray, dim: str | Sequence[Hashable]) -> Dat
     """
     if USE_FASTNANQUANTILE is True:
         if len(q) <= 1000:
-            return xr_apply_nanquantile(da, dim=dim, q=q).rename(
-                {"quantile": "quantiles"}
-            )
+            return xr_apply_nanquantile(da, dim=dim, q=q).rename({"quantile": "quantiles"})
         else:
             warnings.warn(
                 "`fastnanquantile` is installed and would thus normally be used by default. However, it doesn't "
@@ -445,15 +433,9 @@ def _pairwise_haversine_and_bins(lond, latd, transpose=False):
             dlon = lon[j] - lon[i]
             dists[i, j] = 6367 * np.arctan2(
                 np.sqrt(
-                    (np.cos(lat[j]) * np.sin(dlon)) ** 2
-                    + (
-                        np.cos(lat[i]) * np.sin(lat[j])
-                        - np.sin(lat[i]) * np.cos(lat[j]) * np.cos(dlon)
-                    )
-                    ** 2
+                    (np.cos(lat[j]) * np.sin(dlon)) ** 2 + (np.cos(lat[i]) * np.sin(lat[j]) - np.sin(lat[i]) * np.cos(lat[j]) * np.cos(dlon)) ** 2
                 ),
-                np.sin(lat[i]) * np.sin(lat[j])
-                + np.cos(lat[i]) * np.cos(lat[j]) * np.cos(dlon),
+                np.sin(lat[i]) * np.sin(lat[j]) + np.cos(lat[i]) * np.cos(lat[j]) * np.cos(dlon),
             )
             if transpose:
                 dists[j, i] = dists[i, j]

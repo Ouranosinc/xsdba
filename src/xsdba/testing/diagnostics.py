@@ -31,9 +31,7 @@ except ModuleNotFoundError:
 __all__ = ["adapt_freq_graph", "cannon_2015_figure_2", "synth_rainfall"]
 
 
-def synth_rainfall(
-    shape: float, scale: float = 1.0, wet_freq: float = 0.25, size: int = 1
-) -> np.ndarray:
+def synth_rainfall(shape: float, scale: float = 1.0, wet_freq: float = 0.25, size: int = 1) -> np.ndarray:
     r"""
     Return gamma distributed rainfall values for wet days.
 
@@ -113,18 +111,10 @@ def cannon_2015_figure_2() -> plt.Figure:
     ax1.set_ylabel("Density")
 
     tau = np.array([0.25, 0.5, 0.75, 0.95, 0.99]) * 100
-    bc_gcm = (
-        scoreatpercentile(sim, tau) - scoreatpercentile(hist, tau)
-    ) / scoreatpercentile(hist, tau)
-    bc_qdm = (
-        scoreatpercentile(sim_qdm, tau) - scoreatpercentile(ref, tau)
-    ) / scoreatpercentile(ref, tau)
-    bc_eqm = (
-        scoreatpercentile(sim_eqm, tau) - scoreatpercentile(ref, tau)
-    ) / scoreatpercentile(ref, tau)
-    bc_dqm = (
-        scoreatpercentile(sim_dqm, tau) - scoreatpercentile(ref, tau)
-    ) / scoreatpercentile(ref, tau)
+    bc_gcm = (scoreatpercentile(sim, tau) - scoreatpercentile(hist, tau)) / scoreatpercentile(hist, tau)
+    bc_qdm = (scoreatpercentile(sim_qdm, tau) - scoreatpercentile(ref, tau)) / scoreatpercentile(ref, tau)
+    bc_eqm = (scoreatpercentile(sim_eqm, tau) - scoreatpercentile(ref, tau)) / scoreatpercentile(ref, tau)
+    bc_dqm = (scoreatpercentile(sim_dqm, tau) - scoreatpercentile(ref, tau)) / scoreatpercentile(ref, tau)
 
     ax2.plot([0, 1], [0, 1], ls=":", color="blue")
     ax2.plot(bc_gcm, bc_gcm, "-", color="blue", label="GCM")

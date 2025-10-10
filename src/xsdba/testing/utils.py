@@ -25,10 +25,7 @@ from xsdba import __version__ as __xsdba_version__
 try:
     import pooch
 except ImportError:
-    warnings.warn(
-        "The `pooch` library is not installed. "
-        "The default cache directory for testing data will not be set."
-    )
+    warnings.warn("The `pooch` library is not installed. The default cache directory for testing data will not be set.")
     pooch = None
 
 
@@ -47,9 +44,7 @@ __all__ = [
     "testing_setup_warnings",
 ]
 
-default_testdata_repo_url = (
-    "https://raw.githubusercontent.com/Ouranosinc/xclim-testdata/"
-)
+default_testdata_repo_url = "https://raw.githubusercontent.com/Ouranosinc/xclim-testdata/"
 """Default URL of the testing data repository to use when fetching datasets."""
 
 default_testdata_version = "v2024.8.23"
@@ -121,10 +116,7 @@ or setting the variable at runtime:
 
 def testing_setup_warnings():
     """Warn users about potential incompatibilities between xsdba and xclim-testdata versions."""
-    if (
-        re.match(r"^\d+\.\d+\.\d+$", __xsdba_version__)
-        and TESTDATA_BRANCH != default_testdata_version
-    ):
+    if re.match(r"^\d+\.\d+\.\d+$", __xsdba_version__) and TESTDATA_BRANCH != default_testdata_version:
         # This does not need to be emitted on GitHub Workflows and ReadTheDocs
         if not os.getenv("CI") and not os.getenv("READTHEDOCS"):
             warnings.warn(
@@ -139,9 +131,7 @@ def testing_setup_warnings():
             time.ctime(Path(xsdba.__file__).stat().st_mtime),
             "%a %b %d %H:%M:%S %Y",
         )
-        install_calendar_version = (
-            f"{install_date.year}.{install_date.month}.{install_date.day}"
-        )
+        install_calendar_version = f"{install_date.year}.{install_date.month}.{install_date.day}"
 
         if Version(TESTDATA_BRANCH) > Version(install_calendar_version):
             warnings.warn(
@@ -151,9 +141,7 @@ def testing_setup_warnings():
             )
 
 
-def load_registry(
-    branch: str = TESTDATA_BRANCH, repo: str = TESTDATA_REPO_URL
-) -> dict[str, str]:
+def load_registry(branch: str = TESTDATA_BRANCH, repo: str = TESTDATA_REPO_URL) -> dict[str, str]:
     """
     Load the registry file for the test data.
 
@@ -165,9 +153,7 @@ def load_registry(
     remote_registry = audit_url(f"{repo}/{branch}/data/registry.txt")
 
     if branch != default_testdata_version:
-        custom_registry_folder = Path(
-            str(ilr.files("xsdba").joinpath(f"testing/{branch}"))
-        )
+        custom_registry_folder = Path(str(ilr.files("xsdba").joinpath(f"testing/{branch}")))
         custom_registry_folder.mkdir(parents=True, exist_ok=True)
         registry_file = custom_registry_folder.joinpath("registry.txt")
         urlretrieve(remote_registry, registry_file)  # noqa: S310
@@ -306,8 +292,7 @@ def gather_testing_data(
     """Gather testing data across workers."""
     if _cache_dir is None:
         raise ValueError(
-            "The cache directory must be set. "
-            "Please set the `cache_dir` parameter or the `XSDBA_TESTDATA_CACHE_DIR` environment variable."
+            "The cache directory must be set. Please set the `cache_dir` parameter or the `XSDBA_TESTDATA_CACHE_DIR` environment variable."
         )
     cache_dir = Path(_cache_dir)
 

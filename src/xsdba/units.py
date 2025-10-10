@@ -86,9 +86,7 @@ def infer_sampling_units(
     try:
         out = multi, FREQ_UNITS.get(base, base)
     except KeyError as err:
-        raise ValueError(
-            f"Sampling frequency {freq} has no corresponding units."
-        ) from err
+        raise ValueError(f"Sampling frequency {freq} has no corresponding units.") from err
     if out == (7, "d"):
         # Special case for weekly frequency. xarray's CFTimeOffsets do not have "W".
         return 1, "week"
@@ -177,9 +175,7 @@ def units2pint(
     ]
     possibilities = [f"{d} {u}" for d in degree_ex for u in unit_ex]
     if unit.strip() in possibilities:
-        raise ValidationError(
-            "Remove white space from temperature units, e.g. use `degC`."
-        )
+        raise ValidationError("Remove white space from temperature units, e.g. use `degC`.")
 
     pu = units.parse_units(unit)
     if metadata == "temperature: difference":
@@ -226,9 +222,7 @@ def str2pint(val: str) -> pint.Quantity:
 
 
 # XC
-def pint_multiply(
-    da: xr.DataArray, q: pint.Quantity | str, out_units: str | None = None
-) -> xr.DataArray:
+def pint_multiply(da: xr.DataArray, q: pint.Quantity | str, out_units: str | None = None) -> xr.DataArray:
     """
     Multiply xarray.DataArray by pint.Quantity.
 
@@ -364,9 +358,7 @@ def extract_units(arg):
         arg = None
     if isinstance(arg, str | None):
         return arg
-    raise TypeError(
-        f"Argument must be a str | DataArray | pint.Unit | units.Unit | scalar. Got {type(arg)}"
-    )
+    raise TypeError(f"Argument must be a str | DataArray | pint.Unit | units.Unit | scalar. Got {type(arg)}")
 
 
 def _add_default_kws(params_dict, params_to_check, func):
@@ -401,20 +393,12 @@ def harmonize_units(params_to_check):
             params_dict = {k: v for k, v in params_dict.items() if k in params_to_check}
             params_dict = _add_default_kws(params_dict, params_to_check, func)
             if set(params_dict.keys()) != set(params_to_check):
-                raise TypeError(
-                    f"{params_to_check} were passed but only {params_dict.keys()} were found "
-                    f"in `{func.__name__}`'s arguments"
-                )
+                raise TypeError(f"{params_to_check} were passed but only {params_dict.keys()} were found in `{func.__name__}`'s arguments")
             # # Passing datasets or thresh as float (i.e. assign no units) is accepted
-            has_units = {
-                extract_units(p) is not None
-                for p in params_dict.values()
-                if p is not None
-            }
+            has_units = {extract_units(p) is not None for p in params_dict.values() if p is not None}
             if len(has_units) > 1:
                 raise ValueError(
-                    "All arguments passed to `harmonize_units` must have units, or no units. Mixed cases "
-                    "are not allowed. `None` values are ignored."
+                    "All arguments passed to `harmonize_units` must have units, or no units. Mixed cases are not allowed. `None` values are ignored."
                 )
             if has_units == {True}:
                 first_param = params_dict[params_to_check[0]]
@@ -470,9 +454,7 @@ def wavelength_to_normalized_wavenumber(
     return alpha
 
 
-def normalized_wavenumber_to_wavelength(
-    alpha: xr.DataArray | float, delta: str | None = None, out_units: str | None = None
-) -> xr.DataArray | str:
+def normalized_wavenumber_to_wavelength(alpha: xr.DataArray | float, delta: str | None = None, out_units: str | None = None) -> xr.DataArray | str:
     """
     Convert a normalized wavenumber `alpha` to a wavelength.
 
@@ -488,9 +470,7 @@ def normalized_wavenumber_to_wavelength(
     xr.DataArray or float
         Wavelength.
     """
-    delta, u = (
-        _parse_str(delta) if out_units is None else convert_units_to(delta, out_units)
-    ), out_units
+    delta, u = (_parse_str(delta) if out_units is None else convert_units_to(delta, out_units)), out_units
     delta = np.abs(delta)
     lam = 2 * delta / alpha
     if isinstance(alpha, xr.DataArray):

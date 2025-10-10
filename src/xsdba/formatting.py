@@ -58,9 +58,7 @@ def merge_attributes(
         if attribute in in_ds.attrs or missing_str is not None:
             if in_name is not None and len(inputs) > 1:
                 merged_attr += f"{in_name}: "
-            merged_attr += in_ds.attrs.get(
-                attribute, "" if in_name is None else missing_str
-            )
+            merged_attr += in_ds.attrs.get(attribute, "" if in_name is None else missing_str)
             merged_attr += new_line
 
     if len(new_line) > 0:
@@ -115,10 +113,7 @@ def update_history(
     )
     if len(merged_history) > 0 and not merged_history.endswith("\n"):
         merged_history += "\n"
-    merged_history += (
-        f"[{dt.datetime.now():%Y-%m-%d %H:%M:%S}] {new_name or ''}: "
-        f"{hist_str} - xsdba version: {__version__}"
-    )
+    merged_history += f"[{dt.datetime.now():%Y-%m-%d %H:%M:%S}] {new_name or ''}: {hist_str} - xsdba version: {__version__}"
     return merged_history
 
 
@@ -143,14 +138,10 @@ def update_xsdba_history(func: Callable):
             out = outs
 
         if not isinstance(out, (xr.DataArray | xr.Dataset)):
-            raise TypeError(
-                f"Decorated `update_xsdba_history` received a non-xarray output from {func.__name__}."
-            )
+            raise TypeError(f"Decorated `update_xsdba_history` received a non-xarray output from {func.__name__}.")
 
         da_list = [arg for arg in args if isinstance(arg, xr.DataArray)]
-        da_dict = {
-            name: arg for name, arg in kwargs.items() if isinstance(arg, xr.DataArray)
-        }
+        da_dict = {name: arg for name, arg in kwargs.items() if isinstance(arg, xr.DataArray)}
 
         # The wrapper hides how the user passed the arguments (positional or keyword)
         # Instead of having it all position, we have it all keyword-like for explicitness.

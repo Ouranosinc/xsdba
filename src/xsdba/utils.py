@@ -106,13 +106,7 @@ def ensure_longest_doy(func: Callable) -> Callable:
 
     @wraps(func)
     def _ensure_longest_doy(x, y, *args, **kwargs):
-        if (
-            hasattr(x, "dims")
-            and hasattr(y, "dims")
-            and "dayofyear" in x.dims
-            and "dayofyear" in y.dims
-            and x.dayofyear.max() != y.dayofyear.max()
-        ):
+        if hasattr(x, "dims") and hasattr(y, "dims") and "dayofyear" in x.dims and "dayofyear" in y.dims and x.dayofyear.max() != y.dayofyear.max():
             warn(
                 (
                     "get_correction received inputs defined on different dayofyear ranges. "
@@ -121,13 +115,9 @@ def ensure_longest_doy(func: Callable) -> Callable:
                 stacklevel=4,
             )
             if x.dayofyear.max() < y.dayofyear.max():
-                x = _interpolate_doy_calendar(
-                    x, int(y.dayofyear.max()), int(y.dayofyear.min())
-                )
+                x = _interpolate_doy_calendar(x, int(y.dayofyear.max()), int(y.dayofyear.min()))
             else:
-                y = _interpolate_doy_calendar(
-                    y, int(x.dayofyear.max()), int(x.dayofyear.min())
-                )
+                y = _interpolate_doy_calendar(y, int(x.dayofyear.max()), int(x.dayofyear.min()))
         return func(x, y, *args, **kwargs)
 
     return _ensure_longest_doy
@@ -150,9 +140,7 @@ def get_correction(x: xr.DataArray, y: xr.DataArray, kind: str) -> xr.DataArray:
 
 
 @ensure_longest_doy
-def apply_correction(
-    x: xr.DataArray, factor: xr.DataArray, kind: str | None = None
-) -> xr.DataArray:
+def apply_correction(x: xr.DataArray, factor: xr.DataArray, kind: str | None = None) -> xr.DataArray:
     """
     Apply the additive or multiplicative correction/adjustment factors.
 
@@ -229,9 +217,7 @@ def broadcast(
         else:  # Find quantile for nearest time group and quantile.
             # For `.interp` we need to explicitly pass the shared dims
             # (see pydata/xarray#4463 and Ouranosinc/xclim#449,567)
-            sel.update(
-                {dim: x[dim] for dim in set(grouped.dims).intersection(set(x.dims))}
-            )
+            sel.update({dim: x[dim] for dim in set(grouped.dims).intersection(set(x.dims))})
             if group.prop != "group":
                 grouped = add_cyclic_bounds(grouped, group.prop, cyclic_coords=False)
 
@@ -251,13 +237,7 @@ def broadcast(
     if group.prop == "group" and "group" in grouped.dims:
         grouped = grouped.squeeze("group", drop=True)
     if x.chunks is not None:
-        grouped = grouped.chunk(
-            {
-                dim: chunk
-                for dim, chunk in zip(x.dims, x.chunks)
-                if dim in [sel_idx.dims[0] for sel_idx in sel.values()]
-            }
-        )
+        grouped = grouped.chunk({dim: chunk for dim, chunk in zip(x.dims, x.chunks) if dim in [sel_idx.dims[0] for sel_idx in sel.values()]})
     return grouped
 
 
@@ -294,9 +274,7 @@ def equally_spaced_nodes(n: int, eps: float | None = None) -> np.ndarray:
     return np.insert(np.append(q, 1 - eps), 0, eps)
 
 
-def add_cyclic_bounds(
-    da: xr.DataArray, att: str, cyclic_coords: bool = True
-) -> xr.DataArray | xr.Dataset:
+def add_cyclic_bounds(da: xr.DataArray, att: str, cyclic_coords: bool = True) -> xr.DataArray | xr.Dataset:
     """
     Reindex an array to include the last slice at the beginning and the first at the end.
 
@@ -526,9 +504,7 @@ def interp_on_quantiles(
     )
 
 
-def rank(
-    da: xr.DataArray, dim: str | list[str] = "time", pct: bool = False
-) -> xr.DataArray:
+def rank(da: xr.DataArray, dim: str | list[str] = "time", pct: bool = False) -> xr.DataArray:
     """
     Rank data along a dimension.
 
@@ -578,11 +554,7 @@ def rank(
         rnk = mx * (rnk - mn) / (mx - mn)
 
     if len(dims) > 1:
-        rnk = (
-            rnk.unstack(rnk_dim)
-            .transpose(*da_dims)
-            .drop_vars([d for d in dims if d not in da_coords])
-        )
+        rnk = rnk.unstack(rnk_dim).transpose(*da_dims).drop_vars([d for d in dims if d not in da_coords])
     return rnk
 
 
@@ -630,9 +602,7 @@ def pc_matrix(arr: np.ndarray | dsk.Array) -> np.ndarray | dsk.Array:
     return eig_vec * mod.sqrt(eig_vals)
 
 
-def best_pc_orientation_simple(
-    R: np.ndarray, Hinv: np.ndarray, val: float = 1000
-) -> np.ndarray:
+def best_pc_orientation_simple(R: np.ndarray, Hinv: np.ndarray, val: float = 1000) -> np.ndarray:
     """
     Return best orientation vector according to a simple test.
 
@@ -726,9 +696,7 @@ def best_pc_orientation_full(
     signs = dict(itertools.zip_longest(itertools.product(*[[1, -1]] * m), [None]))
     for orient in list(signs.keys()):
         # Calculate scen for hist
-        scen = np.atleast_2d(Rmean).T + ((orient * R) @ Hinv) @ (
-            hist - np.atleast_2d(Hmean).T
-        )
+        scen = np.atleast_2d(Rmean).T + ((orient * R) @ Hinv) @ (hist - np.atleast_2d(Hmean).T)
         # Correlation for each variable
         corr = [spearmanr(hist[i, :], scen[i, :])[0] for i in range(hist.shape[0])]
         # Store mean correlation
@@ -737,9 +705,7 @@ def best_pc_orientation_full(
     return np.array(max(signs, key=lambda o: signs[o]))
 
 
-def get_clusters_1d(
-    data: np.ndarray, u1: float, u2: float
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+def get_clusters_1d(data: np.ndarray, u1: float, u2: float) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Get clusters of a 1D array.
 
@@ -875,9 +841,7 @@ def get_clusters(data: xr.DataArray, u1, u2, dim: str = "time") -> xr.Dataset:
     return ds
 
 
-def rand_rot_matrix(
-    crd: xr.DataArray, num: int = 1, new_dim: str | None = None
-) -> xr.DataArray:
+def rand_rot_matrix(crd: xr.DataArray, num: int = 1, new_dim: str | None = None) -> xr.DataArray:
     r"""
     Generate random rotation matrices.
 
@@ -947,11 +911,7 @@ def _pairwise_spearman(da, dims):
     With skipna-shortcuts for cases where all times or all points are nan.
     """
     da = da - da.mean(dims)
-    da = (
-        da.stack(_spatial=dims)
-        .reset_index("_spatial")
-        .drop_vars(["_spatial"], errors=["ignore"])
-    )
+    da = da.stack(_spatial=dims).reset_index("_spatial").drop_vars(["_spatial"], errors=["ignore"])
 
     def _skipna_correlation(data):
         nv, _nt = data.shape
@@ -1009,11 +969,7 @@ def bin_width_estimator(X):
         X = X.reshape(-1, 1)
 
     # Freedman-Diaconis
-    bin_width = (
-        2.0
-        * (np.percentile(X, q=75, axis=0) - np.percentile(X, q=25, axis=0))
-        / np.power(X.shape[0], 1.0 / 3.0)
-    )
+    bin_width = 2.0 * (np.percentile(X, q=75, axis=0) - np.percentile(X, q=25, axis=0)) / np.power(X.shape[0], 1.0 / 3.0)
     bin_width = np.where(
         bin_width == 0,
         # Scott
@@ -1108,9 +1064,7 @@ def eps_cholesky(M, nit=26):
         it = 0
         while MC is None:
             if it == nit:
-                raise ValueError(
-                    "The vcov matrix is far from positive-definite. Please use `cov_factor = 'std'`"
-                )
+                raise ValueError("The vcov matrix is far from positive-definite. Please use `cov_factor = 'std'`")
             perturb = np.identity(M.shape[0]) * eps
             try:
                 MC = np.linalg.cholesky(M + perturb)

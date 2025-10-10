@@ -43,7 +43,6 @@ class set_options:
     >>> ds = xr.open_dataset(path_to_tas_file).tas
     >>> with xsdba.set_options(extra_output=True):
     ...     out = xsdba.MBCn.train(ref, hist)
-    ...
 
     Or to set global options:
 

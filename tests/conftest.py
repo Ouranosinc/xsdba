@@ -65,9 +65,7 @@ def ref_hist_sim_tuto():  # noqa: F841
         ref = ds.air.resample(time="D").mean(keep_attrs=True)
         hist = ref.rolling(time=smth_win, min_periods=1).mean(keep_attrs=True) + delta
         hist.attrs["units"] = ref.attrs["units"]
-        sim_time = hist.time + np.timedelta64(730 + sim_offset * 365, "D").astype(
-            "<m8[ns]"
-        )
+        sim_time = hist.time + np.timedelta64(730 + sim_offset * 365, "D").astype("<m8[ns]")
         sim = hist + (
             0
             if not trend
@@ -120,13 +118,7 @@ def areacella() -> xr.DataArray:
     d_lat = np.diff(lat_bnds)
     lon = np.convolve(lon_bnds, [0.5, 0.5], "valid")
     lat = np.convolve(lat_bnds, [0.5, 0.5], "valid")
-    area = (
-        r
-        * np.radians(d_lat)[:, np.newaxis]
-        * r
-        * np.cos(np.radians(lat)[:, np.newaxis])
-        * np.radians(d_lon)
-    )
+    area = r * np.radians(d_lat)[:, np.newaxis] * r * np.cos(np.radians(lat)[:, np.newaxis]) * np.radians(d_lon)
     return xr.DataArray(
         data=area,
         dims=("lat", "lon"),
@@ -154,9 +146,7 @@ def gosset(threadsafe_data_dir, worker_id):
     return _gosset(
         repo=TESTDATA_REPO_URL,
         branch=TESTDATA_BRANCH,
-        cache_dir=(
-            TESTDATA_CACHE_DIR if worker_id == "master" else threadsafe_data_dir
-        ),
+        cache_dir=(TESTDATA_CACHE_DIR if worker_id == "master" else threadsafe_data_dir),
     )
 
 
