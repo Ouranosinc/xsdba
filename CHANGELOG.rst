@@ -2,7 +2,6 @@
 Changelog
 =========
 
-
 `Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
 ------------------------------------------------------------
 
