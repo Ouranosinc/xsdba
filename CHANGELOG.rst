@@ -8,10 +8,6 @@ Changelog
 
 Contributors: Éric Dupuis (:user:`coxipi`), Trevor James Smith (:user:`Zeitsperre`).
 
-Changes
-^^^^^^^
-* No change.
-
 Fixes
 ^^^^^
 * ``xsdba.adjustment.ExtremeValues`` throws an error with a clear message when the clustered precipitation exceed `1-q_thresh`. This happens when `cluster_thresh` is too small (still in the bulk of the distribution). (:issue:`177`, :pull:`184`).
@@ -20,6 +16,7 @@ Internal changes
 ^^^^^^^^^^^^^^^^
 * Removed the `benchmark.ipynb` notebook from the documentation as it was specifcially written for benchmarking purposes.
 * Removed the API references to ensure that the documentation favours the user guide for learning how to use `xsdba` and the module index for finding specific functions/classes.
+* Adjusted dosctrings to allow RST210 violations (`\*\*` syntax) in docstrings and `pylint` exceptions for titles with underbars.
 
 .. _changes_0.5.0:
 
