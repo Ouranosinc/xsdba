@@ -1,5 +1,4 @@
 """
-# noqa: SS01
 LOESS Smoothing Submodule
 =========================
 """

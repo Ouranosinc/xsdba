@@ -1,6 +1,4 @@
-# pylint: disable=no-value-for-parameter
 """
-# noqa: SS01
 Adjustment Algorithms
 =====================
 
@@ -886,7 +884,7 @@ def npdf_transform(ds: xr.Dataset, **kwargs) -> xr.Dataset:
             hist : simulated timeseries on the reference period.
             sim : Simulated timeseries on the projected period.
             rot_matrices : Random rotation matrices.
-    \*\*kwargs
+    **kwargs
         pts_dim : multivariate dimension name.
         base : Adjustment class.
         base_kws : Kwargs for initialising the adjustment object.

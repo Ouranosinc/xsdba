@@ -1,6 +1,4 @@
-# pylint: disable=no-value-for-parameter
 """
-# noqa: SS01
 Numba-accelerated Utilities
 ===========================
 """

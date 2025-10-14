@@ -1,5 +1,4 @@
 """
-# noqa: SS01
 Base Classes and Developer Tools
 ================================
 """
@@ -402,7 +401,7 @@ class Grouper(Parametrizable):
             (if False, default) (including the window and dimensions given through `add_dims`).
             The dimensions used are also written in the "group_compute_dims" attribute.
             If all the input arrays are missing one of the 'add_dims', it is silently omitted.
-        \*\*kwargs
+        **kwargs
             Other keyword arguments to pass to the function.
 
         Returns
@@ -605,7 +604,7 @@ def map_blocks(  # noqa: C901
     ----------
     reduces : sequence of strings
         Name of the dimensions that are removed by the function.
-    \*\*out_vars
+    **out_vars
         Mapping from variable names in the output to their *new* dimensions.
         The placeholders ``Grouper.PROP``, ``Grouper.DIM`` and ``Grouper.ADD_DIMS`` can be used to signify
         ``group.prop``,``group.dim`` and ``group.add_dims`` respectively.
@@ -813,7 +812,7 @@ def map_groups(
         if main_only is False, and [Grouper.DIM] if main_only is True. See :py:func:`map_blocks`.
     main_only : bool
         Same as for :py:meth:`Grouper.apply`.
-    \*\*out_vars
+    **out_vars
         Mapping from variable names in the output to their *new* dimensions.
         The placeholders ``Grouper.PROP``, ``Grouper.DIM`` and ``Grouper.ADD_DIMS`` can be used to signify
         ``group.prop``,``group.dim`` and ``group.add_dims``, respectively.
@@ -859,7 +858,7 @@ def ensure_chunk_size(da: xr.DataArray, **minchunks: int) -> xr.DataArray:
     ----------
     da : xr.DataArray
         The input DataArray, with or without the dask backend. Does nothing when passed a non-dask array.
-    \*\*minchunks : dict[str, int]
+    **minchunks : dict[str, int]
         A kwarg mapping from dimension name to minimum chunk size.
         Pass -1 to force a single chunk along that dimension.
 

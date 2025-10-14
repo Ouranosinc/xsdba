@@ -1,9 +1,8 @@
-# pylint: disable=missing-kwoa
 """
-# noqa: SS01
 Adjustment Methods
 ==================
 """
+
 from __future__ import annotations
 
 from copy import deepcopy
@@ -280,7 +279,7 @@ class TrainAdjust(BaseAdjustment):
             Training target, usually a reference time series drawn from observations.
         hist : DataArray
             Training data, usually a model output whose biases are to be adjusted.
-        \*\*kwargs
+        **kwargs
             Algorithm-specific keyword arguments, see class doc.
         """
         kwargs = parse_group(cls._train, kwargs)
@@ -324,7 +323,7 @@ class TrainAdjust(BaseAdjustment):
             Time series to be bias-adjusted, usually a model output.
         \*args : xr.DataArray
             Other DataArrays needed for the adjustment (usually none).
-        \*\*kwargs
+        **kwargs
             Algorithm-specific keyword arguments, see class doc.
         """
         skip_checks = kwargs.pop("skip_input_checks", False)
@@ -403,9 +402,9 @@ class Adjust(BaseAdjustment):
             Training target, usually a reference time series drawn from observations.
         hist : DataArray
             Training data, usually a model output whose biases are to be adjusted.
-        sim : DataArray
+        sim : DataArray, optional
             Time series to be bias-adjusted, usually a model output.
-        \*\*kwargs
+        **kwargs : Any
             Algorithm-specific keyword arguments, see class doc.
 
         Returns
@@ -475,7 +474,7 @@ class EmpiricalQuantileMapping(TrainAdjust):
     group : Union[str, Grouper]
         The grouping information. See :py:class:`xsdba.base.Grouper` for details.
         Default is "time", meaning an single adjustment group along dimension "time".
-    adapt_freq_thresh : str | None
+    adapt_freq_thresh : str, optional
         Threshold for frequency adaptation. See :py:class:`xsdba.processing.adapt_freq` for details.
         Default is None, meaning that frequency adaptation is not performed.
 
@@ -576,10 +575,10 @@ class DetrendedQuantileMapping(TrainAdjust):
         An array of quantiles [0, 1] can also be passed. Defaults to 20 quantiles.
     kind : {'+', '*'}
         The adjustment kind, either additive or multiplicative. Defaults to "+".
-    group : Union[str, Grouper]
+    group : str or Grouper
         The grouping information. See :py:class:`xsdba.base.Grouper` for details.
         Default is "time", meaning a single adjustment group along dimension "time".
-    adapt_freq_thresh : str | None
+    adapt_freq_thresh : str, optional
         Threshold for frequency adaptation. See :py:class:`xsdba.processing.adapt_freq` for details.
         Default is None, meaning that frequency adaptation is not performed.
 
@@ -709,7 +708,7 @@ class QuantileDeltaMapping(EmpiricalQuantileMapping):
         An array of quantiles [0, 1] can also be passed. Defaults to 20 quantiles.
     kind : {'+', '*'}
         The adjustment kind, either additive or multiplicative. Defaults to "+".
-    group : Union[str, Grouper]
+    group : str or Grouper
         The grouping information. See :py:class:`xsdba.base.Grouper` for details.
         Default is "time", meaning a single adjustment group along dimension "time".
 
@@ -954,7 +953,7 @@ class LOCI(TrainAdjust):
     ----------
     Train step:
 
-    group : Union[str, Grouper]
+    group : str or Grouper
         The grouping information. See :py:class:`xsdba.base.Grouper` for details.
         Default is "time", meaning a single adjustment group along dimension "time".
     thresh : str
@@ -1012,9 +1011,9 @@ class Scaling(TrainAdjust):
     ----------
     Train step:
 
-    group : Union[str, Grouper]
+    group : str or Grouper
         The grouping information. See :py:class:`xsdba.base.Grouper` for details.
-        Default is "time", meaning an single adjustment group along dimension "time".
+        Default is "time", meaning a single adjustment group along dimension "time".
     kind : {'+', '*'}
         The adjustment kind, either additive or multiplicative. Defaults to "+".
 
@@ -1065,7 +1064,7 @@ class PrincipalComponents(TrainAdjust):
 
     Attributes
     ----------
-    group : Union[str, Grouper]
+    group : str or Grouper
         The main dimension and grouping information. See Notes.
         See :py:class:`xsdba.base.Grouper` for details.
         The adjustment will be performed on each group independently.
@@ -1290,7 +1289,7 @@ class NpdfTransform(Adjust):
         \tilde{\mathbf{H}} = \mathbf{H}\mathbf{R} \
         \tilde{\mathbf{S}} = \mathbf{S}\mathbf{R}
 
-    2. An univariate bias-adjustment :math:`\mathcal{F}` is used on the rotated datasets.
+    2. A univariate bias-adjustment :math:`\mathcal{F}` is used on the rotated datasets.
     The adjustments are made in additive mode, for each variable :math:`i`.
 
     .. math::
@@ -1433,11 +1432,11 @@ class OTC(Adjust):
         See :py:class:`xsdba.processing.adapt_freq` for details.
         Frequency adaptation is not applied to missing variables if is dict.
         Applied to all variables if is string.
-    normalization : {None, 'standardize', 'max_distance', 'max_value'}
+    normalization : {'standardize', 'max_distance', 'max_value'}, optional
         Per-variable transformation applied before the distances are calculated.
         Default is "max_distance".
         See notes for details.
-    group : Union[str, Grouper]
+    group : str or Grouper
         The grouping information. See :py:class:`xsdba.base.Grouper` for details.
         Default is "time", meaning a single adjustment group along dimension "time".
     pts_dim : str
@@ -1611,7 +1610,7 @@ class dOTC(Adjust):
         See :py:class:`xsdba.processing.adapt_freq` for details.
         Frequency adaptation is not applied to missing variables if is dict.
         Applied to all variables if is string.
-    normalization : {None, 'standardize', 'max_distance', 'max_value'}
+    normalization : {'standardize', 'max_distance', 'max_value'}, optional
         Per-variable transformation applied before the distances are calculated
         in the optimal transport. Default is "max_distance".
         See :py:class:`~xsdba.adjustment.OTC` for details.
