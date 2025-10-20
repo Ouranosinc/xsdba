@@ -1527,7 +1527,10 @@ class OTC(Adjust):
                 "POT is required for OTC and dOTC. Please install with `pip install POT`."
             )
 
-        if normalization not in [None, "standardize", "max_distance", "max_value"]:
+        if (
+            normalization not in ["standardize", "max_distance", "max_value"]
+            or normalization is not None
+        ):
             raise ValueError(
                 "`transform` should be in [None, 'standardize', 'max_distance', 'max_value']."
             )
@@ -1696,10 +1699,13 @@ class dOTC(Adjust):
                 "Multiplicative correction is not supported with `cov_factor` = 'cholesky'."
             )
 
-        if cov_factor not in [None, "std", "cholesky"]:
+        if cov_factor not in ["std", "cholesky"] or cov_factor is not None:
             raise ValueError("`cov_factor` should be in [None, 'std', 'cholesky'].")
 
-        if normalization not in [None, "standardize", "max_distance", "max_value"]:
+        if (
+            normalization not in ["standardize", "max_distance", "max_value"]
+            or normalization is not None
+        ):
             raise ValueError(
                 "`normalization` should be in [None, 'standardize', 'max_distance', 'max_value']."
             )
