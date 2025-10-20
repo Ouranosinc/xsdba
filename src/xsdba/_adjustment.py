@@ -8,10 +8,12 @@ This file defines the different steps, to be wrapped into the Adjustment objects
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
+from typing import Literal
 
 import numpy as np
 import xarray as xr
 
+from . import BaseAdjustment
 from . import nbutils as nbu
 from . import utils as u
 from ._processing import _adapt_freq
@@ -303,7 +305,7 @@ def _npdft_train(ref, hist, rots, quantiles, method, extrap, n_escore, standardi
             hist[iv] = hist[iv] + af
         if n_escore > 0:
             escores[ii] = nbu._escore(ref[:, ::ref_step], hist[:, ::hist_step])
-    hist = rots[-1].T @ hist
+    hist = rots[-1].T @ hist  # FIXME: This variable is unused.
     return af_q, escores
 
 
@@ -452,14 +454,14 @@ def mbcn_adjust(
     ds: xr.Dataset,
     g_idxs: xr.DataArray,
     gw_idxs: xr.DataArray,
-    pts_dims: Sequence[str],
+    pts_dims: tuple[str, str],
     interp: str,
     extrapolation: str,
     base: Callable,
     base_kws_vars: dict,
     adj_kws: dict,
     period_dim: str | None,
-) -> xr.DataArray:
+) -> xr.Dataset:
     """
     Perform the adjustment portion MBCn multivariate bias correction technique.
 
@@ -1169,11 +1171,11 @@ def _otc_adjust(
     bin_origin : dict or float or np.ndarray, optional
         Bin origins for specified dimensions.
     num_iter_max : int, optional
-        Maximum number of iterations used in the earth mover distance algorithm.
+        Maximum number of iterations used in the Earth-Mover_Distance (EMD) algorithm.
     jitter_inside_bins : bool
         If `False`, output points are located at the center of their bin.
         If `True`, a random location is picked uniformly inside their bin. Default is `True`.
-    normalization : {None, 'standardize', 'max_distance', 'max_value'}
+    normalization : {'standardize', 'max_distance', 'max_value'}, optional
         Per-variable transformation applied before the distances are calculated
         in the optimal transport.
 
@@ -1223,7 +1225,9 @@ def _otc_adjust(
     # Compute the optimal transportation plan
     plan = u.optimal_transport(gridX, gridY, muX, muY, num_iter_max, normalization)
 
-    gridX = np.floor((gridX - bin_origin) / bin_width)
+    gridX = np.floor(
+        (gridX - bin_origin) / bin_width
+    )  # FIXME: This variable is unused.
     gridY = np.floor((gridY - bin_origin) / bin_width)
 
     # regroup the indices of all the points belonging to a same bin
@@ -1283,13 +1287,13 @@ def otc_adjust(
     bin_origin : dict or float, optional
         Bin origins for specified dimensions.
     num_iter_max : int, optional
-        Maximum number of iterations used in the earth mover distance algorithm.
+        Maximum number of iterations used in the Earth Mover Distance (EMD) algorithm.
     jitter_inside_bins : bool
         If `False`, output points are located at the center of their bin.
         If `True`, a random location is picked uniformly inside their bin. Default is `True`.
     adapt_freq_thresh : dict, optional
         Threshold for frequency adaptation per variable.
-    normalization : {None, 'standardize', 'max_distance', 'max_value'}
+    normalization : {'standardize', 'max_distance', 'max_value'}, optional
         Per-variable transformation applied before the distances are calculated
         in the optimal transport.
 
@@ -1378,7 +1382,7 @@ def _dotc_adjust(
     bin_origin : dict or float, optional
         Bin origins for specified dimensions.
     num_iter_max : int, optional
-        Maximum number of iterations used in the earth mover distance algorithm.
+        Maximum number of iterations used in the Earth Mover Distance (EMD) algorithm.
     cov_factor : str, optional
         Rescaling factor.
     jitter_inside_bins : bool
@@ -1387,7 +1391,7 @@ def _dotc_adjust(
     kind : dict, optional
         Keys are variable names and values are adjustment kinds, either additive or multiplicative.
         Unspecified dimensions are treated as "+".
-    normalization : {None, 'standardize', 'max_distance', 'max_value'}
+    normalization : {'standardize', 'max_distance', 'max_value'}, optional
         Per-variable transformation applied before the distances are calculated
         in the optimal transport.
 
@@ -1522,7 +1526,7 @@ def dotc_adjust(
     bin_origin : dict or float, optional
         Bin origins for specified dimensions.
     num_iter_max : int, optional
-        Maximum number of iterations used in the earth mover distance algorithm.
+        Maximum number of iterations used in the Earth Mover Distance (EMD) algorithm.
     cov_factor : str, optional
         Rescaling factor.
     jitter_inside_bins : bool
@@ -1533,7 +1537,7 @@ def dotc_adjust(
         Unspecified dimensions are treated as "+".
     adapt_freq_thresh : dict, optional
         Threshold for frequency adaptation per variable.
-    normalization : {None, 'standardize', 'max_distance', 'max_value'}
+    normalization : {'standardize', 'max_distance', 'max_value'}, optional
         Per-variable transformation applied before the distances are calculated
         in the optimal transport.
 
