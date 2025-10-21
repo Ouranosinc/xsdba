@@ -11,6 +11,7 @@ ignore =
 	E,
 	F,
 	RST210,
+	RST213,
 	W503
 per-file-ignores =
 rst-directives =

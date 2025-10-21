@@ -907,7 +907,7 @@ def uses_dask(*das: xr.DataArray | xr.Dataset) -> bool:
 
     Parameters
     ----------
-    \*das : xr.DataArray or xr.Dataset
+    *das : xr.DataArray or xr.Dataset
         DataArrays or Datasets to check.
 
     Returns

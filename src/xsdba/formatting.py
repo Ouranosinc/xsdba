@@ -31,7 +31,7 @@ def merge_attributes(
     ----------
     attribute : str
         The attribute to merge.
-    \*inputs_list : xr.DataArray or xr.Dataset
+    *inputs_list : xr.DataArray or xr.Dataset
         The datasets or variables that were used to produce the new object.
         Inputs given that way will be prefixed by their "name" attribute if available.
     new_line : str
@@ -83,7 +83,7 @@ def update_history(
     ----------
     hist_str : str
         The string describing what has been done on the data.
-    \*inputs_list : xr.DataArray or xr.Dataset
+    *inputs_list : xr.DataArray or xr.Dataset
         The datasets or variables that were used to produce the new object.
         Inputs given that way will be prefixed by their "name" attribute if available.
     new_name : str, optional

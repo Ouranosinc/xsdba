@@ -321,8 +321,8 @@ class TrainAdjust(BaseAdjustment):
         ----------
         sim : DataArray
             Time series to be bias-adjusted, usually a model output.
-        \*args : xr.DataArray
-            Other DataArrays needed for the adjustment (usually none).
+        *args : xr.DataArray
+            Other DataArrays needed for the adjustment (usually None).
         **kwargs
             Algorithm-specific keyword arguments, see class doc.
         """
@@ -1529,10 +1529,10 @@ class OTC(Adjust):
 
         if (
             normalization not in ["standardize", "max_distance", "max_value"]
-            or normalization is not None
+            and normalization is not None
         ):
             raise ValueError(
-                "`transform` should be in [None, 'standardize', 'max_distance', 'max_value']."
+                "`transform` should be in ['standardize', 'max_distance', 'max_value'] or None."
             )
 
         sim = kwargs.pop("sim")
@@ -1699,15 +1699,15 @@ class dOTC(Adjust):
                 "Multiplicative correction is not supported with `cov_factor` = 'cholesky'."
             )
 
-        if cov_factor not in ["std", "cholesky"] or cov_factor is not None:
-            raise ValueError("`cov_factor` should be in [None, 'std', 'cholesky'].")
+        if cov_factor not in ["std", "cholesky"] and cov_factor is not None:
+            raise ValueError("`cov_factor` should be in ['std', 'cholesky'] or None.")
 
         if (
             normalization not in ["standardize", "max_distance", "max_value"]
-            or normalization is not None
+            and normalization is not None
         ):
             raise ValueError(
-                "`normalization` should be in [None, 'standardize', 'max_distance', 'max_value']."
+                "`normalization` should be in ['standardize', 'max_distance', 'max_value'] or None."
             )
 
         if isinstance(adapt_freq_thresh, str):
