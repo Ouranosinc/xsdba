@@ -13,9 +13,9 @@ Fixes
 
 Internal changes
 ^^^^^^^^^^^^^^^^
-* Removed the `benchmark.ipynb` notebook from the documentation as it was specifcially written for benchmarking purposes.
-* Removed the API references to ensure that the documentation favours the user guide for learning how to use `xsdba` and the module index for finding specific functions/classes.
-* Adjusted dosctrings to allow RST210 violations (`\*\*` syntax) in docstrings and `pylint` exceptions for titles with underbars.
+* Removed the ``benchmark.ipynb`` notebook from the documentation as it was specifically written for benchmarking purposes. (:issue:`167`, :pull:`206`).
+* Removed the API references to ensure that the documentation favours the user guide for learning how to use `xsdba` and the module index for finding specific functions/classes. (:issue:`63`, :pull:`206`)
+* Adjusted docstrings to allow RST210 and RST213 violations (`\*\*` and `\*` syntax) in docstrings and `pylint` exceptions for titles with underbars. (:issue:`167`, :pull:`206`)
 
 .. _changes_0.5.0:
 
