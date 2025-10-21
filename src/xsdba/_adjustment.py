@@ -8,12 +8,10 @@ This file defines the different steps, to be wrapped into the Adjustment objects
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
-from typing import Literal
 
 import numpy as np
 import xarray as xr
 
-from . import BaseAdjustment
 from . import nbutils as nbu
 from . import utils as u
 from ._processing import _adapt_freq

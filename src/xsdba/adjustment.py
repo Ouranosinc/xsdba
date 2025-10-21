@@ -140,7 +140,7 @@ class BaseAdjustment(ParametrizableWithDataset):
             )
 
     @classmethod
-    def _harmonize_units(cls, *inputs, target: dict[str] | str | None = None):
+    def _harmonize_units(cls, *inputs, target: dict[str, str] | str | None = None):
         """
         Convert all inputs to the same units.
 
@@ -150,7 +150,7 @@ class BaseAdjustment(ParametrizableWithDataset):
         """
 
         def _harmonize_units_multivariate(
-            *_inputs, _dim, _target: dict[str] | None = None
+            *_inputs, _dim, _target: dict[str, str] | None = None
         ):
             def __convert_units_to(_input_da, _internal_dim, _internal_target):
                 varss = _input_da[_internal_dim].values
