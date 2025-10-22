@@ -1,5 +1,4 @@
 """
-# noqa: SS01
 Measures Submodule
 ==================
 Measures compare adjusted simulations to a reference

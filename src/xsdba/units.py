@@ -1,5 +1,4 @@
 """
-# noqa: SS01
 Units Handling Submodule
 ========================
 """

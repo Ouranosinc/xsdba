@@ -1,4 +1,7 @@
-"""Testing utilities for xsdba (test data management)"""
+"""
+Testing Utilities for xsdba
+===========================
+"""
 
 from __future__ import annotations
 
@@ -1182,7 +1185,7 @@ def _fit_start(x, dist: str, **fitkwargs: Any) -> tuple[tuple, dict]:
     dist : {"genextreme",  "genpareto", "weibull_min", "gamma", "fisk"}
         Name of the univariate distribution following ``scipy`` format (see :py:mod:scipy.stats). Other values than the
         supported distributions will return empty arrays for the parameters.
-    \*\*fitkwargs
+    **fitkwargs
         Kwargs passed to fit.
 
     Returns

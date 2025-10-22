@@ -1,6 +1,4 @@
-# pylint: disable=no-value-for-parameter
 """
-# noqa: SS01
 Numba-accelerated Utilities
 ===========================
 """
@@ -78,10 +76,10 @@ def _get_indexes(
     cache=True,
 )
 def _linear_interpolation(
-    left: np.array,
-    right: np.array,
-    gamma: np.array,
-) -> np.array:
+    left: np.ndarray,
+    right: np.ndarray,
+    gamma: np.ndarray,
+) -> np.ndarray:
     """
     Compute the linear interpolation weighted by gamma on each point of two same shape arrays.
 
@@ -115,11 +113,11 @@ def _linear_interpolation(
     cache=True,
 )
 def _nan_quantile_1d(
-    arr: np.array,
-    quantiles: np.array,
+    arr: np.ndarray,
+    quantiles: np.ndarray,
     alpha: float = 1.0,
     beta: float = 1.0,
-) -> float | np.array:
+) -> float | np.ndarray:
     """
     Get the quantiles of the 1-dimensional array.
 

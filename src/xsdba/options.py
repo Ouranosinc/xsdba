@@ -1,4 +1,7 @@
 """
+Options Management for xsdba
+============================
+
 Global or contextual options for xsdba, similar to xarray.set_options.
 """
 

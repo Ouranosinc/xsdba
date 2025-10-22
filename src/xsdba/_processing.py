@@ -1,5 +1,4 @@
 """
-# noqa: SS01
 Compute Functions Submodule
 ===========================
 

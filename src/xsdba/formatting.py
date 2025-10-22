@@ -1,7 +1,6 @@
 """
-# noqa: SS01
 Formatting Utilities
-===================================
+====================
 """
 
 from __future__ import annotations
@@ -32,7 +31,7 @@ def merge_attributes(
     ----------
     attribute : str
         The attribute to merge.
-    \*inputs_list : xr.DataArray or xr.Dataset
+    *inputs_list : xr.DataArray or xr.Dataset
         The datasets or variables that were used to produce the new object.
         Inputs given that way will be prefixed by their "name" attribute if available.
     new_line : str
@@ -41,7 +40,7 @@ def merge_attributes(
     missing_str : str
         A string that is printed if an input doesn't have the attribute. Defaults to None, in which
         case the input is simply skipped.
-    \*\*inputs_kws : xr.DataArray or xr.Dataset
+    **inputs_kws : xr.DataArray or xr.Dataset
         Mapping from names to the datasets or variables that were used to produce the new object.
         Inputs given that way will be prefixes by the passed name.
 
@@ -84,12 +83,12 @@ def update_history(
     ----------
     hist_str : str
         The string describing what has been done on the data.
-    \*inputs_list : xr.DataArray or xr.Dataset
+    *inputs_list : xr.DataArray or xr.Dataset
         The datasets or variables that were used to produce the new object.
         Inputs given that way will be prefixed by their "name" attribute if available.
     new_name : str, optional
         The name of the newly created variable or dataset to prefix hist_msg.
-    \*\*inputs_kws : xr.DataArray or xr.Dataset
+    **inputs_kws : xr.DataArray or xr.Dataset
         Mapping from names to the datasets or variables that were used to produce the new object.
         Inputs given that way will be prefixes by the passed name.
 
