@@ -174,7 +174,7 @@ def units2pint(
     ]
     possibilities = [f"{d} {u}" for d in degree_ex for u in unit_ex]
     if unit.strip() in possibilities:
-        raise ValidationError("Remove white space from temperature units, e.g. use `degC`.")  # FIXME: ValidationError not defined
+        raise ValueError("Remove white space from temperature units, e.g. use `degC`.")  # FIXME: ValidationError not defined
 
     pu = units.parse_units(unit)
     if metadata == "temperature: difference":
