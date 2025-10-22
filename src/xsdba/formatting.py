@@ -6,8 +6,9 @@ Formatting Utilities
 from __future__ import annotations
 import datetime as dt
 import itertools
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from inspect import signature
+from typing import Any
 
 import xarray as xr
 from boltons.funcutils import wraps
@@ -16,10 +17,10 @@ from boltons.funcutils import wraps
 # XC
 def merge_attributes(
     attribute: str,
-    *inputs_list: xr.DataArray | xr.Dataset,
+    *inputs_list: Sequence[xr.DataArray | xr.Dataset],
     new_line: str = "\n",
     missing_str: str | None = None,
-    **inputs_kws: xr.DataArray | xr.Dataset,
+    **inputs_kws: dict[str, xr.DataArray | xr.Dataset],
 ) -> str:
     r"""
     Merge attributes from several DataArrays or Datasets.
@@ -67,9 +68,9 @@ def merge_attributes(
 # XC
 def update_history(
     hist_str: str,
-    *inputs_list: xr.DataArray | xr.Dataset,
+    *inputs_list: Sequence[xr.DataArray | xr.Dataset],
     new_name: str | None = None,
-    **inputs_kws: xr.DataArray | xr.Dataset,
+    **inputs_kws: dict[str, xr.DataArray | xr.Dataset],
 ) -> str:
     r"""
     Return a history string with the timestamped message and the combination of the history of all inputs.
@@ -85,7 +86,7 @@ def update_history(
         Inputs given that way will be prefixed by their "name" attribute if available.
     new_name : str, optional
         The name of the newly created variable or dataset to prefix hist_msg.
-    **inputs_kws : xr.DataArray or xr.Dataset
+    **inputs_kws : dict of xr.DataArray or xr.Dataset
         Mapping from names to the datasets or variables that were used to produce the new object.
         Inputs given that way will be prefixes by the passed name.
 
@@ -159,8 +160,8 @@ def update_xsdba_history(func: Callable):
 # XC
 def gen_call_string(
     funcname: str,
-    *args,
-    **kwargs,
+    *args: Any,
+    **kwargs: Any,
 ) -> str:
     r"""
     Generate a signature string for use in the history attribute.

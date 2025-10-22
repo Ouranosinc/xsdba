@@ -104,7 +104,7 @@ def _parse_str(value: str) -> tuple[str, str]:
     Returns
     -------
     tuple[str, str]
-        Magntitude and unit strings. If no magntiude is found, "1" is used by default.
+        Magnitude and unit strings. If no magnitude is found, "1" is used by default.
     """
     mstr, *ustr = value.split(" ", maxsplit=1)
     try:
