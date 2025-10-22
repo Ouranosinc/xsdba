@@ -1,6 +1,4 @@
-# pylint: disable=missing-kwoa
 """
-# noqa: SS01
 Properties Submodule
 ====================
 SDBA diagnostic tests are made up of statistical properties and measures. Properties are calculated on both simulation
@@ -13,6 +11,7 @@ This module depends on `xclim`. Run `pip install xsdba['extras']` to install it.
 """
 
 from __future__ import annotations
+
 from collections.abc import Sequence
 
 import numpy as np

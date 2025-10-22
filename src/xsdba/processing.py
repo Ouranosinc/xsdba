@@ -1,11 +1,10 @@
-# pylint: disable=missing-kwoa
 """
-# noqa: SS01
 Pre- and Post-Processing Submodule
 ==================================
 """
 
 from __future__ import annotations
+
 import types
 from collections.abc import Callable, Sequence
 from typing import cast
@@ -579,6 +578,7 @@ def to_additive_space(
     :cite:cts:`alavoine_distinct_2022`.
     """
     lower_bound_array = np.array(lower_bound).astype(float)
+    upper_bound_array = None
     if upper_bound is not None:
         upper_bound_array = np.array(upper_bound).astype(float)
 
@@ -687,6 +687,8 @@ def from_additive_space(
     ----------
     :cite:cts:`alavoine_distinct_2022`.
     """
+    upper_bound_array = None
+
     if trans is None and lower_bound is None and units is None:
         try:
             trans = data.attrs["xsdba_transform"]
@@ -707,7 +709,7 @@ def from_additive_space(
     with xr.set_options(keep_attrs=True):
         if trans == "log":
             out = np.exp(data) + lower_bound_array
-        elif trans == "logit":
+        elif trans == "logit" and upper_bound_array is not None:
             out_prime = 1 / (1 + np.exp(-data))
             out = (
                 out_prime * (upper_bound_array - lower_bound_array)  # pylint: disable=E0606
@@ -907,9 +909,9 @@ def _make_mask(template, cond_vals):
 
     Parameters
     ----------
-    template: xr.DataArray
+    template : xr.DataArray
         Array with the dimensions to be filtered.
-    cond_vals: tuple
+    cond_vals : tuple
         The list of (condition, value) pairs applied to create the mask.
 
     Returns
@@ -954,7 +956,7 @@ def cos2_mask_func(da, low, high):
     following a cosine profile between `low` and `high`.
     """
     cond_vals = [
-        # This first condition could be remove, the mask starts as an array of 1's
+        # This first condition could be removed; The mask starts as an array of 1's
         (da < low, 1),
         (da > high, 0),
         (
@@ -971,9 +973,9 @@ def _normalized_radial_wavenumber(da, dims):
 
     Parameters
     ----------
-    da: xr.DataArray or xr.Dataset
+    da : xr.DataArray or xr.Dataset
         Input field to be transformed in reciprocal space.
-    dims: list[str]
+    dims : list of str
         Dimensions on which to perform the Discrete Cosine Transform.
 
     Returns
@@ -1023,9 +1025,9 @@ def _dctn_filter(arr, mask):
 
 def spectral_filter(
     da: xr.DataArray,
-    lam_long: str | None = None,
-    lam_short: str | None = None,
-    dims: str | list[str] | None = None,
+    lam_long: str | None,
+    lam_short: str | None,
+    dims: list[str] | None = None,
     delta: str | None = None,
     mask_func: Callable = cos2_mask_func,
     alpha_low_high: tuple[float, float] | None = None,
@@ -1041,7 +1043,7 @@ def spectral_filter(
         Long wavelength threshold.
     lam_short : str, optional
         Short wavelength threshold.
-    dims : list, optional
+    dims : list of str, optional
         Dimensions on which to perform the spectral filter.
     delta : str, Optional
         Nominal resolution of the grid. A string with units, e.g. `delta=="55.5 km"`. This converts `alpha` to `wavelength`.

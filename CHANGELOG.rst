@@ -5,15 +5,17 @@ Changelog
 `Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
 ------------------------------------------------------------
 
-Contributors: Éric Dupuis (:user:`coxipi`).
-
-Changes
-^^^^^^^
-* No change.
+Contributors: Éric Dupuis (:user:`coxipi`), Trevor James Smith (:user:`Zeitsperre`).
 
 Fixes
 ^^^^^
 * ``xsdba.adjustment.ExtremeValues`` throws an error with a clear message when the clustered precipitation exceed `1-q_thresh`. This happens when `cluster_thresh` is too small (still in the bulk of the distribution). (:issue:`177`, :pull:`184`).
+
+Internal changes
+^^^^^^^^^^^^^^^^
+* Removed the ``benchmark.ipynb`` notebook from the documentation as it was specifically written for benchmarking purposes. (:issue:`167`, :pull:`206`).
+* Removed the API references to ensure that the documentation favours the user guide for learning how to use `xsdba` and the module index for finding specific functions/classes. (:issue:`63`, :pull:`206`)
+* Adjusted docstrings to allow RST210 and RST213 violations (`\*\*` and `\*` syntax) in docstrings and `pylint` exceptions for titles with underbars. (:issue:`167`, :pull:`206`)
 
 .. _changes_0.5.0:
 

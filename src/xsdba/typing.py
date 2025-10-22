@@ -1,7 +1,6 @@
 """
-# noqa: SS01
 Typing Utilities
-===================================
+================
 """
 
 from __future__ import annotations
