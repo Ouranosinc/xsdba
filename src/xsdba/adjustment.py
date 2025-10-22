@@ -4,7 +4,6 @@ Adjustment Methods
 """
 
 from __future__ import annotations
-
 from copy import deepcopy
 from importlib.util import find_spec
 from inspect import signature
@@ -134,9 +133,7 @@ class BaseAdjustment(ParametrizableWithDataset):
         Returns the converted inputs and the target units.
         """
 
-        def _harmonize_units_multivariate(
-            *_inputs, _dim, _target: dict[str, str] | None = None
-        ):
+        def _harmonize_units_multivariate(*_inputs, _dim, _target: dict[str, str] | None = None):
             def __convert_units_to(_input_da, _internal_dim, _internal_target):
                 varss = _input_da[_internal_dim].values
                 input_units = {v: _input_da[_internal_dim].attrs["_units"][iv] for iv, v in enumerate(varss)}
@@ -1458,13 +1455,8 @@ class OTC(Adjust):
         if find_spec("ot") is None:
             raise ImportError("POT is required for OTC and dOTC. Please install with `pip install POT`.")
 
-        if (
-            normalization not in ["standardize", "max_distance", "max_value"]
-            and normalization is not None
-        ):
-            raise ValueError(
-                "`transform` should be in ['standardize', 'max_distance', 'max_value'] or None."
-            )
+        if normalization not in ["standardize", "max_distance", "max_value"] and normalization is not None:
+            raise ValueError("`transform` should be in ['standardize', 'max_distance', 'max_value'] or None.")
 
         sim = kwargs.pop("sim")
         if "_is_hist" not in sim.attrs:
@@ -1627,13 +1619,8 @@ class dOTC(Adjust):
         if cov_factor not in ["std", "cholesky"] and cov_factor is not None:
             raise ValueError("`cov_factor` should be in ['std', 'cholesky'] or None.")
 
-        if (
-            normalization not in ["standardize", "max_distance", "max_value"]
-            and normalization is not None
-        ):
-            raise ValueError(
-                "`normalization` should be in ['standardize', 'max_distance', 'max_value'] or None."
-            )
+        if normalization not in ["standardize", "max_distance", "max_value"] and normalization is not None:
+            raise ValueError("`normalization` should be in ['standardize', 'max_distance', 'max_value'] or None.")
 
         if isinstance(adapt_freq_thresh, str):
             adapt_freq_thresh = {v: adapt_freq_thresh for v in hist[pts_dim].values}

@@ -1182,9 +1182,7 @@ def _otc_adjust(
     # Compute the optimal transportation plan
     plan = u.optimal_transport(gridX, gridY, muX, muY, num_iter_max, normalization)
 
-    gridX = np.floor(
-        (gridX - bin_origin) / bin_width
-    )  # FIXME: This variable is unused.
+    gridX = np.floor((gridX - bin_origin) / bin_width)  # FIXME: This variable is unused.
     gridY = np.floor((gridY - bin_origin) / bin_width)
 
     # regroup the indices of all the points belonging to a same bin
