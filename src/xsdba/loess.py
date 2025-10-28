@@ -4,8 +4,8 @@ LOESS Smoothing Submodule
 """
 
 from __future__ import annotations
-
 from collections.abc import Callable
+from typing import Literal
 from warnings import warn
 
 import numba
@@ -182,7 +182,7 @@ def loess_smoothing(
     d: Literal[0, 1] = 1,
     f: float = 0.5,
     niter: int = 2,
-    weights: Literal[tricube, gaussion] | Callable = "tricube",
+    weights: Literal["tricube", "gaussian"] | Callable = "tricube",
     equal_spacing: bool | None = None,
     skipna: bool = True,
 ):
@@ -207,7 +207,7 @@ def loess_smoothing(
         normalized from 0 to 1.
     niter : int
         Number of robustness iterations to execute.
-    weights : ["tricube", "gaussian"] or callable
+    weights : ["tricube", "gaussian"] or Callable
         Shape of the weighting function, see notes. The user can provide a function or a string:
         "tricube" : a smooth top-hat like curve.
         "gaussian" : a gaussian curve, f gives the span for 95% of the values.
@@ -241,9 +241,7 @@ def loess_smoothing(
     x = da[dim]
     x = ((x - x[0]) / (x[-1] - x[0])).astype(float)
 
-    weight_func = {"tricube": _tricube_weighting, "gaussian": _gaussian_weighting}.get(
-        weights, weights
-    )
+    weight_func = {"tricube": _tricube_weighting, "gaussian": _gaussian_weighting}.get(weights, weights)
 
     reg_func = {0: _constant_regression, 1: _linear_regression}[d]
 
@@ -252,9 +250,7 @@ def loess_smoothing(
         if equal_spacing is None:
             equal_spacing = True
     elif equal_spacing:
-        warn(
-            "The equal spacing optimization was requested, but the x axis is not equally spaced. Strange results might occur."
-        )
+        warn("The equal spacing optimization was requested, but the x axis is not equally spaced. Strange results might occur.", stacklevel=2)
     if equal_spacing:
         dx = float(x[1] - x[0])
     else:
