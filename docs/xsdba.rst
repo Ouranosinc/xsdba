@@ -10,6 +10,7 @@ Given a reference time series (`ref`), historical simulations (`hist`) and simul
 
     # Create the adjustment object by training it with reference and model data, plus certain arguments
     Adj = Adjustment.train(ref, hist, group="time.month")
+
     # Get a scenario by applying the adjustment to a simulated timeseries.
     scen = Adj.adjust(sim, interp="linear")
     Adj.ds.af  # adjustment factors.
@@ -36,7 +37,7 @@ A generic bias adjustment process is laid out as follows:
 
 The train-adjust approach allows to inspect the trained adjustment object.
 The training information is stored in the underlying `Adj.ds` dataset and usually has a `af` variable with the adjustment factors.
-Its layout and the other available variables vary between the different algorithm, refer to :ref:`Adjustment methods <xsdba-user-api>`.
+Its layout and the other available variables vary between the different algorithm, refer to :py:mod:`xsdba.adjustment`.
 
 Parameters needed by the training and the adjustment are saved to the ``Adj.ds`` dataset as a `adj_params` attribute.
 Parameters passed to the `adjust` call are written to the history attribute in the output scenario DataArray.
@@ -79,7 +80,7 @@ In theory, short wave radiation should be capped when precipitation is not zero,
 
 Usage examples
 ==============
-The usage of this module is documented in two example notebooks: `Simple <notebooks/example.ipynb>`_ and `advanced <notebooks/advanced_example.ipynb>`_ examples.
+The usage of this module is documented in two example notebooks: `simple <notebooks/example.ipynb>`_ and `advanced <notebooks/advanced_example.ipynb>`_ examples.
 
 Experimental wrap of SBCK
 =========================
@@ -101,20 +102,15 @@ and :py:func:`xsdba.base.map_groups`. However, they have the inconvenient that f
 to manage xarray attributes (including units) correctly and their signatures are sometime wrong and often unclear. For
 this reason, the module is often divided in two parts : the (decorated) compute functions in a "private" file
 (ex: ``_adjustment.py``) and the user-facing functions or objects in corresponding public file (ex: ``adjustment.py``).
-See the `advanced_example` notebook for more info on the reasons for this move.
+See the `advanced <notebooks/advanced_example.ipynb>`_ example notebook for more info on the reasons for this move.
 
 Other restrictions : ``map_blocks`` will remove any "auxiliary" coordinates before calling the wrapped function and will
 add them back on exit.
 
-User API
-========
+API
+===
 
-See: :ref:`xsdba-user-api`
-
-Developer API
-=============
-
-See: :ref:`xsdba-developer-api`
+See: :py:mod:`xsdba`
 
 .. only:: html or text
 

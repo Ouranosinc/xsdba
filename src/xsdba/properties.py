@@ -1,6 +1,4 @@
-# pylint: disable=missing-kwoa
 """
-# noqa: SS01
 Properties Submodule
 ====================
 SDBA diagnostic tests are made up of statistical properties and measures. Properties are calculated on both simulation
@@ -11,8 +9,8 @@ Statistical Properties is the xclim term for 'indices' in the VALUE project.
 
 This module depends on `xclim`. Run `pip install xsdba['extras']` to install it.
 """
-from __future__ import annotations
 
+from __future__ import annotations
 from collections.abc import Sequence
 
 import numpy as np
@@ -73,8 +71,7 @@ class StatisticalProperty(Indicator):
     def _ensure_correct_parameters(cls, parameters):
         if "group" not in parameters:
             raise ValueError(
-                f"{cls.__name__} require a 'group' argument, use the base Indicator"
-                " class if your computation doesn't perform any regrouping."
+                f"{cls.__name__} require a 'group' argument, use the base Indicator class if your computation doesn't perform any regrouping."
             )
         return super()._ensure_correct_parameters(parameters)
 
@@ -262,15 +259,11 @@ def _skewness(da: xr.DataArray, *, group: str | Grouper = "time") -> xr.DataArra
     return out
 
 
-skewness = StatisticalProperty(
-    identifier="skewness", aspect="marginal", compute=_skewness, units=""
-)
+skewness = StatisticalProperty(identifier="skewness", aspect="marginal", compute=_skewness, units="")
 
 
 @parse_group
-def _quantile(
-    da: xr.DataArray, *, q: float = 0.98, group: str | Grouper = "time"
-) -> xr.DataArray:
+def _quantile(da: xr.DataArray, *, q: float = 0.98, group: str | Grouper = "time") -> xr.DataArray:
     """
     Quantile.
 
@@ -298,9 +291,7 @@ def _quantile(
     return out.assign_attrs(units=u)
 
 
-quantile = StatisticalProperty(
-    identifier="quantile", aspect="marginal", compute=_quantile
-)
+quantile = StatisticalProperty(identifier="quantile", aspect="marginal", compute=_quantile)
 
 
 def _spell_length_distribution(
@@ -376,9 +367,7 @@ def _spell_length_distribution(
         import xarray.core.resample_cftime  # noqa: F401, pylint: disable=unused-import
 
         da = ds.data
-        mask = ~(da.isel({dim: 0}).isnull()).drop_vars(
-            dim
-        )  # mask of the ocean with NaNs
+        mask = ~(da.isel({dim: 0}).isnull()).drop_vars(dim)  # mask of the ocean with NaNs
         if method == "quantile":
             thresh = da.quantile(thresh, dim=dim).drop_vars("quantile")
 
@@ -400,9 +389,7 @@ def _spell_length_distribution(
     if method == "amount":
         thresh = convert_units_to(thresh, da)
     elif method != "quantile":
-        raise ValueError(
-            f"{method} is not a valid method. Choose 'amount' or 'quantile'."
-        )
+        raise ValueError(f"{method} is not a valid method. Choose 'amount' or 'quantile'.")
 
     out = _spell_stats(
         da.rename("data").to_dataset(),
@@ -492,15 +479,11 @@ def _threshold_count(
     )
 
 
-threshold_count = StatisticalProperty(
-    identifier="threshold_count", aspect="temporal", compute=_threshold_count
-)
+threshold_count = StatisticalProperty(identifier="threshold_count", aspect="temporal", compute=_threshold_count)
 
 
 @parse_group
-def _acf(
-    da: xr.DataArray, *, lag: int = 1, group: str | Grouper = "time.season"
-) -> xr.DataArray:
+def _acf(da: xr.DataArray, *, lag: int = 1, group: str | Grouper = "time.season") -> xr.DataArray:
     """
     Autocorrelation.
 
@@ -549,9 +532,7 @@ def _acf(
         out = out.mean("__resample_dim__")
         return out.rename("out").to_dataset()
 
-    out = _acf(
-        da.rename("data").to_dataset(), group=group, lag=lag, freq=group.freq
-    ).out
+    out = _acf(da.rename("data").to_dataset(), group=group, lag=lag, freq=group.freq).out
     out.attrs["units"] = ""
     return out
 
@@ -616,9 +597,7 @@ def _annual_cycle(
             out = ac.max("dayofyear") - ac.min("dayofyear")
             out.attrs.update(pint2cfattrs(units2pint(u), is_difference=True))
         case "relamp":
-            out = (
-                (ac.max("dayofyear") - ac.min("dayofyear")) * 100 / ac.mean("dayofyear")
-            )
+            out = (ac.max("dayofyear") - ac.min("dayofyear")) * 100 / ac.mean("dayofyear")
             out.attrs["units"] = "%"
         case "phase":
             out = ac.idxmax("dayofyear")
@@ -812,9 +791,7 @@ def _corr_btw_var(
         {corr_type} correlation coefficient.
     """
     if corr_type.lower() not in {"pearson", "spearman"}:
-        raise ValueError(
-            f"{corr_type} is not a valid type. Choose 'Pearson' or 'Spearman'."
-        )
+        raise ValueError(f"{corr_type} is not a valid type. Choose 'Pearson' or 'Spearman'.")
 
     index = {"correlation": 0, "pvalue": 1}[output]
 
@@ -842,16 +819,12 @@ def _corr_btw_var(
         )
         return out.rename("out").to_dataset()
 
-    out = _first_output(
-        xr.Dataset({"a": da1, "b": da2}), group=group, index=index, corr_type=corr_type
-    ).out
+    out = _first_output(xr.Dataset({"a": da1, "b": da2}), group=group, index=index, corr_type=corr_type).out
     out.attrs["units"] = ""
     return out
 
 
-corr_btw_var = StatisticalProperty(
-    identifier="corr_btw_var", aspect="multivariate", compute=_corr_btw_var
-)
+corr_btw_var = StatisticalProperty(identifier="corr_btw_var", aspect="multivariate", compute=_corr_btw_var)
 
 
 def _bivariate_spell_length_distribution(
@@ -927,9 +900,7 @@ def _bivariate_spell_length_distribution(
     group = group if isinstance(group, Grouper) else Grouper(group)
     allowed_ops = [">", "<", ">=", "<="]
     if op1 not in allowed_ops or op2 not in allowed_ops:
-        raise ValueError(
-            f"`op1` and `op2` must be in {allowed_ops}, but {op1} and {op2} were given."
-        )
+        raise ValueError(f"`op1` and `op2` must be in {allowed_ops}, but {op1} and {op2} were given.")
 
     @map_groups(out=[Grouper.PROP], main_only=True)
     def _bivariate_spell_stats(
@@ -950,10 +921,8 @@ def _bivariate_spell_length_distribution(
 
         conds = []
         masks = []
-        for da, thresh, op, method in zip([ds.da1, ds.da2], threshs, ops, methods):
-            masks.append(
-                ~(da.isel({dim: 0}).isnull()).drop_vars(dim)
-            )  # mask of the ocean with NaNs
+        for da, thresh, op, method in zip([ds.da1, ds.da2], threshs, ops, methods, strict=False):
+            masks.append(~(da.isel({dim: 0}).isnull()).drop_vars(dim))  # mask of the ocean with NaNs
             if method == "quantile":
                 thresh = da.quantile(thresh, dim=dim).drop_vars("quantile")
             conds.append(compare(da, op, thresh))
@@ -979,9 +948,7 @@ def _bivariate_spell_length_distribution(
         if methods[i] == "amount":
             threshs[i] = convert_units_to(threshs[i], da)
         elif methods[i] != "quantile":
-            raise ValueError(
-                f"{methods[i]} is not a valid method. Choose 'amount' or 'quantile'."
-            )
+            raise ValueError(f"{methods[i]} is not a valid method. Choose 'amount' or 'quantile'.")
 
     out = _bivariate_spell_stats(
         xr.Dataset({"da1": da1, "da2": da2}),
@@ -1157,9 +1124,7 @@ def _relative_frequency(
     return out
 
 
-relative_frequency = StatisticalProperty(
-    identifier="relative_frequency", aspect="temporal", compute=_relative_frequency
-)
+relative_frequency = StatisticalProperty(identifier="relative_frequency", aspect="temporal", compute=_relative_frequency)
 
 
 @parse_group
@@ -1335,15 +1300,11 @@ def _return_value(
         out = parametric_quantile(params, q=1 - 1.0 / period)
         return out.isel(quantile=0, drop=True).rename("out").to_dataset()
 
-    out = frequency_analysis_method(
-        da.rename("x").to_dataset(), method=method, group=group
-    ).out
+    out = frequency_analysis_method(da.rename("x").to_dataset(), method=method, group=group).out
     return out.assign_attrs(units=da.units)
 
 
-return_value = StatisticalProperty(
-    identifier="return_value", aspect="temporal", compute=_return_value
-)
+return_value = StatisticalProperty(identifier="return_value", aspect="temporal", compute=_return_value)
 
 
 @parse_group
@@ -1388,9 +1349,7 @@ def _spatial_correlogram(
         dims = [d for d in da.dims if d != "time"]
 
     corr = _pairwise_spearman(da, dims)
-    dists, mn, mx = _pairwise_haversine_and_bins(
-        corr.cf["longitude"].values, corr.cf["latitude"].values
-    )
+    dists, mn, mx = _pairwise_haversine_and_bins(corr.cf["longitude"].values, corr.cf["latitude"].values)
     dists = xr.DataArray(dists, dims=corr.dims, coords=corr.coords, name="distance")
     if np.isscalar(bins):
         bins = np.linspace(mn * 0.9999, mx * 1.0001, bins + 1)
@@ -1411,9 +1370,7 @@ def _spatial_correlogram(
 
     def _bin_corr(corr, distance):
         """Bin and mean."""
-        return stats.binned_statistic(
-            distance.flatten(), corr.flatten(), statistic="mean", bins=bins
-        ).statistic
+        return stats.binned_statistic(distance.flatten(), corr.flatten(), statistic="mean", bins=bins).statistic
 
     # (_spatial, _spatial2) -> (_spatial, distance_bins)
     binned = xr.apply_ufunc(
@@ -1430,12 +1387,7 @@ def _spatial_correlogram(
             "output_sizes": {"distance_bins": bins},
         },
     )
-    binned = (
-        binned.assign_coords(distance_bins=centers)
-        .rename(distance_bins="distance")
-        .assign_attrs(units="")
-        .rename("corr")
-    )
+    binned = binned.assign_coords(distance_bins=centers).rename(distance_bins="distance").assign_attrs(units="").rename("corr")
     return binned
 
 
@@ -1496,15 +1448,11 @@ def _decorrelation_length(
 
     corr = _pairwise_spearman(da, dims)
 
-    dists, _, _ = _pairwise_haversine_and_bins(
-        corr.cf["longitude"].values, corr.cf["latitude"].values, transpose=True
-    )
+    dists, _, _ = _pairwise_haversine_and_bins(corr.cf["longitude"].values, corr.cf["latitude"].values, transpose=True)
 
     dists = xr.DataArray(dists, dims=corr.dims, coords=corr.coords, name="distance")
 
-    trans_dists = xr.DataArray(
-        dists.T, dims=corr.dims, coords=corr.coords, name="distance"
-    )
+    trans_dists = xr.DataArray(dists.T, dims=corr.dims, coords=corr.coords, name="distance")
 
     if np.isscalar(bins):
         bin_array = np.linspace(0, radius, bins + 1)
@@ -1535,9 +1483,7 @@ def _decorrelation_length(
     def _bin_corr(_corr, _distance):
         """Bin and mean."""
         mask_nan = ~np.isnan(_corr)
-        binned_corr = stats.binned_statistic(
-            _distance[mask_nan], _corr[mask_nan], statistic="mean", bins=bin_array
-        )
+        binned_corr = stats.binned_statistic(_distance[mask_nan], _corr[mask_nan], statistic="mean", bins=bin_array)
         stat = binned_corr.statistic
         return stat
 
@@ -1561,11 +1507,7 @@ def _decorrelation_length(
         .to_dataset()
     )
 
-    binned = (
-        binned.assign_coords(distance_bins=centers)
-        .rename(distance_bins="distance")
-        .assign_attrs(units="")
-    )
+    binned = binned.assign_coords(distance_bins=centers).rename(distance_bins="distance").assign_attrs(units="")
 
     closest = abs(binned.corr - thresh).idxmin(dim="distance")
     binned["decorrelation_length"] = closest

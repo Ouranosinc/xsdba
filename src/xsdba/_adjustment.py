@@ -1,6 +1,4 @@
-# pylint: disable=no-value-for-parameter
 """
-# noqa: SS01
 Adjustment Algorithms
 =====================
 
@@ -8,7 +6,6 @@ This file defines the different steps, to be wrapped into the Adjustment objects
 """
 
 from __future__ import annotations
-
 from collections.abc import Callable, Sequence
 
 import numpy as np
@@ -31,9 +28,7 @@ from .units import convert_units_to
 from .utils import _fitfunc_1d
 
 
-def _adapt_freq_preprocess(
-    ds, adapt_freq_thresh, group: Grouper | None, dim: str | None
-):
+def _adapt_freq_preprocess(ds, adapt_freq_thresh, group: Grouper | None, dim: str | None):
     if adapt_freq_thresh is None:
         return ds
     if (group is None) ^ (dim is None) is False:
@@ -66,14 +61,9 @@ def _preprocess_dataset(
         ds["sim"] = jitter_under_thresh(ds.sim, jitter_under_thresh_value)
 
     if (jitter_over_thresh_value is None) ^ (jitter_over_thresh_upper_bnd is None):
-        raise ValueError(
-            "`jitter_over_thresh_value` and `jitter_over_thresh_upper_bnd` must "
-            "both be specified or both be `None` (default)"
-        )
+        raise ValueError("`jitter_over_thresh_value` and `jitter_over_thresh_upper_bnd` must both be specified or both be `None` (default)")
     if jitter_over_thresh_value:
-        ds["sim"] = jitter_over_thresh(
-            ds.sim, jitter_over_thresh_value, jitter_over_thresh_upper_bnd
-        )
+        ds["sim"] = jitter_over_thresh(ds.sim, jitter_over_thresh_value, jitter_over_thresh_upper_bnd)
 
     if adapt_freq_thresh:
         ds = _adapt_freq_preprocess(ds, adapt_freq_thresh, None, dim)
@@ -295,26 +285,18 @@ def _npdft_train(ref, hist, rots, quantiles, method, extrap, n_escore, standardi
     `(len(iterations), len(nfeature), len(nfeature))`.
     """
     if standardize:
-        ref = (ref - np.nanmean(ref, axis=-1, keepdims=True)) / (
-            np.nanstd(ref, axis=-1, keepdims=True)
-        )
-        hist = (hist - np.nanmean(hist, axis=-1, keepdims=True)) / (
-            np.nanstd(hist, axis=-1, keepdims=True)
-        )
+        ref = (ref - np.nanmean(ref, axis=-1, keepdims=True)) / (np.nanstd(ref, axis=-1, keepdims=True))
+        hist = (hist - np.nanmean(hist, axis=-1, keepdims=True)) / (np.nanstd(hist, axis=-1, keepdims=True))
     af_q = np.zeros((len(rots), ref.shape[0], len(quantiles)))
     escores = np.zeros(len(rots)) * np.nan
     if n_escore > 0:
-        ref_step, hist_step = (
-            int(np.ceil(arr.shape[1] / n_escore)) for arr in [ref, hist]
-        )
+        ref_step, hist_step = (int(np.ceil(arr.shape[1] / n_escore)) for arr in [ref, hist])
     for ii, _rot in enumerate(rots):
         rot = _rot if ii == 0 else _rot @ rots[ii - 1].T
         ref, hist = rot @ ref, rot @ hist
         # loop over variables
         for iv in range(ref.shape[0]):
-            ref_q, hist_q = nbu._quantile(ref[iv], quantiles), nbu._quantile(
-                hist[iv], quantiles
-            )
+            ref_q, hist_q = nbu._quantile(ref[iv], quantiles), nbu._quantile(hist[iv], quantiles)
             af_q[ii, iv] = ref_q - hist_q
             af = u._interp_on_quantiles_1D(
                 u._rank_bn(hist[iv]),
@@ -326,7 +308,7 @@ def _npdft_train(ref, hist, rots, quantiles, method, extrap, n_escore, standardi
             hist[iv] = hist[iv] + af
         if n_escore > 0:
             escores[ii] = nbu._escore(ref[:, ::ref_step], hist[:, ::hist_step])
-    hist = rots[-1].T @ hist
+    hist = rots[-1].T @ hist  # FIXME: This variable is unused.
     return af_q, escores
 
 
@@ -421,9 +403,7 @@ def mbcn_train(
         escores_l.append(escores.expand_dims({gr_dim: [ib]}))
     af_q = xr.concat(af_q_l, dim=gr_dim)
     escores = xr.concat(escores_l, dim=gr_dim)
-    out = xr.Dataset({"af_q": af_q, "escores": escores}).assign_coords(
-        {"quantiles": quantiles, gr_dim: gw_idxs[gr_dim].values}
-    )
+    out = xr.Dataset({"af_q": af_q, "escores": escores}).assign_coords({"quantiles": quantiles, gr_dim: gw_idxs[gr_dim].values})
     return out
 
 
@@ -475,14 +455,14 @@ def mbcn_adjust(
     ds: xr.Dataset,
     g_idxs: xr.DataArray,
     gw_idxs: xr.DataArray,
-    pts_dims: Sequence[str],
+    pts_dims: tuple[str, str],
     interp: str,
     extrapolation: str,
     base: Callable,
     base_kws_vars: dict,
     adj_kws: dict,
     period_dim: str | None,
-) -> xr.DataArray:
+) -> xr.Dataset:
     """
     Perform the adjustment portion MBCn multivariate bias correction technique.
 
@@ -559,12 +539,8 @@ def mbcn_adjust(
         for iv, v in enumerate(sim[pts_dims[0]].values):
             sl = {"time": ind_gw, pts_dims[0]: iv}
             with set_options(extra_output=False):
-                ADJ = base.train(
-                    ref[sl], hist[sl], **base_kws_vars[v], skip_input_checks=True
-                )
-                scen_block[{pts_dims[0]: iv}] = ADJ.adjust(
-                    sim[sl], **adj_kws, skip_input_checks=True
-                )
+                ADJ = base.train(ref[sl], hist[sl], **base_kws_vars[v], skip_input_checks=True)
+                scen_block[{pts_dims[0]: iv}] = ADJ.adjust(sim[sl], **adj_kws, skip_input_checks=True)
 
         # 2. npdft adjustment of sim
         npdft_block = xr.apply_ufunc(
@@ -819,9 +795,7 @@ def loci_train(ds: xr.Dataset, *, group, thresh) -> xr.Dataset:
             ref : training target
             hist : training data
     """
-    s_thresh = group.apply(
-        u.map_cdf, ds.rename(hist="x", ref="y"), y_value=thresh
-    ).isel(x=0)
+    s_thresh = group.apply(u.map_cdf, ds.rename(hist="x", ref="y"), y_value=thresh).isel(x=0)
     sth = u.broadcast(s_thresh, ds.hist, group=group)
     ws = xr.where(ds.hist >= sth, ds.hist, np.nan)
     wo = xr.where(ds.ref >= thresh, ds.ref, np.nan)
@@ -849,9 +823,7 @@ def loci_adjust(ds: xr.Dataset, *, group, thresh, interp) -> xr.Dataset:
     sth = u.broadcast(ds.hist_thresh, ds.sim, group=group, interp=interp)
     factor = u.broadcast(ds.af, ds.sim, group=group, interp=interp)
     with xr.set_options(keep_attrs=True):
-        scen: xr.DataArray = (
-            (factor * (ds.sim - sth) + thresh).clip(min=0).rename("scen")
-        )
+        scen: xr.DataArray = (factor * (ds.sim - sth) + thresh).clip(min=0).rename("scen")
     out = scen.to_dataset()
     return out
 
@@ -907,7 +879,7 @@ def npdf_transform(ds: xr.Dataset, **kwargs) -> xr.Dataset:
             hist : simulated timeseries on the reference period.
             sim : Simulated timeseries on the projected period.
             rot_matrices : Random rotation matrices.
-    \*\*kwargs
+    **kwargs
         pts_dim : multivariate dimension name.
         base : Adjustment class.
         base_kws : Kwargs for initialising the adjustment object.
@@ -940,9 +912,7 @@ def npdf_transform(ds: xr.Dataset, **kwargs) -> xr.Dataset:
         simp = sim @ R
 
         # Perform univariate adjustment in rotated space (x')
-        ADJ = kwargs["base"].train(
-            refp, histp, **kwargs["base_kws"], skip_input_checks=True
-        )
+        ADJ = kwargs["base"].train(refp, histp, **kwargs["base_kws"], skip_input_checks=True)
         scenhp = ADJ.adjust(histp, **kwargs["adj_kws"], skip_input_checks=True)
         scensp = ADJ.adjust(simp, **kwargs["adj_kws"], skip_input_checks=True)
 
@@ -969,9 +939,7 @@ def npdf_transform(ds: xr.Dataset, **kwargs) -> xr.Dataset:
         escores = xr.concat(escores, "iterations")
     else:
         # All nan, but with the proper shape.
-        escores = (
-            ref.isel({dim: 0, "time": 0}) * hist.isel({dim: 0, "time": 0})
-        ).expand_dims(iterations=ds.iterations) * np.nan
+        escores = (ref.isel({dim: 0, "time": 0}) * hist.isel({dim: 0, "time": 0})).expand_dims(iterations=ds.iterations) * np.nan
 
     return xr.Dataset(
         data_vars={
@@ -985,9 +953,7 @@ def npdf_transform(ds: xr.Dataset, **kwargs) -> xr.Dataset:
 def _fit_on_cluster(data, thresh, cluster_thresh, dist):
     """Extract clusters on 1D data and fit "dist" on the maximums."""
     _, _, _, maximums = u.get_clusters_1d(data, thresh, cluster_thresh)
-    params = list(
-        _fitfunc_1d(maximums - thresh, dist=dist, floc=0, nparams=3, method="ML")
-    )
+    params = list(_fitfunc_1d(maximums - thresh, dist=dist, floc=0, nparams=3, method="ML"))
     # We forced 0, put back thresh.
     params[-2] = thresh
     return params
@@ -1000,10 +966,7 @@ def _extremes_train_1d(ref, hist, ref_params, cluster_thresh, *, q_thresh, dist,
         return np.full(N, np.nan), np.full(N, np.nan), np.nan
 
     # Find quantile q_thresh
-    thresh = (
-        np.nanquantile(ref[ref >= cluster_thresh], q_thresh)
-        + np.nanquantile(hist[hist >= cluster_thresh], q_thresh)
-    ) / 2
+    thresh = (np.nanquantile(ref[ref >= cluster_thresh], q_thresh) + np.nanquantile(hist[hist >= cluster_thresh], q_thresh)) / 2
 
     # Fit genpareto on cluster maximums on ref (if needed) and hist.
     if np.isnan(ref_params).all():
@@ -1041,9 +1004,7 @@ def _extremes_train_1d(ref, hist, ref_params, cluster_thresh, *, q_thresh, dist,
     return px_hist, af, thresh
 
 
-@map_blocks(
-    reduces=["time"], px_hist=["quantiles"], af=["quantiles"], thresh=[Grouper.PROP]
-)
+@map_blocks(reduces=["time"], px_hist=["quantiles"], af=["quantiles"], thresh=[Grouper.PROP])
 def extremes_train(
     ds: xr.Dataset,
     *,
@@ -1153,15 +1114,11 @@ def extremes_adjust(
     )
 
     # Find factors by interpolating from hist probs to fut probs. apply them.
-    af = u.interp_on_quantiles(
-        px_fut, ds.px_hist, ds.af, method=interp, extrapolation=extrapolation
-    )
+    af = u.interp_on_quantiles(px_fut, ds.px_hist, ds.af, method=interp, extrapolation=extrapolation)
     scen = u.apply_correction(ds.sim, af, "*")
 
     # Smooth transition function between simulation and scenario.
-    transition = (
-        ((ds.sim - ds.thresh) / ((ds.sim.max("time")) - ds.thresh)) / frac
-    ) ** power
+    transition = (((ds.sim - ds.thresh) / ((ds.sim.max("time")) - ds.thresh)) / frac) ** power
     transition = transition.clip(0, 1)
 
     adjusted: xr.DataArray = (transition * scen) + ((1 - transition) * ds.scen)
@@ -1192,11 +1149,11 @@ def _otc_adjust(
     bin_origin : dict or float or np.ndarray, optional
         Bin origins for specified dimensions.
     num_iter_max : int, optional
-        Maximum number of iterations used in the earth mover distance algorithm.
+        Maximum number of iterations used in the Earth-Mover_Distance (EMD) algorithm.
     jitter_inside_bins : bool
         If `False`, output points are located at the center of their bin.
         If `True`, a random location is picked uniformly inside their bin. Default is `True`.
-    normalization : {None, 'standardize', 'max_distance', 'max_value'}
+    normalization : {'standardize', 'max_distance', 'max_value'}, optional
         Per-variable transformation applied before the distances are calculated
         in the optimal transport.
 
@@ -1246,15 +1203,13 @@ def _otc_adjust(
     # Compute the optimal transportation plan
     plan = u.optimal_transport(gridX, gridY, muX, muY, num_iter_max, normalization)
 
-    gridX = np.floor((gridX - bin_origin) / bin_width)
+    gridX = np.floor((gridX - bin_origin) / bin_width)  # FIXME: This variable is unused.
     gridY = np.floor((gridY - bin_origin) / bin_width)
 
     # regroup the indices of all the points belonging to a same bin
     binX_sort = np.lexsort(binX[:, ::-1].T)
     sorted_bins = binX[binX_sort]
-    _, binX_start, binX_count = np.unique(
-        sorted_bins, return_index=True, return_counts=True, axis=0
-    )
+    _, binX_start, binX_count = np.unique(sorted_bins, return_index=True, return_counts=True, axis=0)
     binX_start_sort = np.sort(binX_start)
     binX_groups = np.split(binX_sort, binX_start_sort[1:])
 
@@ -1306,13 +1261,13 @@ def otc_adjust(
     bin_origin : dict or float, optional
         Bin origins for specified dimensions.
     num_iter_max : int, optional
-        Maximum number of iterations used in the earth mover distance algorithm.
+        Maximum number of iterations used in the Earth Mover Distance (EMD) algorithm.
     jitter_inside_bins : bool
         If `False`, output points are located at the center of their bin.
         If `True`, a random location is picked uniformly inside their bin. Default is `True`.
     adapt_freq_thresh : dict, optional
         Threshold for frequency adaptation per variable.
-    normalization : {None, 'standardize', 'max_distance', 'max_value'}
+    normalization : {'standardize', 'max_distance', 'max_value'}, optional
         Per-variable transformation applied before the distances are calculated
         in the optimal transport.
 
@@ -1326,12 +1281,8 @@ def otc_adjust(
 
     if adapt_freq_thresh is not None:
         for var, thresh in adapt_freq_thresh.items():
-            ds0 = xr.Dataset(
-                {"ref": ref.sel({pts_dim: var}), "sim": hist.sel({pts_dim: var})}
-            )
-            hist.loc[{pts_dim: var}] = _preprocess_dataset(
-                ds0, adapt_freq_thresh=thresh
-            ).sim
+            ds0 = xr.Dataset({"ref": ref.sel({pts_dim: var}), "sim": hist.sel({pts_dim: var})})
+            hist.loc[{pts_dim: var}] = _preprocess_dataset(ds0, adapt_freq_thresh=thresh).sim
 
     ref_dim = Grouper.filter_dim(ref, dim)
     ref_map = {d: f"ref_{d}" for d in ref_dim}
@@ -1341,15 +1292,9 @@ def otc_adjust(
     hist = hist.stack(dim_hist=sim_dim).dropna(dim="dim_hist")
 
     if isinstance(bin_width, dict):
-        bin_width = {
-            np.where(ref[pts_dim].values == var)[0][0]: op
-            for var, op in bin_width.items()
-        }
+        bin_width = {np.where(ref[pts_dim].values == var)[0][0]: op for var, op in bin_width.items()}
     if isinstance(bin_origin, dict):
-        bin_origin = {
-            np.where(ref[pts_dim].values == var)[0][0]: op
-            for var, op in bin_origin.items()
-        }
+        bin_origin = {np.where(ref[pts_dim].values == var)[0][0]: op for var, op in bin_origin.items()}
 
     scen = xr.apply_ufunc(
         _otc_adjust,
@@ -1401,7 +1346,7 @@ def _dotc_adjust(
     bin_origin : dict or float, optional
         Bin origins for specified dimensions.
     num_iter_max : int, optional
-        Maximum number of iterations used in the earth mover distance algorithm.
+        Maximum number of iterations used in the Earth Mover Distance (EMD) algorithm.
     cov_factor : str, optional
         Rescaling factor.
     jitter_inside_bins : bool
@@ -1410,7 +1355,7 @@ def _dotc_adjust(
     kind : dict, optional
         Keys are variable names and values are adjustment kinds, either additive or multiplicative.
         Unspecified dimensions are treated as "+".
-    normalization : {None, 'standardize', 'max_distance', 'max_value'}
+    normalization : {'standardize', 'max_distance', 'max_value'}, optional
         Per-variable transformation applied before the distances are calculated
         in the optimal transport.
 
@@ -1545,7 +1490,7 @@ def dotc_adjust(
     bin_origin : dict or float, optional
         Bin origins for specified dimensions.
     num_iter_max : int, optional
-        Maximum number of iterations used in the earth mover distance algorithm.
+        Maximum number of iterations used in the Earth Mover Distance (EMD) algorithm.
     cov_factor : str, optional
         Rescaling factor.
     jitter_inside_bins : bool
@@ -1556,7 +1501,7 @@ def dotc_adjust(
         Unspecified dimensions are treated as "+".
     adapt_freq_thresh : dict, optional
         Threshold for frequency adaptation per variable.
-    normalization : {None, 'standardize', 'max_distance', 'max_value'}
+    normalization : {'standardize', 'max_distance', 'max_value'}, optional
         Per-variable transformation applied before the distances are calculated
         in the optimal transport.
 
@@ -1572,18 +1517,14 @@ def dotc_adjust(
     if adapt_freq_thresh is not None:
         for var, thresh in adapt_freq_thresh.items():
             if thresh is not None:
-                ds0 = xr.Dataset(
-                    {"ref": ref.sel({pts_dim: var}), "sim": hist.sel({pts_dim: var})}
-                )
+                ds0 = xr.Dataset({"ref": ref.sel({pts_dim: var}), "sim": hist.sel({pts_dim: var})})
                 # add the `dP0, P0_ref, P0_hist, pth` datasets
                 ds0 = _preprocess_dataset(ds0, dim=dim, adapt_freq_thresh=thresh)
                 hist.loc[{pts_dim: var}] = ds0.sim
                 ds0["sim"] = sim.loc[{pts_dim: var}]
                 # remove the `ref` dataset since we already have `P0_ref` and other datasets
                 ds0 = ds0.drop("ref")
-                sim.loc[{pts_dim: var}] = _preprocess_dataset(
-                    ds0, dim=dim, adapt_freq_thresh=thresh
-                ).sim
+                sim.loc[{pts_dim: var}] = _preprocess_dataset(ds0, dim=dim, adapt_freq_thresh=thresh).sim
 
     # Drop data added by map_blocks and prepare for apply_ufunc
     sim_dim = Grouper.filter_dim(sim, dim)
@@ -1597,19 +1538,11 @@ def dotc_adjust(
     sim = sim.stack(dim_sim=sim_dim)
 
     if kind is not None:
-        kind = {
-            np.where(ref[pts_dim].values == var)[0][0]: op for var, op in kind.items()
-        }
+        kind = {np.where(ref[pts_dim].values == var)[0][0]: op for var, op in kind.items()}
     if isinstance(bin_width, dict):
-        bin_width = {
-            np.where(ref[pts_dim].values == var)[0][0]: op
-            for var, op in bin_width.items()
-        }
+        bin_width = {np.where(ref[pts_dim].values == var)[0][0]: op for var, op in bin_width.items()}
     if isinstance(bin_origin, dict):
-        bin_origin = {
-            np.where(ref[pts_dim].values == var)[0][0]: op
-            for var, op in bin_origin.items()
-        }
+        bin_origin = {np.where(ref[pts_dim].values == var)[0][0]: op for var, op in bin_origin.items()}
 
     scen = xr.apply_ufunc(
         _dotc_adjust,
