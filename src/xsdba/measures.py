@@ -1,5 +1,4 @@
 """
-# noqa: SS01
 Measures Submodule
 ==================
 Measures compare adjusted simulations to a reference
@@ -12,7 +11,6 @@ This module depends on `xclim`. Run `pip install xsdba['extras']` to install it.
 """
 
 from __future__ import annotations
-
 from collections.abc import Sequence
 
 import numpy as np
@@ -44,9 +42,7 @@ class StatisticalMeasure(Indicator):
     def _ensure_correct_parameters(cls, parameters):
         inputs = {k for k, p in parameters.items() if p.kind == InputKind.VARIABLE}
         if not inputs.issuperset({"sim", "ref"}):
-            raise ValueError(
-                f"{cls.__name__} requires 'sim' and 'ref' as inputs. Got {inputs}."
-            )
+            raise ValueError(f"{cls.__name__} requires 'sim' and 'ref' as inputs. Got {inputs}.")
         return super()._ensure_correct_parameters(parameters)
 
     def _preprocess_and_checks(self, das, params):
@@ -62,9 +58,7 @@ class StatisticalMeasure(Indicator):
         newsim, newref = xr.broadcast(sim, ref)
         for dim in set(sim.dims).union(ref.dims):
             if [sim[dim].size, ref[dim].size] != [newsim[dim].size, newref[dim].size]:
-                raise ValueError(
-                    f"Common dimension {dim} has different coordinates between ref and sim."
-                )
+                raise ValueError(f"Common dimension {dim} has different coordinates between ref and sim.")
         return das, params
 
 
@@ -100,14 +94,11 @@ class StatisticalPropertyMeasure(Indicator):
     def _ensure_correct_parameters(cls, parameters):
         inputs = {k for k, p in parameters.items() if p.kind == InputKind.VARIABLE}
         if not inputs.issuperset({"sim", "ref"}):
-            raise ValueError(
-                f"{cls.__name__} requires 'sim' and 'ref' as inputs. Got {inputs}."
-            )
+            raise ValueError(f"{cls.__name__} requires 'sim' and 'ref' as inputs. Got {inputs}.")
 
         if "group" not in parameters:
             raise ValueError(
-                f"{cls.__name__} require a 'group' argument, use the base Indicator"
-                " class if your computation doesn't perform any regrouping."
+                f"{cls.__name__} require a 'group' argument, use the base Indicator class if your computation doesn't perform any regrouping."
             )
 
         return super()._ensure_correct_parameters(parameters)
@@ -192,9 +183,7 @@ def _relative_bias(sim: xr.DataArray, ref: xr.DataArray) -> xr.DataArray:
     return out.assign_attrs(units="")
 
 
-relative_bias = StatisticalMeasure(
-    identifier="relative_bias", compute=_relative_bias, units=""
-)
+relative_bias = StatisticalMeasure(identifier="relative_bias", compute=_relative_bias, units="")
 
 
 def _circular_bias(sim: xr.DataArray, ref: xr.DataArray) -> xr.DataArray:
@@ -217,16 +206,12 @@ def _circular_bias(sim: xr.DataArray, ref: xr.DataArray) -> xr.DataArray:
       Circular bias.
     """
     out = (sim - ref) % 365
-    out = out.where(
-        out <= 365 / 2, 365 - out
-    )  # when condition false, replace by 2nd arg
+    out = out.where(out <= 365 / 2, 365 - out)  # when condition false, replace by 2nd arg
     out = out.where(ref >= sim, out * -1)  # when condition false, replace by 2nd arg
     return out.assign_attrs(units="days")
 
 
-circular_bias = StatisticalMeasure(
-    identifier="circular_bias", compute=_circular_bias, units="days"
-)
+circular_bias = StatisticalMeasure(identifier="circular_bias", compute=_circular_bias, units="days")
 
 
 def _ratio(sim: xr.DataArray, ref: xr.DataArray) -> xr.DataArray:
@@ -255,9 +240,7 @@ def _ratio(sim: xr.DataArray, ref: xr.DataArray) -> xr.DataArray:
 ratio = StatisticalMeasure(identifier="ratio", compute=_ratio, units="")
 
 
-def _rmse(
-    sim: xr.DataArray, ref: xr.DataArray, group: str | Grouper = "time"
-) -> xr.DataArray:
+def _rmse(sim: xr.DataArray, ref: xr.DataArray, group: str | Grouper = "time") -> xr.DataArray:
     """
     Root mean square error.
 
@@ -303,9 +286,7 @@ rmse = StatisticalPropertyMeasure(
 )
 
 
-def _mae(
-    sim: xr.DataArray, ref: xr.DataArray, group: str | Grouper = "time"
-) -> xr.DataArray:
+def _mae(sim: xr.DataArray, ref: xr.DataArray, group: str | Grouper = "time") -> xr.DataArray:
     """
     Mean absolute error.
 
@@ -438,9 +419,7 @@ def _scorr(
     return S_corr.assign_attrs(units="")
 
 
-scorr = StatisticalPropertyMeasure(
-    identifier="Scorr", aspect="spatial", compute=_scorr, allowed_groups=["group"]
-)
+scorr = StatisticalPropertyMeasure(identifier="Scorr", aspect="spatial", compute=_scorr, allowed_groups=["group"])
 
 
 def _taylordiagram(
@@ -481,9 +460,7 @@ def _taylordiagram(
     ref_std = ref.std(dim=dim, skipna=True, keep_attrs=True)
     sim_std = sim.std(dim=dim, skipna=True, keep_attrs=True)
 
-    new_dim = xr.DataArray(
-        ["ref_std", "sim_std", "corr"], dims=("taylor_param",), name="taylor_param"
-    )
+    new_dim = xr.DataArray(["ref_std", "sim_std", "corr"], dims=("taylor_param",), name="taylor_param")
 
     out = xr.concat(
         [ref_std, sim_std, corr],
@@ -500,13 +477,9 @@ def _taylordiagram(
     # Normalize the standard deviations byt the standard deviation of the reference.
     if normalize:
         if (out[{"taylor_param": 0}] == 0).any():
-            raise ValueError(
-                "`ref_std =0` (homogeneous field) obtained, normalization is not possible."
-            )
+            raise ValueError("`ref_std =0` (homogeneous field) obtained, normalization is not possible.")
         with xr.set_options(keep_attrs=True):
-            out[{"taylor_param": [0, 1]}] = (
-                out[{"taylor_param": [0, 1]}] / out[{"taylor_param": 0}]
-            )
+            out[{"taylor_param": [0, 1]}] = out[{"taylor_param": [0, 1]}] / out[{"taylor_param": 0}]
         out.attrs["normalized"] = True
         out.attrs["units"] = ""
 

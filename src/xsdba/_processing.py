@@ -1,5 +1,4 @@
 """
-# noqa: SS01
 Compute Functions Submodule
 ===========================
 
@@ -8,16 +7,14 @@ The user-facing, metadata-handling functions should be defined in processing.py.
 """
 
 from __future__ import annotations
-
 from collections.abc import Sequence
 
 import numpy as np
 import xarray as xr
 
-import xsdba
 from xsdba import nbutils as nbu
 from xsdba.base import Grouper, map_groups
-from xsdba.utils import ADDITIVE, apply_correction, ecdf, get_correction, invert, rank
+from xsdba.utils import ADDITIVE, apply_correction, ecdf, invert, rank
 
 
 @map_groups(
@@ -27,9 +24,7 @@ from xsdba.utils import ADDITIVE, apply_correction, ecdf, get_correction, invert
     P0_hist=[Grouper.PROP],
     pth=[Grouper.PROP],
 )
-def _adapt_freq(
-    ds: xr.Dataset, *, dim: Sequence[str], thresh: float = 0, kind: str = "+"
-) -> xr.Dataset:
+def _adapt_freq(ds: xr.Dataset, *, dim: Sequence[str], thresh: float = 0, kind: str = "+") -> xr.Dataset:
     r"""
     Adapt frequency of values under thresh of `sim`, in order to match ref.
 
@@ -70,23 +65,16 @@ def _adapt_freq(
         `ds.ref` is optional: If `P0_ref`, `P0_hist`,`pth` are given, these values will be used and `ds.ref` is not necessary.
         Either `ds.ref` or the triplet (`P0_ref`, `P0_hist`,`pth`)  must be given.
     """
-    ref, P0_ref, P0_hist, pth = (
-        ds.get(k, None) for k in ["ref", "P0_ref", "P0_hist", "pth"]
-    )
+    ref, P0_ref, P0_hist, pth = (ds.get(k, None) for k in ["ref", "P0_ref", "P0_hist", "pth"])
     reuse_adapt_output = {P0_ref is not None, P0_hist is not None, pth is not None}
     if len(reuse_adapt_output) != 1:
         raise ValueError("`P0_ref`, `P0_hist`, `pth` must all be given, or be `None`.")
     reuse_adapt_output = list(reuse_adapt_output)[0]
     if len({ref is not None, reuse_adapt_output}) != 2:
-        raise ValueError(
-            "Either `ref` or the triplet (`P0_ref`,`P0_hist`,`pth`) must be None."
-        )
+        raise ValueError("Either `ref` or the triplet (`P0_ref`,`P0_hist`,`pth`) must be None.")
     dim = [dim] if isinstance(dim, str) else dim
     # map_groups quirk: datasets are broadcasted and must be sliced
-    P0_ref, P0_hist, pth = (
-        da if da is None else da[{d: 0 for d in set(dim).intersection(set(da.dims))}]
-        for da in [P0_ref, P0_hist, pth]
-    )
+    P0_ref, P0_hist, pth = (da if da is None else da[{d: 0 for d in set(dim).intersection(set(da.dims))}] for da in [P0_ref, P0_hist, pth])
 
     # Compute the probability of finding a value <= thresh
     # This is the "dry-day frequency" in the precipitation case
@@ -110,13 +98,9 @@ def _adapt_freq(
         sim_ad = sim.where(
             dP0 < 0,  # dP0 < 0 means no-adaptation.
             sim.where(
-                (rnk < (P0_ref / P0_hist) * P0_sim)
-                | (rnk > P0_sim)
-                | sim.isnull(),  # Preserve current values
+                (rnk < (P0_ref / P0_hist) * P0_sim) | (rnk > P0_sim) | sim.isnull(),  # Preserve current values
                 # Generate random numbers ~ U[T0, Pth]
-                (pth.broadcast_like(sim) - thresh)
-                * np.random.random_sample(size=sim.shape).astype(sim.dtype)
-                + thresh,
+                (pth.broadcast_like(sim) - thresh) * np.random.random_sample(size=sim.shape).astype(sim.dtype) + thresh,
             ),
         )
 
@@ -139,9 +123,7 @@ def _adapt_freq(
     )
 
 
-@map_groups(
-    reduces=[Grouper.DIM, Grouper.PROP], data=[Grouper.DIM], norm=[Grouper.PROP]
-)
+@map_groups(reduces=[Grouper.DIM, Grouper.PROP], data=[Grouper.DIM], norm=[Grouper.PROP])
 def _normalize(
     ds: xr.Dataset,
     *,
@@ -178,9 +160,7 @@ def _normalize(
         norm = ds.data.mean(dim=dim)
     norm.attrs["_group_apply_reshape"] = True
 
-    return xr.Dataset(
-        {"data": apply_correction(ds.data, invert(norm, kind), kind), "norm": norm}
-    )
+    return xr.Dataset({"data": apply_correction(ds.data, invert(norm, kind), kind), "norm": norm})
 
 
 @map_groups(reordered=[Grouper.DIM], main_only=False)
@@ -210,9 +190,7 @@ def _reordering(ds: xr.Dataset, *, dim: str) -> xr.Dataset:
         data_r = data.ravel()
         ordr_r = ordr.ravel()
         reorder = np.sort(data_r)[np.argsort(np.argsort(ordr_r))]
-        return reorder.reshape(data.shape)[
-            :, int(data.shape[1] / 2)
-        ]  # pick the middle of the window
+        return reorder.reshape(data.shape)[:, int(data.shape[1] / 2)]  # pick the middle of the window
 
     if {"window", "time"} == set(dim):
         return (
@@ -247,7 +225,5 @@ def _reordering(ds: xr.Dataset, *, dim: str) -> xr.Dataset:
         )
 
     raise ValueError(
-        f"Reordering can only be done along one dimension. "
-        f"If there is more than one, they should be `window` and `time`. "
-        f"The dimensions are {dim}."
+        f"Reordering can only be done along one dimension. If there is more than one, they should be `window` and `time`. The dimensions are {dim}."
     )
