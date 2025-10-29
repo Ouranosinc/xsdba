@@ -250,9 +250,7 @@ class TestDQM:
         # Test train
         attrs = {"units": units, "kind": kind}
 
-        hist = sim = (
-            timelonlatseries(x, attrs=attrs).expand_dims(tt=[0, 1]).chunk({"tt": 1})
-        )
+        hist = sim = timelonlatseries(x, attrs=attrs).expand_dims(tt=[0, 1]).chunk({"tt": 1})
         ref = timelonlatseries(y, attrs=attrs).expand_dims(tt=[0, 1]).chunk({"tt": 1})
         group = Grouper("time.dayofyear", 31, add_dims=["number"])
         DQM = DetrendedQuantileMapping.train(
