@@ -139,14 +139,6 @@ def dqm_train(
     # Ensure we only reduce on valid dims, allows for extra dims like "realization" on the sim
     ref_dim = Grouper.filter_dim(ds.ref, dim)
     sim_dim = Grouper.filter_dim(ds.hist, dim)
-    # extra dims will be treated separately for adapt freq routine
-    # this might be empty, in which case this does nothing
-    extra_dim = list(set(sim_dim) - set(ref_dim))
-
-    # This ensures we can merge ref and hist even if they have
-    # different sizes for extra_dim
-    # ref = ref.assign_coords({d: ref[d] for d in ref.dims})
-    # hist = hist.assign_coords({d: hist[d] for d in hist.dims})
     ds = _preprocess_dataset(
         ds,
         ref_dim,
@@ -236,12 +228,7 @@ def eqm_train(
     # Ensure we only reduce on valid dims, allows for extra dims like "realization" on the sim
     ref_dim = Grouper.filter_dim(ds.ref, dim)
     sim_dim = Grouper.filter_dim(ds.hist, dim)
-    # extra dims will be treated separately for adapt freq routine
-    # this might be empty, in which case this does nothing
-    extra_dim = list(set(sim_dim) - set(ref_dim))
 
-    # This ensures we can merge ref and hist even if they have
-    # different sizes for extra_dim
     ds = _preprocess_dataset(
         ds,
         ref_dim,
