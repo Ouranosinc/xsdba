@@ -22,7 +22,6 @@ users can easily bias-adjust large datasets.
    releasing
    notebooks/index
 
-
 .. toctree::
    :titlesonly:
 
@@ -35,13 +34,6 @@ users can easily bias-adjust large datasets.
    :caption: All Modules
 
    apidoc/modules
-
-
-.. toctree::
-   :maxdepth: 2
-   :caption: User API
-
-   api
 
 Indices and tables
 ==================

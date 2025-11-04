@@ -19,11 +19,11 @@
 ###################################################################################
 
 from __future__ import annotations
-
 import importlib.util
 import warnings
 
 from xsdba import adjustment, base, detrending, processing, units, utils
+
 
 xclim_installed = importlib.util.find_spec("xclim") is not None
 if xclim_installed:
@@ -37,6 +37,7 @@ from xsdba.base import Grouper, stack_periods, unstack_periods
 from xsdba.options import set_options
 from xsdba.processing import stack_variables, unstack_variables
 
+
 # TODO: ISIMIP ? Used for precip freq adjustment in biasCorrection.R
 # Hempel, S., Frieler, K., Warszawski, L., Schewe, J., & Piontek, F. (2013). A trend-preserving bias correction &ndash;
 # The ISI-MIP approach. Earth System Dynamics, 4(2), 219–236. https://doi.org/10.5194/esd-4-219-2013
@@ -47,4 +48,4 @@ if hasattr(adjustment, "_generate_SBCK_classes"):
 
 __author__ = """Éric Dupuis"""
 __email__ = "dupuis.eric@ouranos.ca"
-__version__ = "0.5.0"
+__version__ = "0.5.1-dev.2"
