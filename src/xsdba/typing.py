@@ -4,12 +4,12 @@ Typing Utilities
 """
 
 from __future__ import annotations
-
 from enum import IntEnum
 from typing import NewType, TypeVar
 
 import xarray as xr
 from pint import Quantity
+
 
 # XC:
 #: Type annotation for strings representing full dates (YYYY-MM-DD), may include time.

@@ -17,6 +17,11 @@ Internal changes
 * Removed the ``benchmark.ipynb`` notebook from the documentation as it was specifically written for benchmarking purposes. (:issue:`167`, :pull:`206`).
 * Removed the API references to ensure that the documentation favours the user guide for learning how to use `xsdba` and the module index for finding specific functions/classes. (:issue:`63`, :pull:`206`)
 * Adjusted docstrings to allow RST210 and RST213 violations (`\*\*` and `\*` syntax) in docstrings and `pylint` exceptions for titles with underbars. (:issue:`167`, :pull:`206`)
+* Updated the cookiecutter template to use the latest version of `cookiecutter-pypackage`. (:pull:`205`):
+    * Added a `CITATION.cff` file for better citation metadata.
+    * Replace `black`, `blackdocs` and `isort` pre-commit hooks with `ruff`.
+    * Updated Contributor Covenant Agreement to v3.0.
+    * Various updates to CI dependencies and configurations.
 
 .. _changes_0.5.0:
 

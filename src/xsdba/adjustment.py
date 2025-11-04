@@ -4,7 +4,6 @@ Adjustment Methods
 """
 
 from __future__ import annotations
-
 from copy import deepcopy
 from importlib.util import find_spec
 from inspect import signature
@@ -49,6 +48,7 @@ from xsdba.utils import (
     rand_rot_matrix,
 )
 
+
 __all__ = [
     "LOCI",
     "OTC",
@@ -85,9 +85,7 @@ class BaseAdjustment(ParametrizableWithDataset):
         if _trained:
             super().__init__(*args, **kwargs)
         else:
-            raise ValueError(
-                "Adjustment object should be initialized through their `train` or `adjust` methods."
-            )
+            raise ValueError("Adjustment object should be initialized through their `train` or `adjust` methods.")
 
     @classmethod
     def _check_inputs(cls, *inputs, group):
@@ -98,23 +96,16 @@ class BaseAdjustment(ParametrizableWithDataset):
         """
         # Grouper("5D", window) is a special grouping only implemented for MBCn
         if not cls._allow_5d_grouping and group.name == "5D":
-            raise NotImplementedError(
-                "`group=Grouper('5D', window)` is a special grouping currently only supported for MBCn."
-            )
+            raise NotImplementedError("`group=Grouper('5D', window)` is a special grouping currently only supported for MBCn.")
 
         for inda in inputs:
             if uses_dask(inda) and len(inda.chunks[inda.get_axis_num(group.dim)]) > 1:
-                raise ValueError(
-                    f"Multiple chunks along the main adjustment dimension {group.dim} is not supported."
-                )
+                raise ValueError(f"Multiple chunks along the main adjustment dimension {group.dim} is not supported.")
 
         # All calendars used by the inputs
         calendars = {inda.time.dt.calendar for inda in inputs}
         if not cls._allow_diff_calendars and len(calendars) > 1:
-            raise ValueError(
-                "Inputs are defined on different calendars,"
-                f" this is not supported for {cls.__name__} adjustment."
-            )
+            raise ValueError(f"Inputs are defined on different calendars, this is not supported for {cls.__name__} adjustment.")
 
         # Check multivariate dimensions
         mvcrds = []
@@ -122,21 +113,14 @@ class BaseAdjustment(ParametrizableWithDataset):
             for crd in inda.coords.values():
                 if crd.attrs.get("is_variables", False):
                     mvcrds.append(crd)
-        if mvcrds and (
-            not all(mvcrds[0].equals(mv) for mv in mvcrds[1:])
-            or len(mvcrds) != len(inputs)
-        ):
+        if mvcrds and (not all(mvcrds[0].equals(mv) for mv in mvcrds[1:]) or len(mvcrds) != len(inputs)):
             coords = {mv.name for mv in mvcrds}
-            raise ValueError(
-                f"Inputs have different multivariate coordinates: {', '.join(coords)}."
-            )
+            raise ValueError(f"Inputs have different multivariate coordinates: {', '.join(coords)}.")
 
-        if group.prop == "dayofyear" and (
-            "default" in calendars or "standard" in calendars
-        ):
+        if group.prop == "dayofyear" and ("default" in calendars or "standard" in calendars):
             warn(
-                "Strange results could be returned when using `dayofyear` grouping "
-                "on data defined in the 'proleptic_gregorian' calendar."
+                "Strange results could be returned when using `dayofyear` grouping on data defined in the 'proleptic_gregorian' calendar.",
+                stacklevel=2,
             )
 
     @classmethod
@@ -149,27 +133,17 @@ class BaseAdjustment(ParametrizableWithDataset):
         Returns the converted inputs and the target units.
         """
 
-        def _harmonize_units_multivariate(
-            *_inputs, _dim, _target: dict[str, str] | None = None
-        ):
+        def _harmonize_units_multivariate(*_inputs, _dim, _target: dict[str, str] | None = None):
             def __convert_units_to(_input_da, _internal_dim, _internal_target):
                 varss = _input_da[_internal_dim].values
-                input_units = {
-                    v: _input_da[_internal_dim].attrs["_units"][iv]
-                    for iv, v in enumerate(varss)
-                }
+                input_units = {v: _input_da[_internal_dim].attrs["_units"][iv] for iv, v in enumerate(varss)}
                 if input_units == _internal_target:
                     return _input_da
                 # standard name is reinjected so that xclim's special unit
                 #  conversion `context="infer` can be used if need be`
                 if "_standard_name" not in _input_da[_internal_dim].attrs:
-                    _input_da[_internal_dim].attrs["_standard_name"] = [None] * len(
-                        varss
-                    )
-                input_standard_names = {
-                    v: _input_da[_internal_dim].attrs["_standard_name"][iv]
-                    for iv, v in enumerate(varss)
-                }
+                    _input_da[_internal_dim].attrs["_standard_name"] = [None] * len(varss)
+                input_standard_names = {v: _input_da[_internal_dim].attrs["_standard_name"][iv] for iv, v in enumerate(varss)}
                 for iv, v in enumerate(varss):
                     _input_da.attrs["units"] = input_units[v]
                     _input_da.attrs["standard_name"] = input_standard_names[v]
@@ -183,33 +157,22 @@ class BaseAdjustment(ParametrizableWithDataset):
                 return _input_da
 
             if _target is None:
-                if "_units" not in _inputs[0][_dim].attrs or any(
-                    u is None for u in _inputs[0][_dim].attrs["_units"]
-                ):
+                if "_units" not in _inputs[0][_dim].attrs or any(u is None for u in _inputs[0][_dim].attrs["_units"]):
                     error_msg = (
                         "Units are missing in some or all of the stacked variables."
                         "The dataset stacked with `stack_variables` given as input should include units for every variable."
                     )
                     raise ValueError(error_msg)
 
-                _target = {
-                    v: _inputs[0][_dim].attrs["_units"][iv]
-                    for iv, v in enumerate(_inputs[0][_dim].values)
-                }
+                _target = {v: _inputs[0][_dim].attrs["_units"][iv] for iv, v in enumerate(_inputs[0][_dim].values)}
 
             # `__convert_units_to`` was changing the units of the 3rd dataset during the 2nd loop
             # This explicit loop is designed to avoid this
             _outputs = []
-            original_units = list(
-                [_inp[_dim].attrs["_units"].copy() for _inp in _inputs]
-            )
+            original_units = list([_inp[_dim].attrs["_units"].copy() for _inp in _inputs])
             for _inp, units in zip(_inputs, original_units, strict=False):
                 _inp[_dim].attrs["_units"] = units
-                _outputs.append(
-                    __convert_units_to(
-                        _inp, _internal_dim=_dim, _internal_target=_target
-                    )
-                )
+                _outputs.append(__convert_units_to(_inp, _internal_dim=_dim, _internal_target=_target))
             return _outputs, _target
 
         for dim, crd in inputs[0].coords.items():
@@ -225,10 +188,7 @@ class BaseAdjustment(ParametrizableWithDataset):
     def _check_matching_times(cls, ref, hist):
         """Raise an error ref and hist times don't match."""
         if all(ref.time.values == hist.time.values) is False:
-            raise ValueError(
-                "`ref` and `hist` have distinct time arrays,"
-                f" this is not supported for {cls.__name__} adjustment."
-            )
+            raise ValueError(f"`ref` and `hist` have distinct time arrays, this is not supported for {cls.__name__} adjustment.")
 
     @classmethod
     def _check_matching_time_sizes(cls, *inputs):
@@ -236,10 +196,7 @@ class BaseAdjustment(ParametrizableWithDataset):
         ref_size = inputs[0].time.size
         for inp in inputs[1:]:
             if inp.time.size != ref_size:
-                raise ValueError(
-                    "Inputs have different size for the time array,"
-                    f" this is not supported for {cls.__name__} adjustment."
-                )
+                raise ValueError(f"Inputs have different size for the time array, this is not supported for {cls.__name__} adjustment.")
 
     @classmethod
     def _train(cls, ref, hist, **kwargs):
@@ -350,9 +307,7 @@ class TrainAdjust(BaseAdjustment):
         scen.attrs["history"] = update_history(f"Bias-adjusted with {infostr}", sim)
         scen.attrs["bias_adjustment"] = infostr
 
-        _is_multivariate = any(
-            _crd.attrs.get("is_variables") for _crd in sim.coords.values()
-        )
+        _is_multivariate = any(_crd.attrs.get("is_variables") for _crd in sim.coords.values())
         if _is_multivariate is False:
             scen.attrs["units"] = self.train_units
 
@@ -447,9 +402,7 @@ class Adjust(BaseAdjustment):
         scen.attrs["history"] = update_history(f"Bias-adjusted with {infostr}", sim)
         scen.attrs["bias_adjustment"] = infostr
 
-        _is_multivariate = any(
-            [_crd.attrs.get("is_variables") for _crd in sim.coords.values()]
-        )
+        _is_multivariate = any([_crd.attrs.get("is_variables") for _crd in sim.coords.values()])
         if _is_multivariate is False:
             scen.attrs["units"] = ref.units
 
@@ -634,9 +587,7 @@ class DetrendedQuantileMapping(TrainAdjust):
         jitter_over_thresh_upper_bnd: str | None = None,
     ):
         if group.prop not in ["group", "dayofyear"]:
-            warn(
-                f"Using DQM with a grouping other than 'dayofyear' is not recommended (received {group.name})."
-            )
+            warn(f"Using DQM with a grouping other than 'dayofyear' is not recommended (received {group.name}).", stacklevel=2)
 
         if np.isscalar(nquantiles):
             quantiles = equally_spaced_nodes(nquantiles).astype(ref.dtype)
@@ -850,9 +801,7 @@ class ExtremeValues(TrainAdjust):
         cluster_thresh = convert_units_to(cluster_thresh, ref)
 
         if np.isscalar(cluster_thresh):
-            cluster_thresh = xr.DataArray(cluster_thresh).assign_attrs(
-                {"units": ref.units}
-            )
+            cluster_thresh = xr.DataArray(cluster_thresh).assign_attrs({"units": ref.units})
 
         # Approximation of how many "quantiles" values we will get:
         N = (1 - q_thresh) * ref.time.size * 1.05  # extra padding for safety
@@ -888,8 +837,8 @@ class ExtremeValues(TrainAdjust):
         )
         ds["cluster_thresh"] = cluster_thresh
         ds.cluster_thresh.attrs.update(
-            long_name=f"Cluster threshold",
-            description=f"The threshold value for defining clusters.",
+            long_name="Cluster threshold",
+            description="The threshold value for defining clusters.",
         )
 
         return ds.drop_vars(["quantiles"]), {}
@@ -906,10 +855,7 @@ class ExtremeValues(TrainAdjust):
     ):
         # TODO: `extrapolate_qm` doesn't exist anymore, is this cheat still relevant?
         # Quantiles coord : cheat and assign 0 - 1, so we can use `extrapolate_qm`.
-        ds = self.ds.assign(
-            quantiles=(np.arange(self.ds.quantiles.size) + 1)
-            / (self.ds.quantiles.size + 1)
-        )
+        ds = self.ds.assign(quantiles=(np.arange(self.ds.quantiles.size) + 1) / (self.ds.quantiles.size + 1))
 
         scen = extremes_adjust(
             ds.assign(sim=sim, scen=scen),
@@ -982,18 +928,14 @@ class LOCI(TrainAdjust):
         group: str | Grouper = "time",
     ):
         thresh = convert_units_to(thresh, ref)
-        ds = loci_train(
-            xr.Dataset({"ref": ref, "hist": hist}), group=group, thresh=thresh
-        )
+        ds = loci_train(xr.Dataset({"ref": ref, "hist": hist}), group=group, thresh=thresh)
         ds.af.attrs.update(long_name="LOCI adjustment factors")
         ds.hist_thresh.attrs.update(long_name="Threshold over modeled data")
         return ds, {"group": group, "thresh": thresh}
 
     def _adjust(self, sim, interp="linear"):
         return loci_adjust(
-            xr.Dataset(
-                {"hist_thresh": self.ds.hist_thresh, "af": self.ds.af, "sim": sim}
-            ),
+            xr.Dataset({"hist_thresh": self.ds.hist_thresh, "af": self.ds.af, "sim": sim}),
             group=self.group,
             thresh=self.thresh,
             interp=interp,
@@ -1035,9 +977,7 @@ class Scaling(TrainAdjust):
         group: str | Grouper = "time",
         kind: str = ADDITIVE,
     ):
-        ds = scaling_train(
-            xr.Dataset({"ref": ref, "hist": hist}), group=group, kind=kind
-        )
+        ds = scaling_train(xr.Dataset({"ref": ref, "hist": hist}), group=group, kind=kind)
         ds.af.attrs.update(long_name="Scaling adjustment factors")
         return ds, {"group": group, "kind": kind}
 
@@ -1157,13 +1097,9 @@ class PrincipalComponents(TrainAdjust):
             if best_orientation == "simple":
                 orient = best_pc_orientation_simple(R, Hinv)
             elif best_orientation == "full":
-                orient = best_pc_orientation_full(
-                    R, Hinv, reference.mean(axis=1), historical.mean(axis=1), historical
-                )
+                orient = best_pc_orientation_full(R, Hinv, reference.mean(axis=1), historical.mean(axis=1), historical)
             else:
-                raise ValueError(
-                    f"Unknown `best_orientation` method: {best_orientation}."
-                )
+                raise ValueError(f"Unknown `best_orientation` method: {best_orientation}.")
             # Get transformation matrix
             return (R * orient) @ Hinv
 
@@ -1343,21 +1279,15 @@ class NpdfTransform(Adjust):
         if base_kws is None:
             base_kws = {}
         if "kind" in base_kws:
-            warn(
-                f'The adjustment kind cannot be controlled when using {cls.__name__}, it defaults to "+".'
-            )
+            warn(f'The adjustment kind cannot be controlled when using {cls.__name__}, it defaults to "+".', stacklevel=2)
         base_kws.setdefault("kind", "+")
 
         # Assuming sim has the same coords as hist
         # We get the safest new name of the rotated dim.
-        rot_dim = xr.core.utils.get_temp_dimname(
-            set(ref.dims).union(hist.dims).union(sim.dims), pts_dim + "_prime"
-        )
+        rot_dim = xr.core.utils.get_temp_dimname(set(ref.dims).union(hist.dims).union(sim.dims), pts_dim + "_prime")
 
         # Get the rotation matrices
-        rot_matrices = rot_matrices or rand_rot_matrix(
-            ref[pts_dim], num=n_iter, new_dim=rot_dim
-        ).rename(matrices="iterations")
+        rot_matrices = rot_matrices or rand_rot_matrix(ref[pts_dim], num=n_iter, new_dim=rot_dim).rename(matrices="iterations")
 
         # Call a map_blocks on the iterative function
         # Sadly, this is a bit too complicated for map_blocks, we'll do it by hand.
@@ -1523,17 +1453,10 @@ class OTC(Adjust):
         **kwargs,
     ) -> xr.DataArray:
         if find_spec("ot") is None:
-            raise ImportError(
-                "POT is required for OTC and dOTC. Please install with `pip install POT`."
-            )
+            raise ImportError("POT is required for OTC and dOTC. Please install with `pip install POT`.")
 
-        if (
-            normalization not in ["standardize", "max_distance", "max_value"]
-            and normalization is not None
-        ):
-            raise ValueError(
-                "`transform` should be in ['standardize', 'max_distance', 'max_value'] or None."
-            )
+        if normalization not in ["standardize", "max_distance", "max_value"] and normalization is not None:
+            raise ValueError("`transform` should be in ['standardize', 'max_distance', 'max_value'] or None.")
 
         sim = kwargs.pop("sim")
         if "_is_hist" not in sim.attrs:
@@ -1541,9 +1464,7 @@ class OTC(Adjust):
 
         if isinstance(adapt_freq_thresh, str):
             adapt_freq_thresh = {v: adapt_freq_thresh for v in hist[pts_dim].values}
-        adapt_freq_thresh = (
-            {} if adapt_freq_thresh is None else deepcopy(adapt_freq_thresh)
-        )
+        adapt_freq_thresh = {} if adapt_freq_thresh is None else deepcopy(adapt_freq_thresh)
         if adapt_freq_thresh != {}:
             _, units = cls._harmonize_units(sim)
             for var, thresh in adapt_freq_thresh.items():
@@ -1688,33 +1609,22 @@ class dOTC(Adjust):
         pts_dim: str = "multivar",
     ) -> xr.DataArray:
         if find_spec("ot") is None:
-            raise ImportError(
-                "POT is required for OTC and dOTC. Please install with `pip install POT`."
-            )
+            raise ImportError("POT is required for OTC and dOTC. Please install with `pip install POT`.")
 
         if isinstance(kind, str):
             kind = {v: kind for v in hist[pts_dim].values}
         if kind is not None and "*" in kind.values() and cov_factor == "cholesky":
-            raise ValueError(
-                "Multiplicative correction is not supported with `cov_factor` = 'cholesky'."
-            )
+            raise ValueError("Multiplicative correction is not supported with `cov_factor` = 'cholesky'.")
 
         if cov_factor not in ["std", "cholesky"] and cov_factor is not None:
             raise ValueError("`cov_factor` should be in ['std', 'cholesky'] or None.")
 
-        if (
-            normalization not in ["standardize", "max_distance", "max_value"]
-            and normalization is not None
-        ):
-            raise ValueError(
-                "`normalization` should be in ['standardize', 'max_distance', 'max_value'] or None."
-            )
+        if normalization not in ["standardize", "max_distance", "max_value"] and normalization is not None:
+            raise ValueError("`normalization` should be in ['standardize', 'max_distance', 'max_value'] or None.")
 
         if isinstance(adapt_freq_thresh, str):
             adapt_freq_thresh = {v: adapt_freq_thresh for v in hist[pts_dim].values}
-        adapt_freq_thresh = (
-            {} if adapt_freq_thresh is None else deepcopy(adapt_freq_thresh)
-        )
+        adapt_freq_thresh = {} if adapt_freq_thresh is None else deepcopy(adapt_freq_thresh)
         if adapt_freq_thresh != {}:
             _, units = cls._harmonize_units(sim)
             for var, thresh in adapt_freq_thresh.items():
@@ -1878,9 +1788,7 @@ class MBCn(TrainAdjust):
         if isinstance(base_kws["group"], str):
             base_kws["group"] = Grouper(base_kws["group"], 1)
         if base_kws["group"].name == "time.month":
-            raise NotImplementedError(
-                "Received `group==time.month` in `base_kws`. Monthly grouping is not currently supported in the MBCn class."
-            )
+            raise NotImplementedError("Received `group==time.month` in `base_kws`. Monthly grouping is not currently supported in the MBCn class.")
         # stack variables and prepare rotations
         if rot_matrices is not None:
             if pts_dim != rot_matrices.attrs["crd_dim"]:
@@ -1888,12 +1796,8 @@ class MBCn(TrainAdjust):
                     f"`crd_dim` attribute of `rot_matrices` ({rot_matrices.attrs['crd_dim']}) does not correspond to `pts_dim` ({pts_dim})."
                 )
         else:
-            rot_dim = xr.core.utils.get_temp_dimname(
-                set(ref.dims).union(hist.dims), pts_dim + "_prime"
-            )
-            rot_matrices = rand_rot_matrix(
-                ref[pts_dim], num=n_iter, new_dim=rot_dim
-            ).rename(matrices="iterations")
+            rot_dim = xr.core.utils.get_temp_dimname(set(ref.dims).union(hist.dims), pts_dim + "_prime")
+            rot_matrices = rand_rot_matrix(ref[pts_dim], num=n_iter, new_dim=rot_dim).rename(matrices="iterations")
         pts_dims = [rot_matrices.attrs[d] for d in ["crd_dim", "new_dim"]]
 
         # time indices corresponding to group and windowed group
@@ -1951,17 +1855,12 @@ class MBCn(TrainAdjust):
             if isinstance(base_kws_vars[v]["group"], str):
                 base_kws_vars[v]["group"] = Grouper(base_kws_vars[v]["group"], 1)
             if base_kws_vars[v]["group"] != self.group:
-                raise ValueError(
-                    f"`group` input in _train and _adjust must be the same."
-                    f"Got {self.group} and {base_kws_vars[v]['group']}"
-                )
+                raise ValueError(f"`group` input in _train and _adjust must be the same.Got {self.group} and {base_kws_vars[v]['group']}")
             base_kws_vars[v].pop("group")
 
             base_kws_vars[v].setdefault("nquantiles", self.ds.af_q.quantiles.values)
             if np.isscalar(base_kws_vars[v]["nquantiles"]):
-                base_kws_vars[v]["nquantiles"] = equally_spaced_nodes(
-                    base_kws_vars[v]["nquantiles"]
-                )
+                base_kws_vars[v]["nquantiles"] = equally_spaced_nodes(base_kws_vars[v]["nquantiles"])
             if "is_variables" in sim[pts_dim].attrs:
                 if self.train_units == "":
                     _, units = self._harmonize_units(sim)
@@ -2025,15 +1924,8 @@ else:
             # Check inputs
             fit_needs_sim = "X1" in signature(cls.sbck.fit).parameters
             for k, v in signature(cls.sbck.__init__).parameters.items():
-                if (
-                    v.default == v.empty
-                    and v.kind != v.VAR_KEYWORD
-                    and k != "self"
-                    and k not in kwargs
-                ):
-                    raise ValueError(
-                        f"Argument {k} is not optional for SBCK method {cls.sbck.__name__}."
-                    )
+                if v.default == v.empty and v.kind != v.VAR_KEYWORD and k != "self" and k not in kwargs:
+                    raise ValueError(f"Argument {k} is not optional for SBCK method {cls.sbck.__name__}.")
 
             ref = ref.rename(time="time_cal")
             hist = hist.rename(time="time_cal")
@@ -2092,10 +1984,7 @@ else:
             [
                 f"SBCK_{cls.__name__}",
                 "=" * (5 + len(cls.__name__)),
-                (
-                    f"This Adjustment object was auto-generated from the {cls.__name__} "
-                    " object of package SBCK. See :ref:`Experimental wrap of SBCK`."
-                ),
+                (f"This Adjustment object was auto-generated from the {cls.__name__}  object of package SBCK. See :ref:`Experimental wrap of SBCK`."),
                 "",
                 (
                     "The adjust method accepts ref, hist, sim and all arguments listed "
@@ -2117,16 +2006,7 @@ else:
         classes = []
         for clsname in dir(SBCK):
             cls = getattr(SBCK, clsname)
-            if (
-                not clsname.startswith("_")
-                and isinstance(cls, type)
-                and hasattr(cls, "fit")
-                and hasattr(cls, "predict")
-            ):
+            if not clsname.startswith("_") and isinstance(cls, type) and hasattr(cls, "fit") and hasattr(cls, "predict"):
                 doc = _parse_sbck_doc(cls)
-                classes.append(
-                    type(
-                        f"SBCK_{clsname}", (_SBCKAdjust,), {"sbck": cls, "__doc__": doc}
-                    )
-                )
+                classes.append(type(f"SBCK_{clsname}", (_SBCKAdjust,), {"sbck": cls, "__doc__": doc}))
         return classes
