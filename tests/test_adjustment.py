@@ -260,7 +260,7 @@ class TestDQM:
             group=group,
             nquantiles=50,
         )
-        p = DQM.adjust(sim, interp="linear")
+        DQM.adjust(sim, interp="linear")
 
     @pytest.mark.parametrize("kind,units", [(ADDITIVE, "K"), (MULTIPLICATIVE, "kg m-2 s-1")])
     def test_quantiles(self, timelonlatseries, kind, units, random):
