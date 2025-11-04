@@ -504,24 +504,6 @@ def escore(
     return out
 
 
-def _get_number_of_elements_by_year(time):
-    """
-    Get the number of elements in time in a year by inferring its sampling frequency.
-
-    Only calendar with uniform year lengths are supported : 360_day, noleap, all_leap.
-    """
-    mult, freq, _, _ = parse_offset(xr.infer_freq(time))
-    days_in_year = time.dt.days_in_year.max()
-    elements_in_year = {"Q": 4, "M": 12, "D": days_in_year, "h": days_in_year * 24}
-    N_in_year = elements_in_year.get(freq, 1) / mult
-    if N_in_year % 1 != 0:
-        raise ValueError(
-            f"Sampling frequency of the data must be Q, M, D or h and evenly divide a year (got {mult}{freq})."
-        )
-
-    return int(N_in_year)
-
-
 @update_xsdba_history
 @harmonize_units(["data", "lower_bound", "upper_bound"])
 def to_additive_space(

@@ -91,10 +91,10 @@ def _preprocess_dataset(
 @map_groups(
     af=[Grouper.PROP, "quantiles"],
     hist_q=[Grouper.PROP, "quantiles"],
-    scaling=[Grouper.PROP],
+    scaling=[Grouper.PROP, Grouper.ADD_DIMS],
     P0_ref=[Grouper.PROP],
-    P0_hist=[Grouper.PROP],
-    pth=[Grouper.PROP],
+    P0_hist=[Grouper.PROP, Grouper.ADD_DIMS],
+    pth=[Grouper.PROP, Grouper.ADD_DIMS],
 )
 def dqm_train(
     ds: xr.Dataset,
@@ -145,22 +145,21 @@ def dqm_train(
     `jitter_over_thresh_value` and `jitter_over_thresh_upper_bnd` must be both be specified to
     use `jitter_over_thresh`, or both be None (default) to skip it.
     """
+    dim = [dim] if isinstance(dim, str) else dim
     # Ensure we only reduce on valid dims, allows for extra dims like "realization" on the sim
     ref_dim = Grouper.filter_dim(ds.ref, dim)
     sim_dim = Grouper.filter_dim(ds.hist, dim)
-
+    # extra dims will be treated separately for adapt freq routine
     # this might be empty, in which case this does nothing
     extra_dim = list(set(sim_dim) - set(ref_dim))
-    ref = ds.ref.expand_dims({d: [0] for d in extra_dim})
-    hist = ds.hist
 
     # This ensures we can merge ref and hist even if they have
     # different sizes for extra_dim
-    ref = ref.assign_coords({d: ref[d] for d in ref.dims})
-    hist = hist.assign_coords({d: hist[d] for d in hist.dims})
+    # ref = ref.assign_coords({d: ref[d] for d in ref.dims})
+    # hist = hist.assign_coords({d: hist[d] for d in hist.dims})
     ds = _preprocess_dataset(
-        xr.Dataset({"ref": ref, "hist": hist}),
-        sim_dim,
+        ds,
+        ref_dim,
         adapt_freq_thresh,
         jitter_under_thresh_value,
         jitter_over_thresh_value,
@@ -194,8 +193,8 @@ def dqm_train(
     af=[Grouper.PROP, "quantiles"],
     hist_q=[Grouper.PROP, "quantiles"],
     P0_ref=[Grouper.PROP],
-    P0_hist=[Grouper.PROP],
-    pth=[Grouper.PROP],
+    P0_hist=[Grouper.PROP, Grouper.ADD_DIMS],
+    pth=[Grouper.PROP, Grouper.ADD_DIMS],
 )
 def eqm_train(
     ds: xr.Dataset,
@@ -243,22 +242,19 @@ def eqm_train(
     `jitter_over_thresh_value` and `jitter_over_thresh_upper_bnd` must be both be specified to
     use `jitter_over_thresh`, or both be None (default) to skip it.
     """
+    dim = [dim] if isinstance(dim, str) else dim
     # Ensure we only reduce on valid dims, allows for extra dims like "realization" on the sim
     ref_dim = Grouper.filter_dim(ds.ref, dim)
     sim_dim = Grouper.filter_dim(ds.hist, dim)
-
+    # extra dims will be treated separately for adapt freq routine
     # this might be empty, in which case this does nothing
     extra_dim = list(set(sim_dim) - set(ref_dim))
-    ref = ds.ref.expand_dims({d: [0] for d in extra_dim})
-    hist = ds.hist
 
     # This ensures we can merge ref and hist even if they have
     # different sizes for extra_dim
-    ref = ref.assign_coords({d: ref[d] for d in ref.dims})
-    hist = hist.assign_coords({d: hist[d] for d in hist.dims})
     ds = _preprocess_dataset(
-        xr.Dataset({"ref": ref, "hist": hist}),
-        sim_dim,
+        ds,
+        ref_dim,
         adapt_freq_thresh,
         jitter_under_thresh_value,
         jitter_over_thresh_value,
