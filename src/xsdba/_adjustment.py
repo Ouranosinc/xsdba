@@ -81,7 +81,7 @@ def _preprocess_dataset(
 @map_groups(
     af=[Grouper.PROP, "quantiles"],
     hist_q=[Grouper.PROP, "quantiles"],
-    scaling=[Grouper.PROP, Grouper.ADD_DIMS],
+    scaling=[Grouper.PROP],
     P0_ref=[Grouper.PROP],
     P0_hist=[Grouper.PROP, Grouper.ADD_DIMS],
     pth=[Grouper.PROP, Grouper.ADD_DIMS],
