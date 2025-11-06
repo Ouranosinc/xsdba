@@ -105,6 +105,47 @@ class TestBaseAdjustment:
             BaseAdjustment._check_matching_time_sizes(da, da2)
 
 
+@pytest.mark.slow
+class TestBase:
+    def test_add_dims_error(
+        self,
+        mon_timelonlatseries,
+        timelonlatseries,
+        random,
+    ):
+        """
+        Check the error when `add_dims` is passed for a dimension that is not in the input datasets.
+        """
+        kind, units = "+", "K"
+        u = random.random(100)
+
+        # Define distributions
+        xd = uniform(loc=1, scale=1)
+        yd = uniform(loc=2, scale=2)
+        noise = uniform(loc=0, scale=1e-7)
+
+        # Generate random numbers
+        x = xd.ppf(u)
+        y = yd.ppf(u) + noise.ppf(u)
+
+        # Test train
+        attrs = {"units": units, "kind": kind}
+
+        ref = mon_timelonlatseries(y, attrs=attrs)
+        hist = timelonlatseries(x, attrs=attrs)
+        with pytest.raises(
+            ValueError,
+            match=r"`add_dims` argument needs to be a dimension in one of the input datasets.",
+        ):
+            QuantileDeltaMapping.train(
+                ref,
+                hist,
+                kind=kind,
+                group=Grouper("time.month", add_dims=["dim_not_in_ref_or_hist"]),
+                nquantiles=40,
+            )
+
+
 class TestLoci:
     @pytest.mark.parametrize("group,dec", (["time", 2], ["time.month", 1]))
     def test_time_and_from_ds(self, timelonlatseries, group, dec, tmp_path, random):
@@ -554,7 +595,7 @@ class TestQDM:
             hist = hist.expand_dims(site=[0, 1, 2, 3, 4]).drop_vars("site")
             sim = sim.expand_dims(site=[0, 1, 2, 3, 4]).drop_vars("site")
 
-        QDM = QuantileDeltaMapping.train(ref, hist, kind=kind, group="time.month", nquantiles=40, add_dims=["site"])
+        QDM = QuantileDeltaMapping.train(ref, hist, kind=kind, group="time.month", nquantiles=40, add_dims=["site"] if add_dims else None)
         p = QDM.adjust(sim, interp="linear" if kind == "+" else "nearest")
 
         q = QDM.ds.coords["quantiles"]

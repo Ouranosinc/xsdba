@@ -605,6 +605,8 @@ def map_blocks(  # noqa: C901
             else:
                 placeholders = {}
 
+            if group.add_dims is not None and set(group.add_dims).issubset(set(ds.dims)) is False:
+                raise ValueError("`add_dims` argument needs to be a dimension in one of the input datasets.")
             # Get new dimensions (in order), translating placeholders to real names.
             new_dims = []
             for dim in out_dims:
