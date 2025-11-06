@@ -74,6 +74,7 @@ def _adapt_freq(ds: xr.Dataset, *, dim: Sequence[str], thresh: float = 0, kind: 
     if len({ref is not None, reuse_adapt_output}) != 2:
         raise ValueError("Either `ref` or the triplet (`P0_ref`,`P0_hist`,`pth`) must be None.")
     dim = [dim] if isinstance(dim, str) else dim
+    dim = Grouper.filter_add_dims(dim)
     # map_groups quirk: datasets are broadcasted and must be sliced
     P0_ref, P0_hist, pth = (da if da is None else da[{d: 0 for d in set(dim).intersection(set(da.dims))}] for da in [P0_ref, P0_hist, pth])
     # Compute the probability of finding a value <= thresh

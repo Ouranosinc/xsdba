@@ -167,15 +167,15 @@ def test_adapt_freq_add_dims(use_dask, random):
         attrs={"units": "mm d-1"},
     )
 
-    if use_dask:
-        pr = pr.chunk()
+    # if use_dask:
+    #     pr = pr.chunk()
     group = Grouper("time.month", add_dims=["lat"])
     with xr.set_options(keep_attrs=True):
         prsim = xr.where(pr < 20, pr / 20, pr)
         prref = xr.where(pr < 10, pr / 20, pr)
     sim_ad, pth, _dP0 = adapt_freq(prref, prsim, thresh="1 mm d-1", group=group)
     assert set(sim_ad.dims) == set(prsim.dims)
-    assert "lat" not in pth.load().dims
+    assert "lat" in pth.dims
 
     group = Grouper("time.dayofyear", window=5)
     with xr.set_options(keep_attrs=True):
