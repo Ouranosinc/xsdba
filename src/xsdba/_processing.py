@@ -65,6 +65,7 @@ def _adapt_freq(ds: xr.Dataset, *, dim: Sequence[str], thresh: float = 0, kind: 
         `ds.ref` is optional: If `P0_ref`, `P0_hist`,`pth` are given, these values will be used and `ds.ref` is not necessary.
         Either `ds.ref` or the triplet (`P0_ref`, `P0_hist`,`pth`)  must be given.
     """
+    # Different behaviours on training and adjust branches. In the latter, the outputs can be reused
     ref, P0_ref, P0_hist, pth = (ds.get(k, None) for k in ["ref", "P0_ref", "P0_hist", "pth"])
     reuse_adapt_output = {P0_ref is not None, P0_hist is not None, pth is not None}
     if len(reuse_adapt_output) != 1:
@@ -74,7 +75,10 @@ def _adapt_freq(ds: xr.Dataset, *, dim: Sequence[str], thresh: float = 0, kind: 
     if len({ref is not None, reuse_adapt_output}) != 2:
         raise ValueError("Either `ref` or the triplet (`P0_ref`,`P0_hist`,`pth`) must be None.")
     dim = [dim] if isinstance(dim, str) else dim
+
+    # ADD_DIMS are not pooled together when performing frequency adaptation
     dim = Grouper.filter_add_dims(dim)
+
     # map_groups quirk: datasets are broadcasted and must be sliced
     P0_ref, P0_hist, pth = (da if da is None else da[{d: 0 for d in set(dim).intersection(set(da.dims))}] for da in [P0_ref, P0_hist, pth])
     # Compute the probability of finding a value <= thresh
