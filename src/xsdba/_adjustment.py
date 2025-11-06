@@ -602,7 +602,7 @@ def qm_adjust(
         ds["sim"] = _adapt_freq_preprocess(
             ds[["sim", "P0_ref", "P0_hist", "pth"]],
             adapt_freq_thresh,
-            group=Grouper(group.name),
+            group=Grouper(group.name, add_dims=group.add_dims),
             dim=None,
         ).sim
 
@@ -668,7 +668,7 @@ def dqm_adjust(
         ds["sim"] = _adapt_freq_preprocess(
             ds[["sim", "P0_ref", "P0_hist", "pth"]],
             adapt_freq_thresh,
-            group=Grouper(group.name),
+            group=Grouper(group.name, add_dims=group.add_dims),
             dim=None,
         ).sim
     scaled_sim = u.apply_correction(
@@ -745,7 +745,7 @@ def qdm_adjust(
         ds["sim"] = _adapt_freq_preprocess(
             ds[["sim", "P0_ref", "P0_hist", "pth"]],
             adapt_freq_thresh,
-            group=Grouper(group.name),
+            group=Grouper(group.name, add_dims=group.add_dims),
             dim=None,
         ).sim
 

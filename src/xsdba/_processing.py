@@ -18,11 +18,11 @@ from xsdba.utils import ADDITIVE, apply_correction, ecdf, invert, rank
 
 
 @map_groups(
-    sim_ad=[Grouper.ADD_DIMS, Grouper.DIM],
+    sim_ad=[Grouper.DIM, Grouper.ADD_DIMS],
     dP0=[Grouper.PROP],
     P0_ref=[Grouper.PROP],
-    P0_hist=[Grouper.PROP],
-    pth=[Grouper.PROP],
+    P0_hist=[Grouper.PROP, Grouper.ADD_DIMS],
+    pth=[Grouper.PROP, Grouper.ADD_DIMS],
 )
 def _adapt_freq(ds: xr.Dataset, *, dim: Sequence[str], thresh: float = 0, kind: str = "+") -> xr.Dataset:
     r"""
@@ -70,6 +70,7 @@ def _adapt_freq(ds: xr.Dataset, *, dim: Sequence[str], thresh: float = 0, kind: 
     if len(reuse_adapt_output) != 1:
         raise ValueError("`P0_ref`, `P0_hist`, `pth` must all be given, or be `None`.")
     reuse_adapt_output = list(reuse_adapt_output)[0]
+
     if len({ref is not None, reuse_adapt_output}) != 2:
         raise ValueError("Either `ref` or the triplet (`P0_ref`,`P0_hist`,`pth`) must be None.")
     dim = [dim] if isinstance(dim, str) else dim
