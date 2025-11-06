@@ -19,7 +19,7 @@ from xsdba.utils import ADDITIVE, apply_correction, ecdf, invert, rank
 
 @map_groups(
     sim_ad=[Grouper.DIM, Grouper.ADD_DIMS],
-    dP0=[Grouper.PROP],
+    dP0=[Grouper.PROP, Grouper.ADD_DIMS],
     P0_ref=[Grouper.PROP],
     P0_hist=[Grouper.PROP, Grouper.ADD_DIMS],
     pth=[Grouper.PROP, Grouper.ADD_DIMS],
