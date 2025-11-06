@@ -479,6 +479,26 @@ class Grouper(Parametrizable):
             return dim
         return [dim[0]] + [d for d in dim[1:] if d in da.dims]
 
+    @staticmethod
+    def filter_add_dims(dim: list[str]):
+        """
+        Filter the dimensions to be reduced by removing those not on the variable.
+
+        The first dimension is never removed as it is considered the "main" dimension and not having it is an error.
+        This is meant to be used within a function sent to :py:meth:`Grouper.apply`, like those decorated with :py:func:`map_groups`.
+
+        Parameters
+        ----------
+        dim: sequence of str
+          Dimension(s) to reduce. Dimensions that do not conform with Grouper.DIM (add_dims) are removed.
+
+        Returns
+        -------
+        list of str, the filtered dimensions list
+        """
+        extra_dim = list(set(dim[1:]) - {"window"})
+        return list(set(dim) - set(extra_dim))
+
 
 def parse_group(func: Callable, kwargs=None, allow_only=None) -> Callable:
     """

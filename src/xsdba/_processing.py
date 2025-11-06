@@ -76,7 +76,6 @@ def _adapt_freq(ds: xr.Dataset, *, dim: Sequence[str], thresh: float = 0, kind: 
     dim = [dim] if isinstance(dim, str) else dim
     # map_groups quirk: datasets are broadcasted and must be sliced
     P0_ref, P0_hist, pth = (da if da is None else da[{d: 0 for d in set(dim).intersection(set(da.dims))}] for da in [P0_ref, P0_hist, pth])
-
     # Compute the probability of finding a value <= thresh
     # This is the "dry-day frequency" in the precipitation case
     P0_sim = ecdf(ds.sim, thresh, dim=dim)
