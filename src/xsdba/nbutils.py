@@ -186,6 +186,7 @@ def vecquantiles(da: DataArray, rnk: DataArray, dim: str | Sequence[Hashable]) -
     tem = utils.get_temp_dimname(da.dims, "temporal")
     da = da.stack({tem: dims})
 
+    # if `da` has additional dimensions, `_vecquantiles` is computed on each of those dimensions
     res = apply_ufunc(
         _vecquantiles,
         da,

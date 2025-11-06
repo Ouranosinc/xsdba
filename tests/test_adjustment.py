@@ -250,18 +250,19 @@ class TestDQM:
         # Test train
         attrs = {"units": units, "kind": kind}
 
-        hist = sim = timelonlatseries(x, attrs=attrs).expand_dims(tt=[0, 1]).chunk({"tt": 1})
+        hist = timelonlatseries(x, attrs=attrs).expand_dims(tt=[0, 1]).chunk({"tt": 1})
+        hist = xr.concat([hist.expand_dims(dummy=[0]), hist.expand_dims(dummy=[1])], dim="dummy").chunk({"dummy": -1})
         ref = timelonlatseries(y, attrs=attrs).expand_dims(tt=[0, 1]).chunk({"tt": 1})
 
-        group = Grouper("time.dayofyear", 31, add_dims=["number"])
+        group = Grouper("time.dayofyear", 31, add_dims=["dummy"])
         DQM = DetrendedQuantileMapping.train(
             ref,
-            hist.expand_dims(number=[0]),
+            hist,
             kind=kind,
             group=group,
             nquantiles=50,
         )
-        DQM.adjust(sim, interp="linear")
+        DQM.adjust(hist, interp="linear")
 
     @pytest.mark.parametrize("kind,units", [(ADDITIVE, "K"), (MULTIPLICATIVE, "kg m-2 s-1")])
     def test_quantiles(self, timelonlatseries, kind, units, random):
