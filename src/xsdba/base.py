@@ -489,7 +489,7 @@ class Grouper(Parametrizable):
 
         Parameters
         ----------
-        dim: sequence of str
+        dim: str or sequence of str
           Dimension(s) to reduce. Dimensions that do not conform with Grouper.DIM (add_dims) are removed.
 
         Returns
@@ -497,7 +497,7 @@ class Grouper(Parametrizable):
         list of str, the filtered dimensions list
         """
         if isinstance(dim, str):
-            return dim
+            return [dim]
         extra_dim = list(set(dim[1:]) - {"window"})
         return list(set(dim) - set(extra_dim))
 
