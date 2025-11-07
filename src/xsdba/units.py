@@ -468,7 +468,12 @@ def normalized_wavenumber_to_wavelength(alpha: xr.DataArray | float, delta: str 
     xr.DataArray or float
         Wavelength.
     """
-    delta, u = (_parse_str(delta) if out_units is None else convert_units_to(delta, out_units)), out_units
+    if out_units:
+        delta = convert_units_to(delta, out_units)
+        u = out_units
+    else:
+        delta, u = _parse_str(delta)
+        delta = float(delta)
     delta = np.abs(delta)
     lam = 2 * delta / alpha
     if isinstance(alpha, xr.DataArray):
