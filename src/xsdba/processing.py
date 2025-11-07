@@ -47,7 +47,6 @@ __all__ = [
 
 
 @update_xsdba_history
-@harmonize_units(["ref", "sim", "thresh"])
 def adapt_freq(
     ref: xr.DataArray,
     sim: xr.DataArray,
@@ -99,6 +98,8 @@ def adapt_freq(
     ----------
     :cite:cts:`themesl_empirical-statistical_2012`
     """
+    sim = convert_units_to(sim, ref)
+    thresh = convert_units_to(thresh, ref)
     out = _adapt_freq(xr.Dataset(dict(sim=sim, ref=ref)), group=group, thresh=thresh)
 
     # Set some metadata

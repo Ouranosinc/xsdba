@@ -181,17 +181,20 @@ def vecquantiles(da: DataArray, rnk: DataArray, dim: str | Sequence[Hashable]) -
     xarray.DataArray
         The quantiles computed along the `dim` dimension.
     """
-    tem = utils.get_temp_dimname(da.dims, "temporal")
     dims = [dim] if isinstance(dim, str) else dim
+    common_dims = list(set(da.dims).intersection(set(rnk.dims)))
+    tem = utils.get_temp_dimname(da.dims, "temporal")
     da = da.stack({tem: dims})
-    da = da.transpose(*rnk.dims, tem)
 
-    res = DataArray(
-        _vecquantiles(da.values, rnk.values),
-        dims=rnk.dims,
-        coords=rnk.coords,
-        attrs=da.attrs,
-    ).astype(da.dtype)
+    # if `da` has additional dimensions, `_vecquantiles` is computed on each of those dimensions
+    res = apply_ufunc(
+        _vecquantiles,
+        da,
+        rnk,
+        input_core_dims=[common_dims + [tem], common_dims],
+        output_core_dims=[common_dims],
+        dask="parallelized",
+    )
     return res
 
 
