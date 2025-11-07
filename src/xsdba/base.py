@@ -496,6 +496,8 @@ class Grouper(Parametrizable):
         -------
         list of str, the filtered dimensions list
         """
+        if isinstance(dim, str):
+            return dim
         extra_dim = list(set(dim[1:]) - {"window"})
         return list(set(dim) - set(extra_dim))
 

@@ -139,8 +139,6 @@ def dqm_train(
     `jitter_over_thresh_value` and `jitter_over_thresh_upper_bnd` must be both be specified to
     use `jitter_over_thresh`, or both be None (default) to skip it.
     """
-    dim = [dim] if isinstance(dim, str) else dim
-    # Ensure we only reduce on valid dims, allows for extra dims like "realization" on the sim
     ds = _preprocess_dataset(
         ds,
         dim,
@@ -150,6 +148,7 @@ def dqm_train(
         jitter_over_thresh_upper_bnd,
     ).assign(ref=ds.ref)
 
+    # Ensures extra dimensions are only aggregated in datasets that have them
     ref_dim = Grouper.filter_dim(ds.ref, dim)
     sim_dim = Grouper.filter_dim(ds.hist, dim)
     refn = u.apply_correction(ds.ref, u.invert(ds.ref.mean(ref_dim), kind), kind)
@@ -228,9 +227,6 @@ def eqm_train(
     `jitter_over_thresh_value` and `jitter_over_thresh_upper_bnd` must be both be specified to
     use `jitter_over_thresh`, or both be None (default) to skip it.
     """
-    dim = [dim] if isinstance(dim, str) else dim
-    # Ensure we only reduce on valid dims, allows for extra dims like "realization" on the sim
-
     ds = _preprocess_dataset(
         ds,
         dim,
@@ -240,6 +236,7 @@ def eqm_train(
         jitter_over_thresh_upper_bnd,
     ).assign(ref=ds.ref)
 
+    # Ensures extra dimensions are only aggregated in datasets that have them
     ref_dim = Grouper.filter_dim(ds.ref, dim)
     sim_dim = Grouper.filter_dim(ds.hist, dim)
     ref_q = nbu.quantile(ds.ref, quantiles, ref_dim)
