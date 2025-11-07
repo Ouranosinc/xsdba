@@ -438,10 +438,11 @@ class TestProperties:
 
     @pytest.mark.slow
     @pytest.mark.parametrize(
-        "expected",
+        "delta,expected",
         # values obtained in xsdba v0.5
         [
             (
+                None,
                 [
                     1.8995318e-01,
                     4.0301139e-04,
@@ -449,11 +450,22 @@ class TestProperties:
                     4.4388446e-05,
                     4.2605261e-05,
                     3.4684131e-06,
-                ]
+                ],
+            ),
+            (
+                "55 km",
+                [
+                    1.8995318e-01,
+                    4.0301139e-04,
+                    3.3099027e-03,
+                    4.4388446e-05,
+                    4.2605261e-05,
+                    3.4684131e-06,
+                ],
             ),
         ],
     )
-    def test_spectral_variance(self, gosset, expected):
+    def test_spectral_variance(self, gosset, delta, expected):
         sim = (
             xr.open_dataset(
                 gosset.fetch("NRCANdaily/nrcan_canada_daily_tasmax_1990.nc"),
@@ -467,7 +479,7 @@ class TestProperties:
         var = properties.spectral_variance(
             sim,
             dims=["lat", "lon"],
-            delta=None,
+            delta=delta,
         )
         np.testing.assert_allclose(var, expected, rtol=1e-7)
 
