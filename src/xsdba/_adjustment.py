@@ -161,7 +161,6 @@ def dqm_train(
     mu_ref = ds.ref.mean(ref_dim)
     mu_hist = ds.hist.mean(sim_dim)
     scaling = u.get_correction(mu_hist, mu_ref, kind=kind)
-
     return xr.Dataset(
         data_vars={
             "af": af,

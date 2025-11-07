@@ -76,7 +76,7 @@ def _adapt_freq(ds: xr.Dataset, *, dim: Sequence[str], thresh: float = 0, kind: 
         raise ValueError("Either `ref` or the triplet (`P0_ref`,`P0_hist`,`pth`) must be None.")
     dim = [dim] if isinstance(dim, str) else dim
 
-    # ADD_DIMS are not pooled together when performing frequency adaptation
+    # ADD_DIMS are not pooled with other dims for frequency adaptation
     dim = Grouper.filter_add_dims(dim)
 
     # map_groups quirk: datasets are broadcasted and must be sliced

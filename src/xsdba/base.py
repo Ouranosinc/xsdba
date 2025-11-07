@@ -485,7 +485,6 @@ class Grouper(Parametrizable):
         Filter the dimensions to be reduced by removing those not on the variable.
 
         The first dimension is never removed as it is considered the "main" dimension and not having it is an error.
-        This is meant to be used within a function sent to :py:meth:`Grouper.apply`, like those decorated with :py:func:`map_groups`.
 
         Parameters
         ----------
