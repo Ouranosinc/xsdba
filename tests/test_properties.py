@@ -483,6 +483,32 @@ class TestProperties:
         )
         np.testing.assert_allclose(var, expected, rtol=1e-7)
 
+    def test_normalized_radial_wavenumber_conversion(self, gosset):
+        sim = (
+            xr.open_dataset(
+                gosset.fetch("NRCANdaily/nrcan_canada_daily_tasmax_1990.nc"),
+                engine="h5netcdf",
+            )
+            .tasmax.isel(time=0)
+            .sel(lat=slice(50, 49.5), lon=slice(-80, -79.5))
+            .load()
+        )
+
+        var_km = properties.spectral_variance(
+            sim,
+            dims=["lat", "lon"],
+            delta="55 km",
+        )
+
+        var = properties.spectral_variance(
+            sim,
+            dims=["lat", "lon"],
+            delta=None,
+        )
+
+        lam = 2 * 55 / var.alpha.values
+        np.testing.assert_allclose(var_km.wavelength.values, lam, rtol=1e-7)
+
     # ADAPT? The plan was not to allow mm/d -> kg m-2 s-1 in xsdba
     def test_get_measure(self, gosset):
         sim = (
