@@ -167,7 +167,7 @@ def _loess_nb(
             residuals = y - yest
             s = np.median(np.abs(residuals))
             if s == 0:
-                xres = (residuals == 0) * 1.0
+                xres = (residuals != 0) * 1.0
             else:
                 xres = residuals / (6.0 * s)
             delta = (1 - xres**2) ** 2
