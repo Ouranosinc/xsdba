@@ -11,7 +11,7 @@ Fixes
 ^^^^^
 * ``xsdba.adjustment.ExtremeValues`` throws an error with a clear message when the clustered precipitation exceed `1-q_thresh`. This happens when `cluster_thresh` is too small (still in the bulk of the distribution). (:issue:`177`, :pull:`184`).
 * ``xsdba.properties.spectral_variance`` now works with a `delta` that is not `None`. (:pull:`217`).
-* ``xsdba.processing.spectral_filter`` now works with a `lambda_long` and `lambda_short` that is not `None`. (:pull:`217`).
+* ``xsdba.processing.spectral_filter`` now works with a `lambda_long` and `lambda_short` that is not `None`. (:pull:`220`).
 
 Internal changes
 ^^^^^^^^^^^^^^^^
