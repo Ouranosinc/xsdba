@@ -419,27 +419,7 @@ class TestSpectralUtils:
         # performing dctn & idctn has a small inherent imprecision
         np.testing.assert_allclose(expected, tx_filt.values[0:10], rtol=1e-5)
 
-    @pytest.mark.parametrize(
-        "expected",
-        # values obtained in xsdba v0.5
-        [
-            (
-                [
-                    267.061139,
-                    267.347475,
-                    267.58364,
-                    267.816278,
-                    268.093685,
-                    268.326505,
-                    268.485636,
-                    268.684414,
-                    268.863002,
-                    268.969267,
-                ]
-            ),
-        ],
-    )
-    def test_spectral_filter_lambda(self, gosset, expected):
+    def test_spectral_filter_lambda_vs_alpha(self, gosset):
         ds = xr.open_dataset(
             gosset.fetch("NRCANdaily/nrcan_canada_daily_tasmax_1990.nc"),
             engine="h5netcdf",
@@ -448,15 +428,22 @@ class TestSpectralUtils:
         # spectral_filter not working if nan values are present (for now?)
         tx = ds.tasmax.isel(time=0).sel(lat=slice(50, 47), lon=slice(-80, -74))
         # using the default filter
-        tx_filt = spectral_filter(
+        tx_filt_al = spectral_filter(
+            tx,
+            lam_long=None,
+            lam_short=None,
+            dims=["lon", "lat"],
+            alpha_low_high=[0.9, 0.99],  # dummy value
+        )
+        tx_filt_lam = spectral_filter(
             tx,
             lam_long=f"{2 / 0.9} km",
             lam_short=f"{2 / 0.99} km",
             delta="1 km",
             dims=["lon", "lat"],
-        ).isel(lon=0)
+        )
         # performing dctn & idctn has a small inherent imprecision
-        np.testing.assert_allclose(expected, tx_filt.values[0:10], rtol=1e-5)
+        np.testing.assert_allclose(tx_filt_al.values, tx_filt_lam.values, rtol=1e-5)
 
     def test_spectral_filter_identity(self, gosset):
         ds = xr.open_dataset(
