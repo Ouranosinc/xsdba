@@ -27,6 +27,7 @@ from xsdba.base import Grouper, map_groups, parse_group, uses_dask
 from xsdba.nbutils import _pairwise_haversine_and_bins
 from xsdba.processing import _normalized_radial_wavenumber
 from xsdba.units import (
+    _parse_str,
     convert_units_to,
     infer_sampling_units,
     normalized_wavenumber_to_wavelength,
@@ -1567,17 +1568,18 @@ def _spectral_variance_alpha(da, dims):
         output_core_dims=[dims],
         dask="parallelized",
         dask_gufunc_kwargs={"allow_rechunk": True},
-        vectorize=True,  # Errors in values if set to False! investigate?
+        vectorize=True,
         keep_attrs=True,
     )
     sizes = [da[d].size for d in dims]
-    # \sigma = \sum_{m,n} F_{m,n} / (M*N)
+    # \sigma_{m,n} = F_{m,n} / (M*N)
     sigmn = (1 / np.prod(sizes)) * (Fmn**2)
     sigmn["alpha"] = _normalized_radial_wavenumber(da, dims)
 
     # eq.13 and 14 of the reference
     # alpha should increase in integer steps of 1/min(N_i,N_j)
-    sigmn["alpha"] = (sigmn["alpha"] // (1 / min(sizes))) * (1 / min(sizes))
+    step = 1 / min(sizes)
+    sigmn["alpha"] = (sigmn["alpha"] // step) * step
     return sigmn.groupby("alpha").sum(keep_attrs=True)
 
 
@@ -1623,7 +1625,7 @@ def _spectral_variance(
         var = var.rename({"alpha": "wavelength"})
     var = var.assign_attrs(da.attrs)
     if "units" in da.attrs:
-        var.attrs["units"] = str(str2pint(da.units) ** 2)
+        var.attrs["units"] = _parse_str(str(str2pint(da.units) ** 2))[-1]
     name = "variance"
     if var.name:
         name = f"{var.name}_{name}"
