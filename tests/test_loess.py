@@ -85,3 +85,13 @@ def test_loess_smoothing_nan(use_dask):
     assert out.dims == da.dims
     # check that the output is all nan on the axis with nan in the input
     assert np.isnan(out.values[0, 0]).all()
+
+
+def test_loess_oops_all_zeros(timeseries):
+    ds = xr.DataArray(
+        data=[0] * 145,
+        dims=["time"],
+        coords={"time": pd.date_range("1956-01-01", periods=145, freq="YS")},
+    )
+    out = loess_smoothing(ds)
+    assert (out == 0).all()
