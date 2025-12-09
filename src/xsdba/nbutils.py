@@ -194,6 +194,7 @@ def vecquantiles(da: DataArray, rnk: DataArray, dim: str | Sequence[Hashable]) -
         input_core_dims=[common_dims + [tem], common_dims],
         output_core_dims=[common_dims],
         dask="parallelized",
+        vectorize=True,
     )
     return res
 
