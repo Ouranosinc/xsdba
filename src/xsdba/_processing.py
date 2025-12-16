@@ -158,9 +158,8 @@ def _normalize(
         norm = ds.norm
     else:
         norm = ds.data.mean(dim=dim)
-    norm.attrs["_group_apply_reshape"] = True
-
-    return xr.Dataset({"data": apply_correction(ds.data, invert(norm, kind), kind), "norm": norm})
+    out = xr.Dataset({"data": apply_correction(ds.data, invert(norm, kind), kind), "norm": norm.assign_attrs(_group_apply_reshape=True)})
+    return out
 
 
 @map_groups(reordered=[Grouper.DIM], main_only=False)
