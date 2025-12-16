@@ -12,7 +12,7 @@
       "project_slug": "xsdba",
       "project_short_description": "Statistical correction and bias adjustment tools for xarray.",
       "pypi_username": "coxipi",
-      "version": "0.5.1-dev.3",
+      "version": "0.5.1-dev.5",
       "use_pytest": "y",
       "use_conda": "y",
       "make_docs": "y",

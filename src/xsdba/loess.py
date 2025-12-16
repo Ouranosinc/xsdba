@@ -166,7 +166,10 @@ def _loess_nb(
         if iteration < niter - 1:
             residuals = y - yest
             s = np.median(np.abs(residuals))
-            xres = residuals / (6.0 * s)
+            if s == 0:
+                xres = (residuals != 0) * 1.0
+            else:
+                xres = residuals / (6.0 * s)
             delta = (1 - xres**2) ** 2
             delta[np.abs(xres) >= 1] = 0
 
