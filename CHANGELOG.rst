@@ -7,6 +7,10 @@ Changelog
 
 Contributors: Éric Dupuis (:user:`coxipi`), Trevor James Smith (:user:`Zeitsperre`), Pascal Bourgault (:user:`aulemahal`).
 
+Changes
+^^^^^^^
+* `numpy` >=1.26 and `numba` >=0.58.1 are now required. (:pull:`231`).
+
 Fixes
 ^^^^^
 * ``xsdba.adjustment.ExtremeValues`` throws an error with a clear message when the clustered precipitation exceed `1-q_thresh`. This happens when `cluster_thresh` is too small (still in the bulk of the distribution). (:issue:`177`, :pull:`184`).
@@ -24,6 +28,7 @@ Internal changes
     * Replace `black`, `blackdocs` and `isort` pre-commit hooks with `ruff`.
     * Updated Contributor Covenant Agreement to v3.0.
     * Various updates to CI dependencies and configurations.
+* The minimum supported `pytest` is now v9.0 and above. `pytest` conventions and configurations have been updated to use the new TOML format. (:pull:`231`).
 
 .. _changes_0.5.0:
 
