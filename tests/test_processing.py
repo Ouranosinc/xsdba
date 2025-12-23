@@ -419,6 +419,32 @@ class TestSpectralUtils:
         # performing dctn & idctn has a small inherent imprecision
         np.testing.assert_allclose(expected, tx_filt.values[0:10], rtol=1e-5)
 
+    def test_spectral_filter_lambda_vs_alpha(self, gosset):
+        ds = xr.open_dataset(
+            gosset.fetch("NRCANdaily/nrcan_canada_daily_tasmax_1990.nc"),
+            engine="h5netcdf",
+        )
+        # select lat/lon without nan values
+        # spectral_filter not working if nan values are present (for now?)
+        tx = ds.tasmax.isel(time=0).sel(lat=slice(50, 47), lon=slice(-80, -74))
+        # using the default filter
+        tx_filt_al = spectral_filter(
+            tx,
+            lam_long=None,
+            lam_short=None,
+            dims=["lon", "lat"],
+            alpha_low_high=[0.9, 0.99],  # dummy value
+        )
+        tx_filt_lam = spectral_filter(
+            tx,
+            lam_long=f"{2 / 0.9} km",
+            lam_short=f"{2 / 0.99} km",
+            delta="1 km",
+            dims=["lon", "lat"],
+        )
+        # performing dctn & idctn has a small inherent imprecision
+        np.testing.assert_allclose(tx_filt_al.values, tx_filt_lam.values, rtol=1e-5)
+
     def test_spectral_filter_identity(self, gosset):
         ds = xr.open_dataset(
             gosset.fetch("NRCANdaily/nrcan_canada_daily_tasmax_1990.nc"),

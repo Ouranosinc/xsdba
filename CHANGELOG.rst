@@ -17,6 +17,7 @@ Fixes
 * ``xsdba.properties.spectral_variance`` now works with a `delta` that is not `None`. (:pull:`217`).
 * ``xsdba.loess.loess_smoothing`` fixed for cases when the input has many zeros. (:issue:`100`, :pull:`208`).
 * Fixed an issue with attribute fields added to normalized arrays under newer `xarray` versions. (:pull:`223`).
+* ``xsdba.processing.spectral_filter`` now works with a `lambda_long` and `lambda_short` that are not `None`. (:pull:`220`).
 
 Internal changes
 ^^^^^^^^^^^^^^^^
