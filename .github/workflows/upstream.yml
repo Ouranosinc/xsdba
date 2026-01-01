@@ -44,7 +44,7 @@ jobs:
           disable-sudo: true
           egress-policy: audit
       - name: Start Measurement
-        uses: green-coding-solutions/eco-ci-energy-estimation@862050e4f01f65b1436e5eca18ba4bd85562f0de # v5.0.0
+        uses: green-coding-solutions/eco-ci-energy-estimation@e564b150da4cfeb8e069b86da510c8d27db6d8d6 # v5.1.1
         with:
           task: start-measurement
           branch: ${{ github.head_ref || github.ref_name }}
@@ -73,13 +73,13 @@ jobs:
           micromamba list
           python -m pip check || true
       - name: Setup Python Measurement
-        uses: green-coding-solutions/eco-ci-energy-estimation@862050e4f01f65b1436e5eca18ba4bd85562f0de # v5.0.0
+        uses: green-coding-solutions/eco-ci-energy-estimation@e564b150da4cfeb8e069b86da510c8d27db6d8d6 # v5.1.1
         with:
           task: get-measurement
           label: 'Environment Setup (Upstream, Python${{ matrix.python-version }})'
         continue-on-error: true
       - name: Test Data Caching
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
         with:
           path: |
             ${{ matrix.testdata-cache }}
@@ -100,13 +100,13 @@ jobs:
           issue-title: "⚠️ Nightly upstream-dev CI failed for Python${{ matrix.python-version }} ⚠️"
           log-path: output-${{ matrix.python-version }}-log.jsonl
       - name: Tests measurement
-        uses: green-coding-solutions/eco-ci-energy-estimation@862050e4f01f65b1436e5eca18ba4bd85562f0de # v5.0.0
+        uses: green-coding-solutions/eco-ci-energy-estimation@e564b150da4cfeb8e069b86da510c8d27db6d8d6 # v5.1.1
         with:
           task: get-measurement
           label: 'Testing and Reporting (Upstream, Python${{ matrix.python-version }})'
         continue-on-error: true
       - name: Show Energy Results
-        uses: green-coding-solutions/eco-ci-energy-estimation@862050e4f01f65b1436e5eca18ba4bd85562f0de # v5.0.0
+        uses: green-coding-solutions/eco-ci-energy-estimation@e564b150da4cfeb8e069b86da510c8d27db6d8d6 # v5.1.1
         with:
           task: display-results
         continue-on-error: true
