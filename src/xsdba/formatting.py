@@ -110,7 +110,7 @@ def update_history(
         missing_str="",
         **inputs_kws,
     )
-    merged_history = (f"[{dt.datetime.now():%Y-%m-%d %H:%M:%S}] {new_name or ''}: {hist_str} - xsba version: {__version__}\n") + merged_history
+    merged_history = (f"[{dt.datetime.now():%Y-%m-%d %H:%M:%S}] {new_name or ''}: {hist_str} - xsdba version: {__version__}\n") + merged_history
 
     return merged_history
 
