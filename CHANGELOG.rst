@@ -5,7 +5,7 @@ Changelog
 `Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
 ------------------------------------------------------------
 
-Contributors: Éric Dupuis (:user:`coxipi`), Trevor James Smith (:user:`Zeitsperre`), Pascal Bourgault (:user:`aulemahal`).
+Contributors: Éric Dupuis (:user:`coxipi`), Trevor James Smith (:user:`Zeitsperre`), Pascal Bourgault (:user:`aulemahal`), Juliette Lavoie (:user: `juliettelavoie`).
 
 Changes
 ^^^^^^^
@@ -18,6 +18,7 @@ Fixes
 * ``xsdba.loess.loess_smoothing`` fixed for cases when the input has many zeros. (:issue:`100`, :pull:`208`).
 * Fixed an issue with attribute fields added to normalized arrays under newer `xarray` versions. (:pull:`223`).
 * ``xsdba.processing.spectral_filter`` now works with a `lambda_long` and `lambda_short` that are not `None`. (:pull:`220`).
+* Prepend history instead of appending it. (:pull:`238`).
 
 Internal changes
 ^^^^^^^^^^^^^^^^
