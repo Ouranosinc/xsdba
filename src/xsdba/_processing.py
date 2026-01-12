@@ -96,7 +96,7 @@ def _adapt_freq(ds: xr.Dataset, *, dim: Sequence[str], thresh: float = 0, kind: 
         rnk = rank(sim, dim=dim, pct=True)
         # Frequency-adapted sim
         sim_ad = sim.where(
-            dP0 < 0,  # dP0 < 0 means no-adaptation.
+            dP0 <= 0,  # dP0 < 0 means no-adaptation.
             sim.where(
                 (rnk < (P0_ref / P0_hist) * P0_sim) | (rnk > P0_sim) | sim.isnull(),  # Preserve current values
                 # Generate random numbers ~ U[T0, Pth]
