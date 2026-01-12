@@ -11,19 +11,20 @@ updates:
       actions:
         patterns:
           - "*"
-    cooldown:
-      default-days: 7
+        update-types:
+          - patch
+          - minor
+          - major
 
   - package-ecosystem: pip
-    directory: /
+    directory: /CI
     schedule:
       interval: "quarterly"
     groups:
-      ci:
-        patterns:
-          - "CI/*"
       python:
         patterns:
-          - "pyproject.toml"
-    cooldown:
-      default-days: 7
+          - "requirements_ci.*"
+        update-types:
+          - patch
+          - minor
+          - major
