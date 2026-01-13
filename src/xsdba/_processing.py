@@ -94,7 +94,7 @@ def _adapt_freq(ds: xr.Dataset, *, dim: Sequence[str], thresh: float = 0, kind: 
         # Compute : ecdf_ref^-1( ecdf_sim( thresh ) )
         # The value in ref with the same rank as the first non-zero value in sim.
         # pth is meaningless when freq. adaptation is not needed
-        pth = nbu.vecquantiles(ref, P0_hist, dim).where(dP0 > 0) if pth is None else pth
+        pth = nbu.vecquantiles(ref, P0_hist.broadcast_like(ref[{d: 0 for d in dim}]), dim).where(dP0 > 0) if pth is None else pth
         # Probabilities and quantiles computed within all dims, but correction along the first one only.
         sim = ds.sim
         # Get the percentile rank of each value in sim.
