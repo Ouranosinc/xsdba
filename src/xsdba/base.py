@@ -423,10 +423,10 @@ class Grouper(Parametrizable):
         # and that some have grouped dims and other have the same dimensions as the input.
         # In that specific case, groupby broadcasts everything back to the input's dim, copying the grouped data.
         if isinstance(out, xr.Dataset):
-            for name, outvar in out.data_vars.items():
-                if "_group_apply_reshape" in outvar.attrs:
-                    if self.dim in outvar.dims:
-                        out[name] = self.group(outvar, main_only=True).first(skipna=False, keep_attrs=True)
+            for name, out_var in out.data_vars.items():
+                if "_group_apply_reshape" in out_var.attrs:
+                    if self.dim in out_var.dims:
+                        out[name] = self.group(out_var, main_only=True).first(skipna=False, keep_attrs=True)
                     del out[name].attrs["_group_apply_reshape"]
 
         # Save input parameters as attributes of output DataArray.
@@ -467,7 +467,7 @@ class Grouper(Parametrizable):
         Parameters
         ----------
         da: DataArray
-          A dataarray from which we get the list of valid dimensions.
+          A DataArray from which we get the list of valid dimensions.
         dim: str or sequence of str
           Dimension(s) to reduce. The first one is not removed, the others are kept only if they appear on `da`.
 
