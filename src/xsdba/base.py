@@ -482,7 +482,7 @@ class Grouper(Parametrizable):
     @staticmethod
     def filter_add_dims(dim: list[str]):
         """
-        Filter the dimensions to be reduced by removing those not on the variable.
+        Filter the dimensions to be reduced by removing those in `add_dims`.
 
         The first dimension is never removed as it is considered the "main" dimension and not having it is an error.
 
