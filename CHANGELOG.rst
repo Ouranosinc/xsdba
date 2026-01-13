@@ -19,6 +19,7 @@ Fixes
 * Fixed an issue with attribute fields added to normalized arrays under newer `xarray` versions. (:pull:`223`).
 * ``xsdba.processing.spectral_filter`` now works with a `lambda_long` and `lambda_short` that are not `None`. (:pull:`220`).
 * Prepend history instead of appending it. (:pull:`238`).
+* ``xsdba._processing._adapt_freq`` now avoids inserting nans. This was due to using `dP0 < 0` and not `dP0 <= 0` in a where condition. (:pull:`239`).
 
 Internal changes
 ^^^^^^^^^^^^^^^^
