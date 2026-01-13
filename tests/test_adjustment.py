@@ -158,6 +158,7 @@ class TestLoci:
         # attrs = {"units": "kg m-2 s-1", "kind": MULTIPLICATIVE}  # not used
 
         hist = sim = timelonlatseries(x, attrs={"units": "kg m-2 s-1"})
+        hist.attrs["history"] = "ancient history."
         y = x * 2
         thresh = 2
         ref_fit = timelonlatseries(y, attrs={"units": "kg m-2 s-1"}).where(y > thresh, 0.1)
@@ -172,6 +173,8 @@ class TestLoci:
 
         assert "history" in p.attrs
         assert "Bias-adjusted with LOCI(" in p.attrs["history"]
+        # test that history was prepended and old history is still at the end.
+        assert p.attrs["history"].endswith("ancient history.")
 
         file = tmp_path / "test_loci.nc"
         loci.ds.to_netcdf(file, engine="h5netcdf")
