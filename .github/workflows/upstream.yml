@@ -44,7 +44,7 @@ jobs:
           disable-sudo: true
           egress-policy: audit
       - name: Start Measurement
-        uses: green-coding-solutions/eco-ci-energy-estimation@e564b150da4cfeb8e069b86da510c8d27db6d8d6 # v5.1.1
+        uses: green-coding-solutions/eco-ci-energy-estimation@0fd2200a8f02d7939066c535e3642c2ebee9db16 # v5.2
         with:
           task: start-measurement
           branch: ${{ github.head_ref || github.ref_name }}
@@ -73,7 +73,7 @@ jobs:
           micromamba list
           python -m pip check || true
       - name: Setup Python Measurement
-        uses: green-coding-solutions/eco-ci-energy-estimation@e564b150da4cfeb8e069b86da510c8d27db6d8d6 # v5.1.1
+        uses: green-coding-solutions/eco-ci-energy-estimation@0fd2200a8f02d7939066c535e3642c2ebee9db16 # v5.2
         with:
           task: get-measurement
           label: 'Environment Setup (Upstream, Python${{ matrix.python-version }})'
@@ -100,13 +100,13 @@ jobs:
           issue-title: "⚠️ Nightly upstream-dev CI failed for Python${{ matrix.python-version }} ⚠️"
           log-path: output-${{ matrix.python-version }}-log.jsonl
       - name: Tests measurement
-        uses: green-coding-solutions/eco-ci-energy-estimation@e564b150da4cfeb8e069b86da510c8d27db6d8d6 # v5.1.1
+        uses: green-coding-solutions/eco-ci-energy-estimation@0fd2200a8f02d7939066c535e3642c2ebee9db16 # v5.2
         with:
           task: get-measurement
           label: 'Testing and Reporting (Upstream, Python${{ matrix.python-version }})'
         continue-on-error: true
       - name: Show Energy Results
-        uses: green-coding-solutions/eco-ci-energy-estimation@e564b150da4cfeb8e069b86da510c8d27db6d8d6 # v5.1.1
+        uses: green-coding-solutions/eco-ci-energy-estimation@0fd2200a8f02d7939066c535e3642c2ebee9db16 # v5.2
         with:
           task: display-results
         continue-on-error: true
