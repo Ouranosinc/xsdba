@@ -20,6 +20,7 @@ Fixes
 * ``xsdba.processing.spectral_filter`` now works with a `lambda_long` and `lambda_short` that are not `None`. (:pull:`220`).
 * Prepend history instead of appending it. (:pull:`238`).
 * ``xsdba._processing._adapt_freq`` now avoids inserting nans. This was due to using `dP0 < 0` and not `dP0 <= 0` in a where condition. (:pull:`239`).
+* Fix `adapt_freq` processing in training when ``xsdba.Grouper`` uses `add_dims`. (:issue:`182`, :pull:`183`).
 
 Internal changes
 ^^^^^^^^^^^^^^^^

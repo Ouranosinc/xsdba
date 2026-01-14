@@ -105,6 +105,47 @@ class TestBaseAdjustment:
             BaseAdjustment._check_matching_time_sizes(da, da2)
 
 
+@pytest.mark.slow
+class TestBase:
+    def test_add_dims_error(
+        self,
+        mon_timelonlatseries,
+        timelonlatseries,
+        random,
+    ):
+        """
+        Check the error when `add_dims` is passed for a dimension that is not in the input datasets.
+        """
+        kind, units = "+", "K"
+        u = random.random(100)
+
+        # Define distributions
+        xd = uniform(loc=1, scale=1)
+        yd = uniform(loc=2, scale=2)
+        noise = uniform(loc=0, scale=1e-7)
+
+        # Generate random numbers
+        x = xd.ppf(u)
+        y = yd.ppf(u) + noise.ppf(u)
+
+        # Test train
+        attrs = {"units": units, "kind": kind}
+
+        ref = mon_timelonlatseries(y, attrs=attrs)
+        hist = timelonlatseries(x, attrs=attrs)
+        with pytest.raises(
+            ValueError,
+            match=r"`add_dims` argument needs to be a dimension in one of the input datasets.",
+        ):
+            QuantileDeltaMapping.train(
+                ref,
+                hist,
+                kind=kind,
+                group=Grouper("time.month", add_dims=["dim_not_in_ref_or_hist"]),
+                nquantiles=40,
+            )
+
+
 class TestLoci:
     @pytest.mark.parametrize("group,dec", (["time", 2], ["time.month", 1]))
     def test_time_and_from_ds(self, timelonlatseries, group, dec, tmp_path, random):
@@ -229,6 +270,43 @@ class TestScaling:
 
 @pytest.mark.slow
 class TestDQM:
+    @pytest.mark.parametrize("kind,units", [(ADDITIVE, "K"), (MULTIPLICATIVE, "kg m-2 s-1")])
+    def test_add_dims(self, timelonlatseries, kind, units, random):
+        """
+        Train on
+        hist: U
+        ref: Normal
+
+        Predict on hist to get ref
+        """
+        ns = 10000
+        u = random.random(ns)
+
+        # Define distributions
+        xd = uniform(loc=10, scale=1)
+        yd = norm(loc=12, scale=1)
+
+        # Generate random numbers with u so we get exact results for comparison
+        x = xd.ppf(u)
+        y = yd.ppf(u)
+
+        # Test train
+        attrs = {"units": units, "kind": kind}
+
+        hist = timelonlatseries(x, attrs=attrs).expand_dims(tt=[0, 1]).chunk({"tt": 1})
+        hist = xr.concat([hist.expand_dims(dummy=[0]), hist.expand_dims(dummy=[1])], dim="dummy").chunk({"dummy": -1})
+        ref = timelonlatseries(y, attrs=attrs).expand_dims(tt=[0, 1]).chunk({"tt": 1})
+
+        group = Grouper("time.dayofyear", 31, add_dims=["dummy"])
+        DQM = DetrendedQuantileMapping.train(
+            ref,
+            hist,
+            kind=kind,
+            group=group,
+            nquantiles=50,
+        )
+        DQM.adjust(hist, interp="linear")
+
     @pytest.mark.parametrize("kind,units", [(ADDITIVE, "K"), (MULTIPLICATIVE, "kg m-2 s-1")])
     def test_quantiles(self, timelonlatseries, kind, units, random):
         """
@@ -519,7 +597,7 @@ class TestQDM:
             hist = hist.expand_dims(site=[0, 1, 2, 3, 4]).drop_vars("site")
             sim = sim.expand_dims(site=[0, 1, 2, 3, 4]).drop_vars("site")
 
-        QDM = QuantileDeltaMapping.train(ref, hist, kind=kind, group="time.month", nquantiles=40, add_dims=["site"])
+        QDM = QuantileDeltaMapping.train(ref, hist, kind=kind, group="time.month", nquantiles=40, add_dims=["site"] if add_dims else None)
         p = QDM.adjust(sim, interp="linear" if kind == "+" else "nearest")
 
         q = QDM.ds.coords["quantiles"]
