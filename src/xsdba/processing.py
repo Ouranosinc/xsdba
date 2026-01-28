@@ -807,8 +807,7 @@ def grouped_time_indexes(times, group):
     """
     Time indexes for every group blocks.
 
-    Time indexes can be used to implement a pseudo-"numpy.groupies"
-    approach to grouping.
+    Time indexes can be used to implement a pseudo-"numpy.groupies" approach to grouping.
 
     Parameters
     ----------
@@ -820,7 +819,7 @@ def grouped_time_indexes(times, group):
     Returns
     -------
     g_idxs : xr.DataArray
-        Time indexes of the blocks (grouping only).
+        Time indexes of the blocks (only using `group.name` and not `group.window`).
     gw_idxs : xr.DataArray
         Time indexes of the blocks (with rolling window if any).
     """
@@ -842,7 +841,7 @@ def grouped_time_indexes(times, group):
     )
     win_dim0, win_dim = (get_temp_dimname(timeind.dims, lab) for lab in ("win_dim0", "win_dim"))
 
-    if gr.startswith("time."):
+    if gr == "time.dayofyear":
 
         def _map_group(da):
             return da.assign_coords(time=_get_group_complement(da, gr)).rename(time="group")
@@ -861,7 +860,7 @@ def grouped_time_indexes(times, group):
 
     elif gr == "5D":
         if win % 2 == 0:
-            raise ValueError(f"Group 5D only works with an odd window, got window={win}")
+            raise ValueError(f"Group 5D only works with an odd window, got `window`={win}")
 
         gr_dim = "five_days"
         imin, imax = 0, times.size - 1
