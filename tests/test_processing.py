@@ -147,7 +147,7 @@ def test_adapt_freq_adjust(gosset):
 
     outh = _adapt_freq.func(xr.Dataset(dict(ref=ref, sim=hist)), dim="time", thresh=1)
     outs = _adapt_freq.func(
-        xr.merge([sim.to_dataset(name="sim"), outh]),
+        xr.merge([sim.to_dataset(name="sim"), outh], compat="no_conflicts", join="outer"),
         dim="time",
         thresh=1,
     )
