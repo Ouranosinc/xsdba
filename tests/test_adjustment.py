@@ -42,6 +42,13 @@ from xsdba.utils import (
 )
 
 
+# Remove when `numpy` v1.x support is dropped
+try:
+    from numpy import trapezoid
+except ImportError:
+    from numpy import trapz as trapezoid  # type: ignore[attr-defined,no-redef]
+
+
 def nancov(X):
     """Numpy's cov but dropping observations with NaNs."""
     X_na = np.isnan(X).any(axis=0)
@@ -582,9 +589,9 @@ class TestQDM:
         pu1 = ref.ppf(u1) * sim.ppf(u1) / hist.ppf(u1)
         pdf = np.diff(u1) / np.diff(pu1)
 
-        mean = np.trapz(pdf * pu, pu)
-        mom2 = np.trapz(pdf * pu**2, pu)
-        std = np.sqrt(mom2 - mean**2)  # noqa: F841 # FIXME: Not used
+        mean = trapezoid(pdf * pu, pu)
+        mom2 = trapezoid(pdf * pu**2, pu)
+        _std = np.sqrt(mom2 - mean**2)  # noqa: F841 # FIXME: Not used
         bc_sim = scends.scen
         np.testing.assert_almost_equal(bc_sim.mean(), 41.5, 1)
         np.testing.assert_almost_equal(bc_sim.std(), 16.7, 0)
@@ -829,7 +836,7 @@ class TestPrincipalComponents:
         sim_y = sim_x + norm.rvs(loc=1, scale=1, size=(m, n), random_state=random)
 
         ref = xr.DataArray([ref_x, ref_y], dims=("lat", "lon", "time"), attrs={"units": "degC"})
-        ref["time"] = xr.cftime_range("1990-01-01", periods=n, calendar="noleap")
+        ref["time"] = xr.date_range("1990-01-01", periods=n, calendar="noleap", use_cftime=True)
         sim = xr.DataArray([sim_x, sim_y], dims=("lat", "lon", "time"), attrs={"units": "degC"})
         sim["time"] = ref["time"]
 
@@ -915,7 +922,7 @@ class TestExtremeValues:
             return xr.DataArray(
                 base,
                 dims=("time",),
-                coords={"time": xr.cftime_range("1990-01-01", periods=n, calendar="noleap")},
+                coords={"time": xr.date_range("1990-01-01", periods=n, calendar="noleap", use_cftime=True)},
                 attrs={"units": "mm/day", "thresh": qv},
             )
 
@@ -981,7 +988,7 @@ class TestExtremeValues:
         new_scen.load()
 
     def test_nan_values(self):
-        times = xr.cftime_range("1990-01-01", periods=365, calendar="noleap")
+        times = xr.date_range("1990-01-01", periods=365, calendar="noleap", use_cftime=True)
         ref = xr.DataArray(
             np.arange(365),
             dims=("time"),
