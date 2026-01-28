@@ -986,10 +986,10 @@ def _normalized_radial_wavenumber(da, dims):
     """
     # Replace lat/lon coordinates with integers (wavenumbers in reciprocal space)
     ds_dims = da[dims] if isinstance(da, xr.Dataset) else (da.to_dataset())[dims]
-    da0 = xr.Dataset(coords={d: range(sh) for d, sh in ds_dims.dims.items()})
+    da0 = xr.Dataset(coords={d: range(sh) for d, sh in ds_dims.sizes.items()})
     # Radial distance in Fourier space
-    alpha = sum([da0[d] ** 2 / da0[d].size ** 2 for d in da0.dims]) ** 0.5
-    alpha = alpha.assign_coords({d: ds_dims[d] for d in ds_dims.dims}).rename("alpha")
+    alpha = sum([da0[d] ** 2 / da0[d].size ** 2 for d in da0.sizes]) ** 0.5
+    alpha = alpha.assign_coords({d: ds_dims[d] for d in ds_dims.sizes}).rename("alpha")
     alpha = alpha.assign_attrs(
         {
             "units": "",
