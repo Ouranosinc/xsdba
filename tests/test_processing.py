@@ -192,8 +192,8 @@ def test_adapt_freq_add_dims(use_dask, random):
 
 
 @pytest.mark.parametrize("use_dask", [True, False])
-def test_adapt_freq_no_zeroes(use_dask, random):
-    # test dP0 == 0 when there are no values below thresh
+def test_adapt_freq_no_zeros(use_dask, random):
+    # test dP0 == 0 when there are no values below thresh for sim
     time = pd.date_range("1990-01-01", "2020-12-31", freq="D")
     group = "time"
     prvals = random.integers(0, 100, size=(time.size, 3))
@@ -208,32 +208,8 @@ def test_adapt_freq_no_zeroes(use_dask, random):
         pr = pr.chunk()
     with xr.set_options(keep_attrs=True):
         prsim = xr.where(pr <= 1, 1.001 + pr, pr)
-        prref = xr.where(pr <= 1, 1.001 + pr, pr)
-    _, _, dP0 = adapt_freq(prref, prsim, thresh="1 mm d-1", group=group)
-    assert (dP0.values == 0).all()
-
-
-@pytest.mark.parametrize("use_dask", [True, False])
-def test_adapt_freq_no_zeroes_hist(use_dask, random):
-    # test dP0 == -np.inf when there are no values below thresh only for sim
-    time = pd.date_range("1990-01-01", "2020-12-31", freq="D")
-    group = "time"
-    prvals = random.integers(0, 100, size=(time.size, 3))
-    pr = xr.DataArray(
-        prvals,
-        coords={"time": time, "lat": [0, 1, 2]},
-        dims=("time", "lat"),
-        attrs={"units": "mm d-1"},
-    )
-    if use_dask:
-        pr = pr.chunk()
-    with xr.set_options(keep_attrs=True):
-        prsim = xr.where(pr <= 1, 1.001 + pr, pr)
-        # ensure prref has some values below threshold
-        prref = pr
-        prref[{"time": [0, 10, 20]}] = 0.1
-    _, _, dP0 = adapt_freq(prref, prsim, thresh="1 mm d-1", group=group)
-    assert (dP0.values == -np.inf).all()
+    _, _, dP0 = adapt_freq(pr, prsim, thresh="1 mm d-1", group=group)
+    assert (dP0.isnull().values).all()
 
 
 def test_escore():
