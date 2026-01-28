@@ -1221,7 +1221,7 @@ class TestSBCKutils:
                 "tasmax": xr.DataArray(ref_y, dims=("lon", "time"), attrs={"units": "degC"}),
             }
         )
-        ref["time"] = xr.cftime_range("1990-01-01", periods=n, calendar="noleap")
+        ref["time"] = xr.date_range("1990-01-01", periods=n, calendar="noleap", use_cftime=True)
 
         hist = xr.Dataset(
             {
@@ -1237,7 +1237,7 @@ class TestSBCKutils:
                 "tasmax": xr.DataArray(sim_y, dims=("lon", "time"), attrs={"units": "degC"}),
             }
         )
-        sim["time"] = xr.cftime_range("2090-01-01", periods=n, calendar="noleap")
+        sim["time"] = xr.date_range("2090-01-01", periods=n, calendar="noleap", use_cftime=True)
 
         if use_dask:
             ref = ref.chunk({"lon": 1})
