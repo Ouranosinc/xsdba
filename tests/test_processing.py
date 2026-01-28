@@ -131,7 +131,8 @@ def test_adapt_freq(use_dask, random):
     assert pth.units == "mm d-1"
 
 
-def test_adapt_freq_adjust(gosset):
+@pytest.mark.parametrize("use_dask", [True, False])
+def test_adapt_freq_adjust(gosset, use_dask):
     past = {"time": slice("1950", "1969")}
     future = {"time": slice("1970", "1989")}
     all_time = {"time": slice("1950", "1989")}
@@ -142,6 +143,11 @@ def test_adapt_freq_adjust(gosset):
     sim.loc[{"time": slice("1970", "1980")}] = 0
     sim = jitter_under_thresh(sim, "1 mm/d")
     hist = sim.loc[past]
+
+    if use_dask:
+        ref = ref.chunk()
+        hist = hist.chunk()
+        sim = sim.chunk()
     # this is just to make sure the example works, some adaptation is needed
     assert ((hist <= 1).sum(dim="time") > (ref <= 1).sum(dim="time")).all()
 
@@ -183,6 +189,51 @@ def test_adapt_freq_add_dims(use_dask, random):
         prref = xr.where(pr < 10, pr / 20, pr)
     sim_ad, pth, _dP0 = adapt_freq(prref, prsim, thresh="1 mm d-1", group=group)
     assert set(sim_ad.dims) == set(prsim.dims)
+
+
+@pytest.mark.parametrize("use_dask", [True, False])
+def test_adapt_freq_no_zeroes(use_dask, random):
+    # test dP0 == 0 when there are no values below thresh
+    time = pd.date_range("1990-01-01", "2020-12-31", freq="D")
+    group = "time"
+    prvals = random.integers(0, 100, size=(time.size, 3))
+    pr = xr.DataArray(
+        prvals,
+        coords={"time": time, "lat": [0, 1, 2]},
+        dims=("time", "lat"),
+        attrs={"units": "mm d-1"},
+    )
+
+    if use_dask:
+        pr = pr.chunk()
+    with xr.set_options(keep_attrs=True):
+        prsim = xr.where(pr <= 1, 1.001 + pr, pr)
+        prref = xr.where(pr <= 1, 1.001 + pr, pr)
+    _, _, dP0 = adapt_freq(prref, prsim, thresh="1 mm d-1", group=group)
+    assert (dP0.values == 0).all()
+
+
+@pytest.mark.parametrize("use_dask", [True, False])
+def test_adapt_freq_no_zeroes_hist(use_dask, random):
+    # test dP0 == -np.inf when there are no values below thresh only for sim
+    time = pd.date_range("1990-01-01", "2020-12-31", freq="D")
+    group = "time"
+    prvals = random.integers(0, 100, size=(time.size, 3))
+    pr = xr.DataArray(
+        prvals,
+        coords={"time": time, "lat": [0, 1, 2]},
+        dims=("time", "lat"),
+        attrs={"units": "mm d-1"},
+    )
+    if use_dask:
+        pr = pr.chunk()
+    with xr.set_options(keep_attrs=True):
+        prsim = xr.where(pr <= 1, 1.001 + pr, pr)
+        # ensure prref has some values below threshold
+        prref = pr
+        prref[{"time": [0, 10, 20]}] = 0.1
+    _, _, dP0 = adapt_freq(prref, prsim, thresh="1 mm d-1", group=group)
+    assert (dP0.values == -np.inf).all()
 
 
 def test_escore():
