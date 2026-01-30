@@ -84,7 +84,7 @@ def test_interp_on_quantiles_constant(interp, expi, extrap, expe):
     newx = xr.DataArray(
         np.linspace(240, 200, num=41) - 0.5,
         dims=("time",),
-        coords={"time": xr.cftime_range("1900-03-01", freq="D", periods=41)},
+        coords={"time": xr.date_range("1900-03-01", freq="D", periods=41, use_cftime=True)},
     )
     newx = newx.where(newx > 201)  # Put some NaNs in newx
 
@@ -114,7 +114,7 @@ def test_interp_on_quantiles_constant(interp, expi, extrap, expe):
 
 
 def test_interp_on_quantiles_monthly(random):
-    t = xr.cftime_range("2000-01-01", "2030-12-31", freq="D", calendar="noleap")
+    t = xr.date_range("2000-01-01", "2030-12-31", freq="D", calendar="noleap", use_cftime=True)
     ref = xr.DataArray(
         (
             -20 * np.cos(2 * np.pi * t.dayofyear / 365) + 2 * random.random(t.size) + 273.15 + 0.1 * (t - t[0]).days / 365
@@ -165,7 +165,7 @@ def test_interp_on_quantiles_constant_with_nan(interp, expi, extrap, expe):
     newx = xr.DataArray(
         np.linspace(240, 200, num=41) - 0.5,
         dims=("time",),
-        coords={"time": xr.cftime_range("1900-03-01", freq="D", periods=41)},
+        coords={"time": xr.date_range("1900-03-01", freq="D", periods=41, use_cftime=True)},
     )
     newx = newx.where(newx > 201)  # Put some NaNs in newx
 

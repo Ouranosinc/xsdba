@@ -147,7 +147,7 @@ def test_adapt_freq_adjust(gosset):
 
     outh = _adapt_freq.func(xr.Dataset(dict(ref=ref, sim=hist)), dim="time", thresh=1)
     outs = _adapt_freq.func(
-        xr.merge([sim.to_dataset(name="sim"), outh]),
+        xr.merge([sim.to_dataset(name="sim"), outh], compat="no_conflicts", join="outer"),
         dim="time",
         thresh=1,
     )
@@ -325,7 +325,8 @@ def test_from_additive(timeseries):
 
 def test_from_additive_with_args(timeseries):
     pr = timeseries(np.array([0, 1e-5, 1, np.e**10]), units="mm/d")
-    prlog = np.log(pr).assign_attrs({"units": 1})
+    with pytest.warns(RuntimeWarning):
+        prlog = np.log(pr).assign_attrs({"units": 1})
     pr2 = from_additive_space(prlog, lower_bound="0 mm/d", trans="log", units="mm/d")
     np.testing.assert_allclose(pr[1:], pr2[1:])
     pr2.attrs.pop("history")
@@ -333,7 +334,8 @@ def test_from_additive_with_args(timeseries):
 
     # logit
     hurs = timeseries(np.array([0, 1e-5, 0.9, 1]), units="%")
-    hurslogit = (np.log(hurs / (100 - hurs))).assign_attrs({"units": 1})
+    with pytest.warns(RuntimeWarning):
+        hurslogit = (np.log(hurs / (100 - hurs))).assign_attrs({"units": 1})
     hurs2 = from_additive_space(hurslogit, lower_bound="0 %", trans="logit", upper_bound="100 %", units="%")
     np.testing.assert_allclose(hurs[1:-1], hurs2[1:-1])
     assert hurs2.attrs["units"] == "%"
