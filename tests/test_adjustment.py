@@ -497,6 +497,45 @@ class TestDQM:
         dqm = DetrendedQuantileMapping.train(ref, hist, kind="*", group=group, adapt_freq_thresh="1 kg m-2 d-1")
         dqm.adjust(sim)
 
+    @pytest.mark.parametrize("group", ["time", "time.month"])
+    def test_adapt_freq_add_dims(self, cannon_2015_rvs, random, group):
+        np.random.seed(42)
+        ref, hist, _ = cannon_2015_rvs(15000, random=random)
+        hist = hist.copy()
+        # remove values below 1 kg m-2 d-1 thresh
+        ref, hist = (convert_units_to(da, "kg m-2 d-1").expand_dims(point=[0, 1]).clip(2, None) for da in [ref, hist])
+        # second site with a 10 extra values below thresh in hist, and 5 zero values in ref
+        itimes = np.arange(0, 1000, 100)
+        hist[{"time": itimes, "point": 1}] = np.arange(len(itimes)) / (len(itimes))  # stay below thresh
+
+        ref[{"time": range(5)}] = 0
+
+        # bare-adapt
+        adapted, _, dP0 = adapt_freq(ref, hist, thresh="1 kg m-2 d-1", group=group)
+
+        # dqm = DetrendedQuantileMapping.train(ref, hist, kind="*", group=Grouper(group), adapt_freq_thresh="1 kg m-2 d-1")
+        dqm = DetrendedQuantileMapping.train(ref, hist, kind="*", group=Grouper(group, add_dims=["point"]), adapt_freq_thresh="1 kg m-2 d-1")
+        P0_hist, P0_ref = dqm.ds.P0_hist, dqm.ds.P0_ref
+        dP0_tr = xr.where(P0_hist == 0, np.nan, (P0_hist - P0_ref) / P0_hist)
+
+        # no adjustment, just adapt-freq
+        dqm.ds["af"] = xr.where(dqm.ds["af"].isnull(), 1, 1)
+        dqm.ds["scaling"] = xr.where(dqm.ds["scaling"].isnull(), 1, 1)
+        adj_only_adapt = dqm.adjust(hist)
+
+        # bare adapt-freq and adapt-freq from DQM have the same dP0
+        np.testing.assert_allclose(dP0_tr.transpose("point", ...).values, dP0.transpose("point", ...).values)
+        # check that values supposed to be changed were changed
+        # even for values where nothing should happen, with add_dims, it's possible there is a weak change, but
+        # it's small, a small tolerance is accepted in difference
+        atol = 1e-6
+        cond1 = np.abs(adapted.values[1, itimes] - hist.values[1, itimes]) < atol
+        cond2 = np.abs(adj_only_adapt.transpose(*adapted.dims).values[1, itimes] - hist.values[1, itimes]) < atol
+        np.testing.assert_allclose(cond1, cond2)
+
+        # on point 0, nothing should change
+        np.testing.assert_allclose(hist.values[0, :], adj_only_adapt.transpose(*adapted.dims).values[0, :])
+
     def test_adapt_freq_time_explicit(self, cannon_2015_rvs, random):
         ref, hist, _ = cannon_2015_rvs(15000, random=random)
         thr = "1 kg m-2/d"
