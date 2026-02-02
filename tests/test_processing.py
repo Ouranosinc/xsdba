@@ -131,7 +131,8 @@ def test_adapt_freq(use_dask, random):
     assert pth.units == "mm d-1"
 
 
-def test_adapt_freq_adjust(gosset):
+@pytest.mark.parametrize("use_dask", [True, False])
+def test_adapt_freq_adjust(gosset, use_dask):
     past = {"time": slice("1950", "1969")}
     future = {"time": slice("1970", "1989")}
     all_time = {"time": slice("1950", "1989")}
@@ -142,12 +143,17 @@ def test_adapt_freq_adjust(gosset):
     sim.loc[{"time": slice("1970", "1980")}] = 0
     sim = jitter_under_thresh(sim, "1 mm/d")
     hist = sim.loc[past]
+
+    if use_dask:
+        ref = ref.chunk()
+        hist = hist.chunk()
+        sim = sim.chunk()
     # this is just to make sure the example works, some adaptation is needed
     assert ((hist <= 1).sum(dim="time") > (ref <= 1).sum(dim="time")).all()
 
     outh = _adapt_freq.func(xr.Dataset(dict(ref=ref, sim=hist)), dim="time", thresh=1)
     outs = _adapt_freq.func(
-        xr.merge([sim.to_dataset(name="sim"), outh]),
+        xr.merge([sim.to_dataset(name="sim"), outh], compat="no_conflicts", join="outer"),
         dim="time",
         thresh=1,
     )
@@ -183,6 +189,27 @@ def test_adapt_freq_add_dims(use_dask, random):
         prref = xr.where(pr < 10, pr / 20, pr)
     sim_ad, pth, _dP0 = adapt_freq(prref, prsim, thresh="1 mm d-1", group=group)
     assert set(sim_ad.dims) == set(prsim.dims)
+
+
+@pytest.mark.parametrize("use_dask", [True, False])
+def test_adapt_freq_no_zeros(use_dask, random):
+    # test dP0 == 0 when there are no values below thresh for sim
+    time = pd.date_range("1990-01-01", "2020-12-31", freq="D")
+    group = "time"
+    prvals = random.integers(0, 100, size=(time.size, 3))
+    pr = xr.DataArray(
+        prvals,
+        coords={"time": time, "lat": [0, 1, 2]},
+        dims=("time", "lat"),
+        attrs={"units": "mm d-1"},
+    )
+
+    if use_dask:
+        pr = pr.chunk()
+    with xr.set_options(keep_attrs=True):
+        prsim = xr.where(pr <= 1, 1.001 + pr, pr)
+    _, _, dP0 = adapt_freq(pr, prsim, thresh="1 mm d-1", group=group)
+    assert (dP0.isnull().values).all()
 
 
 def test_escore():
@@ -349,7 +376,8 @@ def test_from_additive(timeseries):
 
 def test_from_additive_with_args(timeseries):
     pr = timeseries(np.array([0, 1e-5, 1, np.e**10]), units="mm/d")
-    prlog = np.log(pr).assign_attrs({"units": 1})
+    with pytest.warns(RuntimeWarning):
+        prlog = np.log(pr).assign_attrs({"units": 1})
     pr2 = from_additive_space(prlog, lower_bound="0 mm/d", trans="log", units="mm/d")
     np.testing.assert_allclose(pr[1:], pr2[1:])
     pr2.attrs.pop("history")
@@ -357,7 +385,8 @@ def test_from_additive_with_args(timeseries):
 
     # logit
     hurs = timeseries(np.array([0, 1e-5, 0.9, 1]), units="%")
-    hurslogit = (np.log(hurs / (100 - hurs))).assign_attrs({"units": 1})
+    with pytest.warns(RuntimeWarning):
+        hurslogit = (np.log(hurs / (100 - hurs))).assign_attrs({"units": 1})
     hurs2 = from_additive_space(hurslogit, lower_bound="0 %", trans="logit", upper_bound="100 %", units="%")
     np.testing.assert_allclose(hurs[1:-1], hurs2[1:-1])
     assert hurs2.attrs["units"] == "%"
@@ -442,6 +471,32 @@ class TestSpectralUtils:
         ).isel(lon=0)
         # performing dctn & idctn has a small inherent imprecision
         np.testing.assert_allclose(expected, tx_filt.values[0:10], rtol=1e-5)
+
+    def test_spectral_filter_lambda_vs_alpha(self, gosset):
+        ds = xr.open_dataset(
+            gosset.fetch("NRCANdaily/nrcan_canada_daily_tasmax_1990.nc"),
+            engine="h5netcdf",
+        )
+        # select lat/lon without nan values
+        # spectral_filter not working if nan values are present (for now?)
+        tx = ds.tasmax.isel(time=0).sel(lat=slice(50, 47), lon=slice(-80, -74))
+        # using the default filter
+        tx_filt_al = spectral_filter(
+            tx,
+            lam_long=None,
+            lam_short=None,
+            dims=["lon", "lat"],
+            alpha_low_high=[0.9, 0.99],  # dummy value
+        )
+        tx_filt_lam = spectral_filter(
+            tx,
+            lam_long=f"{2 / 0.9} km",
+            lam_short=f"{2 / 0.99} km",
+            delta="1 km",
+            dims=["lon", "lat"],
+        )
+        # performing dctn & idctn has a small inherent imprecision
+        np.testing.assert_allclose(tx_filt_al.values, tx_filt_lam.values, rtol=1e-5)
 
     def test_spectral_filter_identity(self, gosset):
         ds = xr.open_dataset(

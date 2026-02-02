@@ -806,7 +806,7 @@ def unstack_variables(da: xr.DataArray, dim: str | None = None) -> xr.Dataset:
 
 def grouped_time_indexes(times, group):
     """
-    Time indexes for every group blocks
+    Time indexes for every group blocks.
 
     Time indexes can be used to implement a pseudo-"numpy.groupies" approach to grouping.
 
@@ -822,67 +822,77 @@ def grouped_time_indexes(times, group):
     g_idxs : xr.DataArray
         Time indexes of the blocks (only using `group.name` and not `group.window`).
     gw_idxs : xr.DataArray
-        Time indexes of the blocks (built with a rolling window of `group.window` if any).
+        Time indexes of the blocks (with rolling window if any).
     """
 
-    def _get_group_complement(da, group):
-        # complement of "dayofyear": "year", etc.
-        gr = group if isinstance(group, str) else group.name
-        if gr == "time.dayofyear":
+    def _get_group_complement(da, _gr):
+        if _gr == "time.dayofyear":
             return da.time.dt.year
-        if gr == "time.month":
-            return da.time.dt.strftime("%Y-%d")
-        raise NotImplementedError(f"Grouping {gr} not implemented.")
+        if _gr == "time.month":
+            return da.time.dt.strftime("%Y-%m")
+        raise NotImplementedError(f"Grouping {_gr} not implemented.")
 
-    # does not work with group == "time.month"
     group = group if isinstance(group, Grouper) else Grouper(group)
     gr, win = group.name, group.window
-    # get time indices (0,1,2,...) for each block
-    timeind = xr.DataArray(np.arange(times.size), coords={"time": times})
-    win_dim0, win_dim = (get_temp_dimname(timeind.dims, lab) for lab in ["win_dim0", "win_dim"])
+
+    timeind = xr.DataArray(
+        np.arange(times.size),
+        coords={"time": times},
+        dims="time",
+    )
+    win_dim0, win_dim = (get_temp_dimname(timeind.dims, lab) for lab in ("win_dim0", "win_dim"))
+
     if gr == "time.dayofyear":
-        # time indices for each block with window = 1
-        g_idxs = timeind.groupby(gr).apply(lambda da: da.assign_coords(time=_get_group_complement(da, gr)).rename({"time": "year"}))
-        # time indices for each block with general window
-        da = timeind.rolling(time=win, center=True).construct(window_dim=win_dim0)
-        gw_idxs = da.groupby(gr).apply(lambda da: da.assign_coords(time=_get_group_complement(da, gr)).stack({win_dim: ["time", win_dim0]}))
-        gw_idxs = gw_idxs.transpose(..., win_dim)
+
+        def _map_group(da):
+            return da.assign_coords(time=_get_group_complement(da, gr)).rename(time="group")
+
+        g_idxs = timeind.groupby(gr).map(_map_group)
+        rolled = timeind.rolling(time=win, center=True).construct(window_dim=win_dim0)
+
+        def _map_group_window(da):
+            return da.assign_coords(time=_get_group_complement(da, gr)).stack({win_dim: ["time", win_dim0]})
+
+        gw_idxs = rolled.groupby(gr).map(_map_group_window).transpose(..., win_dim)
+
     elif gr == "time":
-        gw_idxs = timeind.rename({"time": win_dim}).expand_dims({win_dim0: [-1]})
+        gw_idxs = timeind.rename(time=win_dim).expand_dims({win_dim0: [-1]})
         g_idxs = gw_idxs.copy()
-    # TODO : Implement a proper Grouper treatment
-    # This would normally not be allowed with sdba.Grouper.
-    # A proper implementation in Grouper may be given in the future, but here is the implementation
-    # that I used for a project
+
     elif gr == "5D":
         if win % 2 == 0:
-            raise ValueError(f"Group 5D only works with an odd window, got `window` = {win}")
+            raise ValueError(f"Group 5D only works with an odd window, got `window`={win}")
 
         gr_dim = "five_days"
         imin, imax = 0, times.size - 1
+        years = np.unique(times.dt.year.values)
 
-        def _get_idxs(win):
-            block0 = np.concatenate(
-                [
-                    np.arange(5) + iwin * 5 + iyear * 365
-                    for iyear in range(len(set(times.dt.year.values)))
-                    for iwin in range(-(win - 1) // 2, (win - 1) // 2 + 1)
-                ]
+        def _build_idxs(win):
+            offsets = np.arange(-(win - 1) // 2, (win - 1) // 2 + 1)
+            base = np.concatenate([np.arange(5) + 5 * iwin + 365 * iyear for iyear in range(len(years)) for iwin in offsets])
+
+            base = xr.DataArray(
+                base,
+                dims=win_dim,
+                coords={win_dim: np.arange(base.size)},
             )
-            base = xr.DataArray(block0, dims=[win_dim], coords={win_dim: np.arange(len(block0))})
+
             idxs = xr.concat(
-                [(base + i * 5).expand_dims({gr_dim: [i]}) for i in range(365 // 5)],
+                [(base + 5 * i).expand_dims({gr_dim: [i]}) for i in range(365 // 5)],
                 dim=gr_dim,
             )
+
             return idxs.where((idxs >= imin) & (idxs <= imax), -1)
 
-        gw_idxs, g_idxs = _get_idxs(win), _get_idxs(1)
+        g_idxs = _build_idxs(1)
+        gw_idxs = _build_idxs(win)
 
     else:
         raise NotImplementedError(f"Grouping {gr} not implemented.")
+
     gw_idxs.attrs["group"] = (gr, win)
     gw_idxs.attrs["time_dim"] = win_dim
-    gw_idxs.attrs["group_dim"] = [d for d in g_idxs.dims if d != win_dim][0]
+    gw_idxs.attrs["group_dim"] = next(d for d in g_idxs.dims if d != win_dim)
     return g_idxs, gw_idxs
 
 
@@ -987,10 +997,10 @@ def _normalized_radial_wavenumber(da, dims):
     """
     # Replace lat/lon coordinates with integers (wavenumbers in reciprocal space)
     ds_dims = da[dims] if isinstance(da, xr.Dataset) else (da.to_dataset())[dims]
-    da0 = xr.Dataset(coords={d: range(sh) for d, sh in ds_dims.dims.items()})
+    da0 = xr.Dataset(coords={d: range(sh) for d, sh in ds_dims.sizes.items()})
     # Radial distance in Fourier space
-    alpha = sum([da0[d] ** 2 / da0[d].size ** 2 for d in da0.dims]) ** 0.5
-    alpha = alpha.assign_coords({d: ds_dims[d] for d in ds_dims.dims}).rename("alpha")
+    alpha = sum([da0[d] ** 2 / da0[d].size ** 2 for d in da0.sizes]) ** 0.5
+    alpha = alpha.assign_coords({d: ds_dims[d] for d in ds_dims.sizes}).rename("alpha")
     alpha = alpha.assign_attrs(
         {
             "units": "",
@@ -1072,7 +1082,7 @@ def spectral_filter(
             lat = da.lat
         # is this a good approximation?
         delta = f"{(lat[1] - lat[0]).values.item() * 111} km"
-    if alpha_low_high is None and None in set(lam_long, lam_short):
+    if alpha_low_high is None and None in {lam_long, lam_short}:
         raise ValueError("`lam_long` or `lam_short` can only be None if `alpha_low_high` is provided.")
     if alpha_low_high is not None:
         alpha_low, alpha_high = alpha_low_high
