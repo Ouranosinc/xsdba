@@ -19,7 +19,7 @@ Fixes
 * Fixed an issue with attribute fields added to normalized arrays under newer `xarray` versions. (:pull:`223`).
 * ``xsdba.processing.spectral_filter`` now works with a `lambda_long` and `lambda_short` that are not `None`. (:pull:`220`).
 * Prepend history instead of appending it. (:pull:`238`).
-* ``xsdba._processing._adapt_freq`` now avoids inserting nans. This was due to using `dP0 < 0` and not `dP0 <= 0` in a where condition. (:pull:`239`).
+* ``xsdba._processing._adapt_freq`` now avoids inserting nans. This was solved using `(dP0 <= 0)| (dP0.isnull())` and not `dP0 < 0` as a condition. (:pull:`239`,:issue:`248`, :pull:`249`).
 * Fix `adapt_freq` processing in training when ``xsdba.Grouper`` uses `add_dims`. (:issue:`182`, :pull:`183`).
 
 Internal changes
@@ -33,6 +33,10 @@ Internal changes
     * Updated Contributor Covenant Agreement to v3.0.
     * Various updates to CI dependencies and configurations.
 * The minimum supported `pytest` is now v9.0 and above. `pytest` conventions and configurations have been updated to use the new TOML format. (:pull:`231`).
+* Many DeprecationWarning API changes from dependencies have been addressed. (:pull:`250`):
+    * Replaced `xarray.cftime_range` with `xarray.date_range(..., use_cftime=True)`.
+    * Import check for `numpy.trapezoid` (replacement of `numpy.trapz`).
+    * Refactored `grouped_time_indexes` to use `GroupBy.map` instead of `GroupBy.apply`.
 
 .. _changes_0.5.0:
 

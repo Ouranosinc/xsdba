@@ -5,12 +5,17 @@ dependencies:
 - python >=3.12,<3.13
 # Docs
 - furo >=2023.9.10
+- h5netcdf >=1.5.0
+- h5py >=3.12.1
 - ipykernel
 - ipython >=8.5.0
 - jupyter_client
-- nbsphinx >=0.9.7
+- matplotlib >=3.8.0
+- nbsphinx >=0.9.8
 - nc-time-axis >=1.4.1
+- pandas >=2.2,<3.0
 - pooch >=1.8.0
+- pygments
 - sphinx >=8.2.2
 - sphinx-autobuild >=2024.4.16
 - sphinx-autodoc-typehints >=3.1.0
