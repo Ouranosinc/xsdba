@@ -305,12 +305,10 @@ def add_cyclic_bounds(da: xr.DataArray, att: str, cyclic_coords: bool = True) ->
     qmf = da.pad({att: (1, 1)}, mode="wrap")
 
     if not cyclic_coords:
-        vals = qmf.coords[att].values
-        diff = da.coords[att].diff(att)
-        vals[0] = vals[1] - diff[0]
-        vals[-1] = vals[-2] + diff[-1]
-        qmf = qmf.assign_coords({att: vals})
-        qmf[att].attrs.update(da.coords[att].attrs)
+        crd = qmf.coords[att].values
+        diff = da.coords[att].diff(att).values
+        newcrd = np.concatenate([[crd[1] - diff[0]], crd[1:-1], [crd[-2] + diff[-1]]])
+        qmf = qmf.assign_coords({att: qmf.coords[att].copy(data=newcrd)})
     return ensure_chunk_size(qmf, **{att: -1})
 
 

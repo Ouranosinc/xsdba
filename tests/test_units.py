@@ -36,7 +36,7 @@ class TestUnitConversion:
         assert str(u.units) == "%"
 
     # FIXME: This doesn't seem to be accurate for pint, at least not at the moment
-    @pytest.mark.xfail(reason="units2pint('1') behaviour has changed?")
+    # @pytest.mark.xfail(reason="units2pint('1') behaviour has changed?")
     def test_units2pint(self, timelonlatseries):
         u = units2pint(timelonlatseries(np.asarray([1, 2]), attrs={"units": "kg m-2 s-1"}))
         assert str(u) == "kg m-2 s-1"
@@ -48,7 +48,7 @@ class TestUnitConversion:
         assert str(u) == "%"
 
         u = units2pint("1")
-        assert str(u) == ""
+        assert str(u) == "1"
 
     def test_str2pint(self):
         Q_ = units.Quantity
