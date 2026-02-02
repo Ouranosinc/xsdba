@@ -13,7 +13,7 @@ dependencies:
 - matplotlib >=3.8.0
 - nbsphinx >=0.9.8
 - nc-time-axis >=1.4.1
-- pandas >=2.2,<3.0
+- pandas >=2.2
 - pooch >=1.8.0
 - pygments
 - sphinx >=8.2.2
