@@ -32,6 +32,10 @@ Internal changes
     * Updated Contributor Covenant Agreement to v3.0.
     * Various updates to CI dependencies and configurations.
 * The minimum supported `pytest` is now v9.0 and above. `pytest` conventions and configurations have been updated to use the new TOML format. (:pull:`231`).
+* Many DeprecationWarning API changes from dependencies have been addressed. (:pull:`250`):
+    * Replaced `xarray.cftime_range` with `xarray.date_range(..., use_cftime=True)`.
+    * Import check for `numpy.trapezoid` (replacement of `numpy.trapz`).
+    * Refactored `grouped_time_indexes` to use `GroupBy.map` instead of `GroupBy.apply`.
 
 .. _changes_0.5.0:
 
