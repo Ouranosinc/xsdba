@@ -1,12 +1,11 @@
 """
-# noqa: SS01
 LOESS Smoothing Submodule
 =========================
 """
 
 from __future__ import annotations
-
 from collections.abc import Callable
+from typing import Literal
 from warnings import warn
 
 import numba
@@ -49,14 +48,14 @@ def _linear_regression(xi, x, y, w):  # pragma: no cover
 
 @numba.njit
 def _loess_nb(
-    x,
-    y,
-    f=0.5,
-    niter=2,
-    weight_func=_tricube_weighting,
+    x: np.ndarray,
+    y: np.ndarray,
+    f: float = 0.5,
+    niter: int = 2,
+    weight_func: Callable = _tricube_weighting,
     reg_func=_linear_regression,
-    dx=0,
-    skipna=True,
+    dx: float | int = 0,
+    skipna: bool = True,
 ):  # pragma: no cover
     """
     1D Locally weighted regression: fits a nonparametric regression curve to a scatter plot.
@@ -79,7 +78,7 @@ def _loess_nb(
         Number of robustness iterations to execute.
     weight_func : numba func
         Numba function giving the weights when passed abs(x - xi) / hi.
-    dx : float
+    dx : int or float
         The spacing of the x coordinates. If above 0, this enables the optimization for equally spaced x coordinates.
         Must be 0 if spacing is unequal (default).
     skipna : bool
@@ -180,10 +179,10 @@ def _loess_nb(
 def loess_smoothing(
     da: xr.DataArray,
     dim: str = "time",
-    d: int = 1,
+    d: Literal[0, 1] = 1,
     f: float = 0.5,
     niter: int = 2,
-    weights: str | Callable = "tricube",
+    weights: Literal["tricube", "gaussian"] | Callable = "tricube",
     equal_spacing: bool | None = None,
     skipna: bool = True,
 ):
@@ -197,24 +196,24 @@ def loess_smoothing(
     Parameters
     ----------
     da : xr.DataArray
-      The data to smooth using the loess approach.
+        The data to smooth using the loess approach.
     dim : str
-      Name of the dimension along which to perform the loess.
+        Name of the dimension along which to perform the loess.
     d : [0, 1]
-      Degree of the local regression.
+        Degree of the local regression.
     f : float
-      Parameter controlling the shape of the weight curve. Behavior depends on the weighting function,
-      but it usually represents the span of the weighting function in reference to x-coordinates
-      normalized from 0 to 1.
+        Parameter controlling the shape of the weight curve. Behavior depends on the weighting function,
+        but it usually represents the span of the weighting function in reference to x-coordinates
+        normalized from 0 to 1.
     niter : int
-      Number of robustness iterations to execute.
-    weights : ["tricube", "gaussian"] or callable
-      Shape of the weighting function, see notes. The user can provide a function or a string:
-      "tricube" : a smooth top-hat like curve.
-      "gaussian" : a gaussian curve, f gives the span for 95% of the values.
+        Number of robustness iterations to execute.
+    weights : ["tricube", "gaussian"] or Callable
+        Shape of the weighting function, see notes. The user can provide a function or a string:
+        "tricube" : a smooth top-hat like curve.
+        "gaussian" : a gaussian curve, f gives the span for 95% of the values.
     equal_spacing : bool, optional
-      Whether to use the equal spacing optimization. If `None` (the default), it is activated only if the
-      x-axis is equally-spaced. When activated, `dx = x[1] - x[0]`.
+        Whether to use the equal spacing optimization. If `None` (the default), it is activated only if the
+        x-axis is equally-spaced. When activated, `dx = x[1] - x[0]`.
     skipna : bool
         If True (default), skip missing values (as marked by NaN). The output will have the
         same missing values as the input.
@@ -242,9 +241,7 @@ def loess_smoothing(
     x = da[dim]
     x = ((x - x[0]) / (x[-1] - x[0])).astype(float)
 
-    weight_func = {"tricube": _tricube_weighting, "gaussian": _gaussian_weighting}.get(
-        weights, weights
-    )
+    weight_func = {"tricube": _tricube_weighting, "gaussian": _gaussian_weighting}.get(weights, weights)
 
     reg_func = {0: _constant_regression, 1: _linear_regression}[d]
 
@@ -253,9 +250,7 @@ def loess_smoothing(
         if equal_spacing is None:
             equal_spacing = True
     elif equal_spacing:
-        warn(
-            "The equal spacing optimization was requested, but the x axis is not equally spaced. Strange results might occur."
-        )
+        warn("The equal spacing optimization was requested, but the x axis is not equally spaced. Strange results might occur.", stacklevel=2)
     if equal_spacing:
         dx = float(x[1] - x[0])
     else:

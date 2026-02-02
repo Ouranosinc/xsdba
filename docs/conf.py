@@ -92,8 +92,8 @@ bibtex_default_style = "xcstyle"
 bibtex_reference_style = "author_year"
 
 intersphinx_mapping = {
-    "scipy": ("https://docs.scipy.org/doc/scipy/", None),
     "pandas": ("https://pandas.pydata.org/docs/", None),
+    "scipy": ("https://docs.scipy.org/doc/scipy/", None),
 }
 
 extlinks = {
@@ -151,7 +151,7 @@ gettext_compact = False  # optional
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This patterns also effect to html_static_path and html_extra_path
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', 'notebooks/benchmarks/*.ipynb']
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'

@@ -1,21 +1,17 @@
-# pylint: disable=missing-kwoa
 """
-# noqa: SS01
 Pre- and Post-Processing Submodule
 ==================================
 """
-from __future__ import annotations
 
+from __future__ import annotations
 import types
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import cast
 
-import cftime
 import dask.array as dsk
 import numpy as np
 import xarray as xr
 from scipy.fft import dctn, idctn
-from xarray.core import dtypes
 from xarray.core.utils import get_temp_dimname
 
 from xsdba._processing import _adapt_freq, _normalize, _reordering
@@ -25,10 +21,10 @@ from xsdba.nbutils import _escore
 from xsdba.units import (
     convert_units_to,
     harmonize_units,
-    normalized_wavenumber_to_wavelength,
     wavelength_to_normalized_wavenumber,
 )
 from xsdba.utils import ADDITIVE, copy_all_attrs
+
 
 __all__ = [
     "adapt_freq",
@@ -175,9 +171,7 @@ def jitter_over_thresh(x: xr.DataArray, thresh: str, upper_bnd: str) -> xr.DataA
     -----
     If thresh is low, this will change the mean value of x.
     """
-    j: xr.DataArray = jitter(
-        x, lower=None, upper=thresh, minimum=None, maximum=upper_bnd
-    )
+    j: xr.DataArray = jitter(x, lower=None, upper=thresh, minimum=None, maximum=upper_bnd)
     return j
 
 
@@ -235,9 +229,7 @@ def jitter(
                 chunks=x.chunks,
             )
         else:
-            jitter_dist = np.random.uniform(
-                low=jitter_min, high=jitter_lower, size=x.shape
-            )
+            jitter_dist = np.random.uniform(low=jitter_min, high=jitter_lower, size=x.shape)
         out = out.where(~((x < jitter_lower) & notnull), jitter_dist.astype(x.dtype))
     if upper is not None:
         if maximum is None:
@@ -247,9 +239,7 @@ def jitter(
         # for float64 (dtype.itemsize==8), `np.random.uniform`
         # already excludes the upper limit
         if x.dtype.itemsize < 8:
-            jitter_max = np.nextafter(
-                jitter_max.astype(x.dtype), -np.inf, dtype=x.dtype
-            )
+            jitter_max = np.nextafter(jitter_max.astype(x.dtype), -np.inf, dtype=x.dtype)
         if uses_dask(x):
             jitter_dist = dsk.random.uniform(
                 low=dsk.from_array(jitter_upper),
@@ -258,9 +248,7 @@ def jitter(
                 chunks=x.chunks,
             )
         else:
-            jitter_dist = np.random.uniform(
-                low=jitter_upper, high=jitter_max, size=x.shape
-            )
+            jitter_dist = np.random.uniform(low=jitter_upper, high=jitter_max, size=x.shape)
         out = out.where(~((x >= jitter_upper) & notnull), jitter_dist.astype(x.dtype))
 
     copy_all_attrs(out, x)  # copy attrs and same units
@@ -311,9 +299,7 @@ def normalize(
     return out.data.rename(data.name), out.norm
 
 
-def uniform_noise_like(
-    da: xr.DataArray, low: float = 1e-6, high: float = 1e-3
-) -> xr.DataArray:
+def uniform_noise_like(da: xr.DataArray, low: float = 1e-6, high: float = 1e-3) -> xr.DataArray:
     """
     Return a uniform noise array of the same shape as da.
 
@@ -329,9 +315,7 @@ def uniform_noise_like(
         mod = np
         kw = {}
 
-    return da.copy(
-        data=(high - low) * mod.random.random_sample(size=da.shape, **kw) + low
-    )
+    return da.copy(data=(high - low) * mod.random.random_sample(size=da.shape, **kw) + low)
 
 
 @update_xsdba_history
@@ -503,24 +487,6 @@ def escore(
     return out
 
 
-def _get_number_of_elements_by_year(time):
-    """
-    Get the number of elements in time in a year by inferring its sampling frequency.
-
-    Only calendar with uniform year lengths are supported : 360_day, noleap, all_leap.
-    """
-    mult, freq, _, _ = parse_offset(xr.infer_freq(time))
-    days_in_year = time.dt.days_in_year.max()
-    elements_in_year = {"Q": 4, "M": 12, "D": days_in_year, "h": days_in_year * 24}
-    N_in_year = elements_in_year.get(freq, 1) / mult
-    if N_in_year % 1 != 0:
-        raise ValueError(
-            f"Sampling frequency of the data must be Q, M, D or h and evenly divide a year (got {mult}{freq})."
-        )
-
-    return int(N_in_year)
-
-
 @update_xsdba_history
 @harmonize_units(["data", "lower_bound", "upper_bound"])
 def to_additive_space(
@@ -596,14 +562,13 @@ def to_additive_space(
     :cite:cts:`alavoine_distinct_2022`.
     """
     lower_bound_array = np.array(lower_bound).astype(float)
+    upper_bound_array = None
     if upper_bound is not None:
         upper_bound_array = np.array(upper_bound).astype(float)
 
     # clip bounds
     if clip_next_to_bounds:
-        if (
-            (data < lower_bound).any() or (data > (upper_bound or np.nan)).any()
-        ) and clip_next_to_bounds != "permissive":
+        if ((data < lower_bound).any() or (data > (upper_bound or np.nan)).any()) and clip_next_to_bounds != "permissive":
             raise ValueError(
                 "The input dataset contains values outside of the range [lower_bound, upper_bound] "
                 "(with upper_bound given by infinity if it is not specified). Clipping the values to the range "
@@ -612,11 +577,7 @@ def to_additive_space(
             )
 
         low = np.nextafter(lower_bound, np.inf, dtype=np.float32).astype(float)
-        high = (
-            None
-            if upper_bound is None
-            else np.nextafter(upper_bound, -np.inf, dtype=np.float32).astype(float)
-        )
+        high = None if upper_bound is None else np.nextafter(upper_bound, -np.inf, dtype=np.float32).astype(float)
         data = data.clip(low, high).astype(float)
 
     with xr.set_options(keep_attrs=True), np.errstate(divide="ignore"):
@@ -710,48 +671,32 @@ def from_additive_space(
     ----------
     :cite:cts:`alavoine_distinct_2022`.
     """
+    upper_bound_array = None
+
     if trans is None and lower_bound is None and units is None:
         try:
             trans = data.attrs["xsdba_transform"]
             units = data.attrs["xsdba_transform_units"]
-            lower_bound_array = np.array(data.attrs["xsdba_transform_lower"]).astype(
-                float
-            )
+            lower_bound_array = np.array(data.attrs["xsdba_transform_lower"]).astype(float)
             if trans == "logit":
-                upper_bound_array = np.array(
-                    data.attrs["xsdba_transform_upper"]
-                ).astype(float)
+                upper_bound_array = np.array(data.attrs["xsdba_transform_upper"]).astype(float)
         except KeyError as err:
-            raise ValueError(
-                f"Attribute {err!s} must be present on the input data "
-                "or all parameters must be given as arguments."
-            ) from err
-    elif (
-        trans is not None
-        and lower_bound is not None
-        and units is not None
-        and (upper_bound is not None or trans == "log")
-    ):
+            raise ValueError(f"Attribute {err!s} must be present on the input data or all parameters must be given as arguments.") from err
+    elif trans is not None and lower_bound is not None and units is not None and (upper_bound is not None or trans == "log"):
         # FIXME: convert_units_to is causing issues since it can't handle all variations of Quantified here
         lower_bound_array = np.array(convert_units_to(lower_bound, units)).astype(float)
         if trans == "logit":
-            upper_bound_array = np.array(convert_units_to(upper_bound, units)).astype(
-                float
-            )
+            upper_bound_array = np.array(convert_units_to(upper_bound, units)).astype(float)
     else:
-        raise ValueError(
-            "Parameters missing. Either all parameters are given as attributes of data, "
-            "or all of them are given as input arguments."
-        )
+        raise ValueError("Parameters missing. Either all parameters are given as attributes of data, or all of them are given as input arguments.")
 
     with xr.set_options(keep_attrs=True):
         if trans == "log":
             out = np.exp(data) + lower_bound_array
-        elif trans == "logit":
+        elif trans == "logit" and upper_bound_array is not None:
             out_prime = 1 / (1 + np.exp(-data))
             out = (
-                out_prime
-                * (upper_bound_array - lower_bound_array)  # pylint: disable=E0606
+                out_prime * (upper_bound_array - lower_bound_array)  # pylint: disable=E0606
                 + lower_bound_array
             )
         else:
@@ -894,23 +839,13 @@ def grouped_time_indexes(times, group):
     gr, win = group.name, group.window
     # get time indices (0,1,2,...) for each block
     timeind = xr.DataArray(np.arange(times.size), coords={"time": times})
-    win_dim0, win_dim = (
-        get_temp_dimname(timeind.dims, lab) for lab in ["win_dim0", "win_dim"]
-    )
+    win_dim0, win_dim = (get_temp_dimname(timeind.dims, lab) for lab in ["win_dim0", "win_dim"])
     if gr == "time.dayofyear":
         # time indices for each block with window = 1
-        g_idxs = timeind.groupby(gr).apply(
-            lambda da: da.assign_coords(time=_get_group_complement(da, gr)).rename(
-                {"time": "year"}
-            )
-        )
+        g_idxs = timeind.groupby(gr).apply(lambda da: da.assign_coords(time=_get_group_complement(da, gr)).rename({"time": "year"}))
         # time indices for each block with general window
         da = timeind.rolling(time=win, center=True).construct(window_dim=win_dim0)
-        gw_idxs = da.groupby(gr).apply(
-            lambda da: da.assign_coords(time=_get_group_complement(da, gr)).stack(
-                {win_dim: ["time", win_dim0]}
-            )
-        )
+        gw_idxs = da.groupby(gr).apply(lambda da: da.assign_coords(time=_get_group_complement(da, gr)).stack({win_dim: ["time", win_dim0]}))
         gw_idxs = gw_idxs.transpose(..., win_dim)
     elif gr == "time":
         gw_idxs = timeind.rename({"time": win_dim}).expand_dims({win_dim0: [-1]})
@@ -921,9 +856,7 @@ def grouped_time_indexes(times, group):
     # that I used for a project
     elif gr == "5D":
         if win % 2 == 0:
-            raise ValueError(
-                f"Group 5D only works with an odd window, got `window` = {win}"
-            )
+            raise ValueError(f"Group 5D only works with an odd window, got `window` = {win}")
 
         gr_dim = "five_days"
         imin, imax = 0, times.size - 1
@@ -936,9 +869,7 @@ def grouped_time_indexes(times, group):
                     for iwin in range(-(win - 1) // 2, (win - 1) // 2 + 1)
                 ]
             )
-            base = xr.DataArray(
-                block0, dims=[win_dim], coords={win_dim: np.arange(len(block0))}
-            )
+            base = xr.DataArray(block0, dims=[win_dim], coords={win_dim: np.arange(len(block0))})
             idxs = xr.concat(
                 [(base + i * 5).expand_dims({gr_dim: [i]}) for i in range(365 // 5)],
                 dim=gr_dim,
@@ -962,9 +893,9 @@ def _make_mask(template, cond_vals):
 
     Parameters
     ----------
-    template: xr.DataArray
+    template : xr.DataArray
         Array with the dimensions to be filtered.
-    cond_vals: tuple
+    cond_vals : tuple
         The list of (condition, value) pairs applied to create the mask.
 
     Returns
@@ -1009,7 +940,7 @@ def cos2_mask_func(da, low, high):
     following a cosine profile between `low` and `high`.
     """
     cond_vals = [
-        # This first condition could be remove, the mask starts as an array of 1's
+        # This first condition could be removed; The mask starts as an array of 1's
         (da < low, 1),
         (da > high, 0),
         (
@@ -1026,9 +957,9 @@ def _normalized_radial_wavenumber(da, dims):
 
     Parameters
     ----------
-    da: xr.DataArray or xr.Dataset
+    da : xr.DataArray or xr.Dataset
         Input field to be transformed in reciprocal space.
-    dims: list[str]
+    dims : list of str
         Dimensions on which to perform the Discrete Cosine Transform.
 
     Returns
@@ -1077,13 +1008,13 @@ def _dctn_filter(arr, mask):
 
 
 def spectral_filter(
-    da,
-    lam_long,
-    lam_short,
-    dims=["lat", "lon"],
-    delta=None,
-    mask_func=cos2_mask_func,
-    alpha_low_high=None,
+    da: xr.DataArray,
+    lam_long: str | None,
+    lam_short: str | None,
+    dims: list[str] | None = None,
+    delta: str | None = None,
+    mask_func: Callable = cos2_mask_func,
+    alpha_low_high: tuple[float, float] | None = None,
 ):
     """
     Filter coefficients of a Discrete Cosine Fourier transform between given thresholds and invert back to real space.
@@ -1092,17 +1023,17 @@ def spectral_filter(
     ----------
     da : xr.DataArray
         Input physical field.
-    lam_long : str | optional
+    lam_long : str, optional
         Long wavelength threshold.
-    lam_short : str | optional
+    lam_short : str, optional
         Short wavelength threshold.
-    dims: list
+    dims : list of str, optional
         Dimensions on which to perform the spectral filter.
-    delta: str, Optional
+    delta : str, Optional
         Nominal resolution of the grid. A string with units, e.g. `delta=="55.5 km"`. This converts `alpha` to `wavelength`.
         If `delta` is not specified, a dimension named `rlat` or `lat` is expected to be in `da` and will be used to
         deduce an appropriate length scale.
-    mask_func: function
+    mask_func : Callable
         Function used to create the mask. Default is `cos2_mask_func`, which applies a cosine squared filter
         to Fourier coefficients in momentum space.
     alpha_low_high : tuple[float,float] | optional
@@ -1123,7 +1054,10 @@ def spectral_filter(
     ----------
     :cite:cts:`denis_spectral_2002`
     """
-    dims = [dims] if isinstance(dims, str) else dims
+    if dims is None:
+        dims = ["lat", "lon"]
+    if isinstance(dims, str):
+        dims = [dims]
 
     if isinstance(da, xr.Dataset):
         out = da.copy()
@@ -1139,9 +1073,7 @@ def spectral_filter(
         # is this a good approximation?
         delta = f"{(lat[1] - lat[0]).values.item() * 111} km"
     if alpha_low_high is None and None in set(lam_long, lam_short):
-        raise ValueError(
-            "`lam_long` or `lam_short` can only be None if `alpha_low_high` is provided."
-        )
+        raise ValueError("`lam_long` or `lam_short` can only be None if `alpha_low_high` is provided.")
     if alpha_low_high is not None:
         alpha_low, alpha_high = alpha_low_high
     else:
@@ -1166,7 +1098,5 @@ def spectral_filter(
             "filter_bounds": filter_bounds,
             "mask_func": mask_func.__name__,
         }
-    ).transpose(
-        *da.dims
-    )  # reimplement original order, if needed
+    ).transpose(*da.dims)  # reimplement original order, if needed
     return out

@@ -1,0 +1,23 @@
+# This CITATION.cff file was generated with cffinit and templated with cookiecutter.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: "1.2.0"
+title: "xsdba"
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: "software"
+authors:
+  - given-names: 'Éric'
+    family-names: 'Dupuis'
+    email: 'dupuis.eric@ouranos.ca'
+    orcid: '0000-0001-7976-4596'
+contact:
+  - given-names: 'Éric'
+    family-names: 'Dupuis'
+    email: 'dupuis.eric@ouranos.ca'
+    orcid: '0000-0001-7976-4596'
+repository-code: "https://github.com/Ouranosinc/xsdba"
+abstract: "Statistical correction and bias adjustment tools for xarray."
+license: "Apache-2.0"
+version: "0.5.0"

@@ -26,7 +26,6 @@ from xsdba.processing import (
     unstack_variables,
     unstandardize,
 )
-from xsdba.units import convert_units_to, pint_multiply, units
 
 
 def test_jitter_both():
@@ -50,10 +49,7 @@ def test_jitter_under_thresh():
     assert da[0] < 1
     assert da[0] > 0
     np.testing.assert_allclose(da[1:], out[1:])
-    assert (
-        "jitter(x=<array>, lower='1 K', upper=None, minimum=None, maximum=None) - xsdba version"
-        in out.attrs["history"]
-    )
+    assert "jitter(x=<array>, lower='1 K', upper=None, minimum=None, maximum=None) - xsdba version" in out.attrs["history"]
 
 
 def test_jitter_over_thresh():
@@ -72,12 +68,8 @@ def test_jitter_over_thresh():
 def test_jitter_other_dtypes(dtype, delta, test_val):
     # below, narrow intervals are meant to increase likely hood of rounding issues
     da = xr.DataArray(test_val + np.zeros(1000, dtype=dtype), attrs={"units": "%"})
-    out_high = jitter(
-        da, upper=f"{test_val * (1 - delta):.20f} %", maximum=f"{test_val:.20f} %"
-    )
-    out_low = jitter(
-        da, lower=f"{test_val * (1 + delta):.20f} %", minimum=f"{test_val:.20f} %"
-    )
+    out_high = jitter(da, upper=f"{test_val * (1 - delta):.20f} %", maximum=f"{test_val:.20f} %")
+    out_low = jitter(da, lower=f"{test_val * (1 + delta):.20f} %", minimum=f"{test_val:.20f} %")
     assert (out_high < test_val).all()
     assert (out_low > test_val).all()
 
@@ -122,12 +114,7 @@ def test_adapt_freq(use_dask, random):
     np.testing.assert_allclose(dP0_out, 0.5, atol=0.1)
 
     # Assert that corrected values were generated in the range ]1, 20 + tol[
-    corrected = (
-        input_zeros.where(input_zeros > 1)
-        .stack(flat=["lat", "time"])
-        .reset_index("flat")
-        .dropna("flat")
-    )
+    corrected = input_zeros.where(input_zeros > 1).stack(flat=["lat", "time"]).reset_index("flat").dropna("flat")
     assert ((corrected < 20.1) & (corrected > 1)).all()
 
     # Assert that non-corrected values are untouched
@@ -148,14 +135,8 @@ def test_adapt_freq_adjust(gosset):
     past = {"time": slice("1950", "1969")}
     future = {"time": slice("1970", "1989")}
     all_time = {"time": slice("1950", "1989")}
-    ref = (
-        xr.open_dataset(gosset.fetch("sdba/ahccd_1950-2013.nc")).loc[past].pr.fillna(0)
-    )
-    sim = (
-        xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"))
-        .loc[all_time]
-        .pr.fillna(0)
-    )
+    ref = xr.open_dataset(gosset.fetch("sdba/ahccd_1950-2013.nc")).loc[past].pr.fillna(0)
+    sim = xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc")).loc[all_time].pr.fillna(0)
     sim = xclim.core.units.convert_units_to(sim, ref)  # mm/d
     sim.loc[{"time": slice("1950", "1965")}] = 0
     sim.loc[{"time": slice("1970", "1980")}] = 0
@@ -165,14 +146,12 @@ def test_adapt_freq_adjust(gosset):
     assert ((hist <= 1).sum(dim="time") > (ref <= 1).sum(dim="time")).all()
 
     outh = _adapt_freq.func(xr.Dataset(dict(ref=ref, sim=hist)), dim="time", thresh=1)
-    hist_ad = outh.sim_ad
     outs = _adapt_freq.func(
         xr.merge([sim.to_dataset(name="sim"), outh]),
         dim="time",
         thresh=1,
     )
     sim_ad = outs.sim_ad
-    sim_f = sim.loc[future]
     sim_ad_f = sim_ad.loc[future]
     assert ((sim_ad_f <= 1).sum(dim="time") < (sim_ad <= 1).sum(dim="time")).all()
 
@@ -251,9 +230,9 @@ def test_reordering():
 
 
 def test_reordering_with_window():
-    time = list(
-        xr.date_range("2000-01-01", "2000-01-04", freq="D", calendar="noleap")
-    ) + list(xr.date_range("2001-01-01", "2001-01-04", freq="D", calendar="noleap"))
+    time = list(xr.date_range("2000-01-01", "2000-01-04", freq="D", calendar="noleap")) + list(
+        xr.date_range("2001-01-01", "2001-01-04", freq="D", calendar="noleap")
+    )
 
     x = xr.DataArray(
         np.arange(1, 9, 1),
@@ -293,23 +272,15 @@ def test_to_additive(timeseries):
     # logit
     hurs = timeseries(np.array([0, 1e-3, 90, 100]), units="%")
 
-    hurslogit = to_additive_space(
-        hurs, lower_bound="0 %", trans="logit", upper_bound="100 %"
-    )
-    np.testing.assert_allclose(
-        hurslogit, [-np.inf, -11.5129154649, 2.197224577, np.inf]
-    )
+    hurslogit = to_additive_space(hurs, lower_bound="0 %", trans="logit", upper_bound="100 %")
+    np.testing.assert_allclose(hurslogit, [-np.inf, -11.5129154649, 2.197224577, np.inf])
     assert hurslogit.attrs["xsdba_transform"] == "logit"
     assert hurslogit.attrs["xsdba_transform_units"] == "%"
 
     with xr.set_options(keep_attrs=True):
         hursscl = hurs * 4 + 200
-    hurslogit2 = to_additive_space(
-        hursscl, trans="logit", lower_bound="2", upper_bound="6"
-    )
-    np.testing.assert_allclose(
-        hurslogit2, [-np.inf, -11.5129154649, 2.197224577, np.inf]
-    )
+    hurslogit2 = to_additive_space(hursscl, trans="logit", lower_bound="2", upper_bound="6")
+    np.testing.assert_allclose(hurslogit2, [-np.inf, -11.5129154649, 2.197224577, np.inf])
     assert hurslogit2.attrs["xsdba_transform_lower"] == 200.0
     assert hurslogit2.attrs["xsdba_transform_upper"] == 600.0
 
@@ -317,17 +288,13 @@ def test_to_additive(timeseries):
 def test_to_additive_clipping(timeseries):
     # log
     pr = timeseries(np.array([0]), units="kg m^-2 s^-1")
-    prlog = to_additive_space(
-        pr, lower_bound="0 kg m^-2 s^-1", trans="log", clip_next_to_bounds=True
-    )
+    prlog = to_additive_space(pr, lower_bound="0 kg m^-2 s^-1", trans="log", clip_next_to_bounds=True)
     assert np.isfinite(prlog).all()
 
     with xr.set_options(keep_attrs=True):
         pr1 = pr + 1
     lower_bound = "1 kg m^-2 s^-1"
-    prlog2 = to_additive_space(
-        pr1, trans="log", lower_bound=lower_bound, clip_next_to_bounds=True
-    )
+    prlog2 = to_additive_space(pr1, trans="log", lower_bound=lower_bound, clip_next_to_bounds=True)
     assert np.isfinite(prlog2).all()
 
     # logit
@@ -345,17 +312,13 @@ def test_to_additive_clipping(timeseries):
 def test_to_additive_clipping_float32(timeseries):
     # log
     pr = timeseries(np.array([0]), units="kg m^-2 s^-1").astype(np.float32)
-    prlog = to_additive_space(
-        pr, lower_bound="0 kg m^-2 s^-1", trans="log", clip_next_to_bounds=True
-    )
+    prlog = to_additive_space(pr, lower_bound="0 kg m^-2 s^-1", trans="log", clip_next_to_bounds=True)
     assert np.isfinite(prlog).all()
 
     with xr.set_options(keep_attrs=True):
         pr1 = pr + 1
     lower_bound = "1 kg m^-2 s^-1"
-    prlog2 = to_additive_space(
-        pr1, trans="log", lower_bound=lower_bound, clip_next_to_bounds=True
-    )
+    prlog2 = to_additive_space(pr1, trans="log", lower_bound=lower_bound, clip_next_to_bounds=True)
     assert np.isfinite(prlog2).all()
 
     # logit
@@ -380,9 +343,7 @@ def test_from_additive(timeseries):
 
     # logit
     hurs = timeseries(np.array([0, 1e-5, 0.9, 1]), units="%")
-    hurs2 = from_additive_space(
-        to_additive_space(hurs, lower_bound="0 %", trans="logit", upper_bound="100 %")
-    )
+    hurs2 = from_additive_space(to_additive_space(hurs, lower_bound="0 %", trans="logit", upper_bound="100 %"))
     np.testing.assert_allclose(hurs[1:-1], hurs2[1:-1])
 
 
@@ -397,9 +358,7 @@ def test_from_additive_with_args(timeseries):
     # logit
     hurs = timeseries(np.array([0, 1e-5, 0.9, 1]), units="%")
     hurslogit = (np.log(hurs / (100 - hurs))).assign_attrs({"units": 1})
-    hurs2 = from_additive_space(
-        hurslogit, lower_bound="0 %", trans="logit", upper_bound="100 %", units="%"
-    )
+    hurs2 = from_additive_space(hurslogit, lower_bound="0 %", trans="logit", upper_bound="100 %", units="%")
     np.testing.assert_allclose(hurs[1:-1], hurs2[1:-1])
     assert hurs2.attrs["units"] == "%"
 
@@ -531,10 +490,7 @@ class TestSpectralUtils:
         # I think it's a good check
         alpha_by_hand = np.array(
             [
-                [
-                    np.sqrt((i / ds_sim.lon.size) ** 2 + (j / ds_sim.lat.size) ** 2)
-                    for i in np.arange(ds_sim.lon.size)
-                ]
+                [np.sqrt((i / ds_sim.lon.size) ** 2 + (j / ds_sim.lat.size) ** 2) for i in np.arange(ds_sim.lon.size)]
                 for j in np.arange(ds_sim.lat.size)
             ]
         )
