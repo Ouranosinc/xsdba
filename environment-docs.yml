@@ -2,7 +2,7 @@ name: xsdba
 channels:
 - conda-forge
 dependencies:
-- python >=3.12,<3.13
+- python >=3.13,<3.14
 # Docs
 - furo >=2023.9.10
 - h5netcdf >=1.5.0
