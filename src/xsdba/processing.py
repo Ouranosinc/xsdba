@@ -617,7 +617,7 @@ def to_additive_space(
             if upper_bound is None
             else np.nextafter(upper_bound, -np.inf, dtype=np.float32).astype(float)
         )
-        data = data.clip(low, high)
+        data = data.clip(low, high).astype(float)
 
     with xr.set_options(keep_attrs=True), np.errstate(divide="ignore"):
         if trans == "log":
