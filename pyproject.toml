@@ -130,7 +130,7 @@ xsdba = "xsdba.cli:app"
 [tool]
 
 [tool.bumpversion]
-current_version = "0.5.1-dev.9"
+current_version = "0.5.1-dev.10"
 commit = true
 commit_args = "--no-verify"
 tag = false
