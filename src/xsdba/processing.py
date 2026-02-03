@@ -598,9 +598,7 @@ def to_additive_space(
         elif trans == "logit" and upper_bound is not None:
             data_prime = ((data - lower_bound_array) / (upper_bound_array - lower_bound_array)).astype(dt)
             if clip_next_to_bounds:
-                # I take the largest possible float, an invert it to define the smallest 0 acceptable
-                # a "zero" and I can invert and not get inf.
-                zero = np.nextafter(1 / np.finfo(dt).max, np.inf, dtype=dt)
+                zero = np.nextafter(0, np.inf, dtype=dt)
                 one = np.nextafter(1, -np.inf, dtype=dt)
                 data_prime = data_prime.clip(zero, one)
 
