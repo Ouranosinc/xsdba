@@ -42,6 +42,13 @@ from xsdba.utils import (
 )
 
 
+# Remove when `numpy` v1.x support is dropped
+try:
+    from numpy import trapezoid
+except ImportError:
+    from numpy import trapz as trapezoid  # type: ignore[attr-defined,no-redef]
+
+
 def nancov(X):
     """Numpy's cov but dropping observations with NaNs."""
     X_na = np.isnan(X).any(axis=0)
@@ -117,6 +124,7 @@ class TestLoci:
         # attrs = {"units": "kg m-2 s-1", "kind": MULTIPLICATIVE}  # not used
 
         hist = sim = timelonlatseries(x, attrs={"units": "kg m-2 s-1"})
+        hist.attrs["history"] = "ancient history."
         y = x * 2
         thresh = 2
         ref_fit = timelonlatseries(y, attrs={"units": "kg m-2 s-1"}).where(y > thresh, 0.1)
@@ -131,6 +139,8 @@ class TestLoci:
 
         assert "history" in p.attrs
         assert "Bias-adjusted with LOCI(" in p.attrs["history"]
+        # test that history was prepended and old history is still at the end.
+        assert p.attrs["history"].endswith("ancient history.")
 
         file = tmp_path / "test_loci.nc"
         loci.ds.to_netcdf(file, engine="h5netcdf")
@@ -144,7 +154,6 @@ class TestLoci:
         np.testing.assert_array_equal(p, p2)
 
     @pytest.mark.requires_internet
-    @pytest.mark.enable_socket
     def test_reduce_dims(self, ref_hist_sim_tuto):
         ref, hist, _sim = ref_hist_sim_tuto()
         hist = hist.expand_dims(member=[0, 1])
@@ -580,9 +589,9 @@ class TestQDM:
         pu1 = ref.ppf(u1) * sim.ppf(u1) / hist.ppf(u1)
         pdf = np.diff(u1) / np.diff(pu1)
 
-        mean = np.trapz(pdf * pu, pu)
-        mom2 = np.trapz(pdf * pu**2, pu)
-        std = np.sqrt(mom2 - mean**2)  # noqa: F841 # FIXME: Not used
+        mean = trapezoid(pdf * pu, pu)
+        mom2 = trapezoid(pdf * pu**2, pu)
+        _std = np.sqrt(mom2 - mean**2)  # noqa: F841 # FIXME: Not used
         bc_sim = scends.scen
         np.testing.assert_almost_equal(bc_sim.mean(), 41.5, 1)
         np.testing.assert_almost_equal(bc_sim.std(), 16.7, 0)
@@ -827,7 +836,7 @@ class TestPrincipalComponents:
         sim_y = sim_x + norm.rvs(loc=1, scale=1, size=(m, n), random_state=random)
 
         ref = xr.DataArray([ref_x, ref_y], dims=("lat", "lon", "time"), attrs={"units": "degC"})
-        ref["time"] = xr.cftime_range("1990-01-01", periods=n, calendar="noleap")
+        ref["time"] = xr.date_range("1990-01-01", periods=n, calendar="noleap", use_cftime=True)
         sim = xr.DataArray([sim_x, sim_y], dims=("lat", "lon", "time"), attrs={"units": "degC"})
         sim["time"] = ref["time"]
 
@@ -913,7 +922,7 @@ class TestExtremeValues:
             return xr.DataArray(
                 base,
                 dims=("time",),
-                coords={"time": xr.cftime_range("1990-01-01", periods=n, calendar="noleap")},
+                coords={"time": xr.date_range("1990-01-01", periods=n, calendar="noleap", use_cftime=True)},
                 attrs={"units": "mm/day", "thresh": qv},
             )
 
@@ -979,7 +988,7 @@ class TestExtremeValues:
         new_scen.load()
 
     def test_nan_values(self):
-        times = xr.cftime_range("1990-01-01", periods=365, calendar="noleap")
+        times = xr.date_range("1990-01-01", periods=365, calendar="noleap", use_cftime=True)
         ref = xr.DataArray(
             np.arange(365),
             dims=("time"),
@@ -1212,7 +1221,7 @@ class TestSBCKutils:
                 "tasmax": xr.DataArray(ref_y, dims=("lon", "time"), attrs={"units": "degC"}),
             }
         )
-        ref["time"] = xr.cftime_range("1990-01-01", periods=n, calendar="noleap")
+        ref["time"] = xr.date_range("1990-01-01", periods=n, calendar="noleap", use_cftime=True)
 
         hist = xr.Dataset(
             {
@@ -1228,7 +1237,7 @@ class TestSBCKutils:
                 "tasmax": xr.DataArray(sim_y, dims=("lon", "time"), attrs={"units": "degC"}),
             }
         )
-        sim["time"] = xr.cftime_range("2090-01-01", periods=n, calendar="noleap")
+        sim["time"] = xr.date_range("2090-01-01", periods=n, calendar="noleap", use_cftime=True)
 
         if use_dask:
             ref = ref.chunk({"lon": 1})

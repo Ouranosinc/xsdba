@@ -5,11 +5,21 @@ Changelog
 `Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
 ------------------------------------------------------------
 
-Contributors: Éric Dupuis (:user:`coxipi`), Trevor James Smith (:user:`Zeitsperre`).
+Contributors: Éric Dupuis (:user:`coxipi`), Trevor James Smith (:user:`Zeitsperre`), Pascal Bourgault (:user:`aulemahal`), Juliette Lavoie (:user: `juliettelavoie`).
+
+Changes
+^^^^^^^
+* `numpy` >=1.26 and `numba` >=0.58.1 are now required. (:pull:`231`).
 
 Fixes
 ^^^^^
 * ``xsdba.adjustment.ExtremeValues`` throws an error with a clear message when the clustered precipitation exceed `1-q_thresh`. This happens when `cluster_thresh` is too small (still in the bulk of the distribution). (:issue:`177`, :pull:`184`).
+* ``xsdba.properties.spectral_variance`` now works with a `delta` that is not `None`. (:pull:`217`).
+* ``xsdba.loess.loess_smoothing`` fixed for cases when the input has many zeros. (:issue:`100`, :pull:`208`).
+* Fixed an issue with attribute fields added to normalized arrays under newer `xarray` versions. (:pull:`223`).
+* ``xsdba.processing.spectral_filter`` now works with a `lambda_long` and `lambda_short` that are not `None`. (:pull:`220`).
+* Prepend history instead of appending it. (:pull:`238`).
+* ``xsdba._processing._adapt_freq`` now avoids inserting nans. This was solved using `(dP0 <= 0)| (dP0.isnull())` and not `dP0 < 0` as a condition. (:pull:`239`,:issue:`248`, :pull:`249`).
 
 Internal changes
 ^^^^^^^^^^^^^^^^
@@ -21,6 +31,11 @@ Internal changes
     * Replace `black`, `blackdocs` and `isort` pre-commit hooks with `ruff`.
     * Updated Contributor Covenant Agreement to v3.0.
     * Various updates to CI dependencies and configurations.
+* The minimum supported `pytest` is now v9.0 and above. `pytest` conventions and configurations have been updated to use the new TOML format. (:pull:`231`).
+* Many DeprecationWarning API changes from dependencies have been addressed. (:pull:`250`):
+    * Replaced `xarray.cftime_range` with `xarray.date_range(..., use_cftime=True)`.
+    * Import check for `numpy.trapezoid` (replacement of `numpy.trapz`).
+    * Refactored `grouped_time_indexes` to use `GroupBy.map` instead of `GroupBy.apply`.
 
 .. _changes_0.5.0:
 
