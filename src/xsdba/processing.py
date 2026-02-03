@@ -600,8 +600,8 @@ def to_additive_space(
         if trans == "log":
             data_prime = data - lower_bound_array
             if clip_next_to_bounds:
-                if clip_next_to_bounds:
-                    data_prime = data_prime.clip(np.nextafter(np.array(0), np.inf, dtype=dt), None)
+                zero = np.nextafter(np.array(0), np.inf)
+                data_prime = data_prime.clip(zero, None)
             out = cast(xr.DataArray, np.log(data_prime))
         elif trans == "logit" and upper_bound is not None:
             data_prime = ((data - lower_bound_array) / (upper_bound_array - lower_bound_array)).astype(dt)
