@@ -598,8 +598,8 @@ def to_additive_space(
 
     with xr.set_options(keep_attrs=True), np.errstate(divide="ignore"):
         if trans == "log":
+            data_prime = data - lower_bound_array
             if clip_next_to_bounds:
-                data_prime = data - lower_bound_array
                 if clip_next_to_bounds:
                     data_prime = data_prime.clip(np.nextafter(np.array(0), np.inf, dtype=dt), None)
             out = cast(xr.DataArray, np.log(data_prime))
