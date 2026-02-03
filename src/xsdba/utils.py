@@ -305,7 +305,7 @@ def add_cyclic_bounds(da: xr.DataArray, att: str, cyclic_coords: bool = True) ->
     qmf = da.pad({att: (1, 1)}, mode="wrap")
 
     if not cyclic_coords:
-        vals = qmf.coords[att].values
+        vals = qmf.coords[att].values.copy()
         diff = da.coords[att].diff(att)
         vals[0] = vals[1] - diff[0]
         vals[-1] = vals[-2] + diff[-1]
