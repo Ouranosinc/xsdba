@@ -517,7 +517,7 @@ def to_additive_space(
         The transformation to use. See notes.
     clip_next_to_bounds : {None, 'strict', 'permissive'}
         If not None, values are clipped to ensure `data > lower_bound`  and `data < upper_bound` (if specified).
-        Further, if trans is `logit`, the list also a clip of of the normalized data to ]0, 1[.
+        Further, if trans is `logit` or `log`, also a clip the normalized data to ]0, 1[ or ]0,None, respectively.
         If 'strict`, `data` must be in the range [lower_bound, upper_bound], else an error is thrown.
         If 'permissive', `data` will be clipped no matter the maximum and minimum.
 
@@ -590,13 +590,19 @@ def to_additive_space(
                 "]lower_bound, upper_bound[ is not allowed in this case. Check if the bounds are taken appropriately or "
                 "if your input dataset has unphysical values and you meant to use 'permissive' instead of 'strict'."
             )
-        low = np.nextafter(lower_bound, np.inf)  # , dtype=np.float32)
-        high = None if upper_bound is None else np.nextafter(upper_bound, -np.inf)  # , dtype=np.float32)
-        data = data.clip(low, high)
+        # low = np.nextafter(lower_bound, np.inf)  # , dtype=np.float32)
+        # high = None if upper_bound is None else np.nextafter(upper_bound, -np.inf)  # , dtype=np.float32)
+        # data = data.clip(low, high)
+
+        data.clip(lower_bound, upper_bound)
 
     with xr.set_options(keep_attrs=True), np.errstate(divide="ignore"):
         if trans == "log":
-            out = cast(xr.DataArray, np.log(data - lower_bound_array))
+            if clip_next_to_bounds:
+                data_prime = data - lower_bound_array
+                if clip_next_to_bounds:
+                    data_prime = data_prime.clip(np.nextafter(np.array(0), np.inf, dtype=dt), None)
+            out = cast(xr.DataArray, np.log(data_prime))
         elif trans == "logit" and upper_bound is not None:
             data_prime = ((data - lower_bound_array) / (upper_bound_array - lower_bound_array)).astype(dt)
             if clip_next_to_bounds:
