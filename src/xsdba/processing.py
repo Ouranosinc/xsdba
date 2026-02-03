@@ -494,7 +494,7 @@ def to_additive_space(
     lower_bound: str,
     upper_bound: str | None = None,
     trans: str = "log",
-    clip_next_to_bounds: str = False,
+    clip_next_to_bounds: str | None = None,
 ):
     r"""
     Transform a non-additive variable into an additive space by the means of a log or logit transformation.
@@ -514,9 +514,9 @@ def to_additive_space(
         The data should only have values strictly smaller than this bound.
     trans : {'log', 'logit'}
         The transformation to use. See notes.
-    clip_next_to_bounds : {False, 'strict', 'permissive'}
-        If not False, values are clipped to ensure `data > lower_bound`  and `data < upper_bound` (if specified).
-        Defaults to `False`. If 'strict`, `data` must be in the range [lower_bound, upper_bound], else an error is thrown.
+    clip_next_to_bounds : {None, 'strict', 'permissive'}
+        If not None, values are clipped to ensure `data > lower_bound`  and `data < upper_bound` (if specified).
+        If 'strict`, `data` must be in the range [lower_bound, upper_bound], else an error is thrown.
         If 'permissive', `data` will be clipped no matter the maximum and minimum.
 
     See Also
@@ -566,14 +566,28 @@ def to_additive_space(
     if upper_bound is not None:
         upper_bound_array = np.array(upper_bound).astype(float)
 
+    if isinstance(clip_next_to_bounds, bool):
+        import warnings
+
+        warnings.warn(
+            "`clip_next_to_bounds` as a boolean is deprecated and will be removed in future versions. "
+            "Please use None, 'strict' or 'permissive' instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        clip_next_to_bounds = "strict" if clip_next_to_bounds else None
+
     # clip bounds
     if clip_next_to_bounds:
+        # check that inputs are valid
+        if clip_next_to_bounds not in ["strict", "permissive"]:
+            raise ValueError("`clip_next_to_bounds` must be one of {None, 'strict', 'permissive'}.")
         if ((data < lower_bound).any() or (data > (upper_bound or np.nan)).any()) and clip_next_to_bounds != "permissive":
             raise ValueError(
                 "The input dataset contains values outside of the range [lower_bound, upper_bound] "
                 "(with upper_bound given by infinity if it is not specified). Clipping the values to the range "
                 "]lower_bound, upper_bound[ is not allowed in this case. Check if the bounds are taken appropriately or "
-                "if your input dataset has unphysical values."
+                "if your input dataset has unphysical values and you meant to use 'permissive' instead of 'strict'."
             )
 
         low = np.nextafter(lower_bound, np.inf, dtype=np.float32).astype(float)
