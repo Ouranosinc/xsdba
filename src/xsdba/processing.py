@@ -590,17 +590,15 @@ def to_additive_space(
                 "]lower_bound, upper_bound[ is not allowed in this case. Check if the bounds are taken appropriately or "
                 "if your input dataset has unphysical values and you meant to use 'permissive' instead of 'strict'."
             )
-        # low = np.nextafter(lower_bound, np.inf)  # , dtype=np.float32)
-        # high = None if upper_bound is None else np.nextafter(upper_bound, -np.inf)  # , dtype=np.float32)
-        # data = data.clip(low, high)
-
-        data.clip(lower_bound, upper_bound)
+        low = np.nextafter(lower_bound_array, np.inf, dtype=dt)
+        high = None if upper_bound is None else np.nextafter(upper_bound, -np.inf, dtype=dt)  # , dtype=np.float32)
+        data = data.clip(low, high)
 
     with xr.set_options(keep_attrs=True), np.errstate(divide="ignore"):
         if trans == "log":
             data_prime = data - lower_bound_array
             if clip_next_to_bounds:
-                zero = np.nextafter(np.array(0), np.inf)
+                zero = np.nextafter(np.array(0, dtype=dt), np.inf).astype(dt)
                 data_prime = data_prime.clip(zero, None)
             out = cast(xr.DataArray, np.log(data_prime))
         elif trans == "logit" and upper_bound is not None:

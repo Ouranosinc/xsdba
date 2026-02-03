@@ -314,8 +314,8 @@ def test_to_additive(timeseries):
 
 def test_to_additive_clipping(timeseries):
     # log
-    pr = timeseries(np.array([0]), units="kg m^-2 s^-1")
-    prlog = to_additive_space(pr, lower_bound="0 kg m^-2 s^-1", trans="log", clip_next_to_bounds=True)
+    pr = timeseries(np.array([0.0]), units="kg m^-2 s^-1")
+    prlog = to_additive_space(pr, lower_bound="0 kg m^-2 s^-1", trans="log", clip_next_to_bounds="permissive")
     assert np.isfinite(prlog).all()
 
     with xr.set_options(keep_attrs=True):
