@@ -10,6 +10,7 @@ Contributors: Éric Dupuis (:user:`coxipi`), Trevor James Smith (:user:`Zeitsper
 Changes
 ^^^^^^^
 * `numpy` >=1.26 and `numba` >=0.58.1 are now required. (:pull:`231`).
+* `xsdba` now officially supports Python 3.14 and `pandas` v3.0+. (:issue:`251`, ::pull:`252`).
 
 Fixes
 ^^^^^
