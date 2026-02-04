@@ -926,13 +926,16 @@ def _pairwise_spearman(da, dims):
         # We still have a possibility that a nan was unique to a variable and time.
         # If this is the case, it will be a lot longer, but what can we do.
         coef = spearmanr(data_nonan, axis=1, nan_policy="omit").correlation
-
+        # coef == nan has less built-in function than a float, use explicitly an array
+        coef = coef if ~np.isnan(coef) else np.array([np.nan], dtype=da.dtype)
         # The output
+        # why not da.dtype instead? we are converting float32 -> float64 with da.type
         out = np.empty((nv, nv), dtype=coef.dtype)
         # A 2D mask of removed variables
         M = (mask_omit)[:, np.newaxis] | (mask_omit)[np.newaxis, :]
         out[~M] = coef.flatten()
         out[M] = np.nan
+
         return out
 
     return xr.apply_ufunc(
