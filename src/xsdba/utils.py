@@ -927,7 +927,8 @@ def _pairwise_spearman(da, dims):
         # If this is the case, it will be a lot longer, but what can we do.
         coef = spearmanr(data_nonan, axis=1, nan_policy="omit").correlation
         # coef == nan has less built-in function than a float, use explicitly an array
-        coef = coef if ~np.isnan(coef) else np.array([np.nan], dtype=da.dtype)
+        if np.isscalar(coef) and np.isnan(coef):
+            coef = np.array([np.nan], dtype=da.dtype)
         # The output
         # why not da.dtype instead? we are converting float32 -> float64 with da.type
         out = np.empty((nv, nv), dtype=coef.dtype)
@@ -935,7 +936,6 @@ def _pairwise_spearman(da, dims):
         M = (mask_omit)[:, np.newaxis] | (mask_omit)[np.newaxis, :]
         out[~M] = coef.flatten()
         out[M] = np.nan
-
         return out
 
     return xr.apply_ufunc(
