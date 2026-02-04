@@ -21,7 +21,7 @@ Fixes
 * ``xsdba.processing.spectral_filter`` now works with a `lambda_long` and `lambda_short` that are not `None`. (:pull:`220`).
 * Prepend history instead of appending it. (:pull:`238`).
 * ``xsdba._processing._adapt_freq`` now avoids inserting nans. This was solved using `(dP0 <= 0)| (dP0.isnull())` and not `dP0 < 0` as a condition. (:pull:`239`,:issue:`248`, :pull:`249`).
-* ``xsdba.properties.decorrelation_length`` now handles all-nan slices correctly. (:issue:`255`).
+* ``xsdba.properties.decorrelation_length`` now handles all-nan slices correctly. (:issue:`255`, :pull:`256`).
 
 Internal changes
 ^^^^^^^^^^^^^^^^
