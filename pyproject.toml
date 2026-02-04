@@ -29,6 +29,7 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Programming Language :: Python :: Implementation :: CPython",
   "Topic :: Scientific/Engineering :: Atmospheric Science",
   "Topic :: Scientific/Engineering :: Information Analysis",
@@ -47,7 +48,7 @@ dependencies = [
   "numba >=0.58.1",
   "numpy >=1.26.0",
   "packaging",
-  "pandas >=2.2.0,<3.0",
+  "pandas >=2.2.0",
   "pint>=0.24.4",
   "rich >=13.7.0",
   "scipy >=1.11.0",
@@ -130,7 +131,7 @@ xsdba = "xsdba.cli:app"
 [tool]
 
 [tool.bumpversion]
-current_version = "0.5.1-dev.10"
+current_version = "0.5.1-dev.11"
 commit = true
 commit_args = "--no-verify"
 tag = false
