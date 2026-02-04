@@ -10,7 +10,8 @@ Contributors: Éric Dupuis (:user:`coxipi`), Trevor James Smith (:user:`Zeitsper
 Changes
 ^^^^^^^
 * `numpy` >=1.26 and `numba` >=0.58.1 are now required. (:pull:`231`).
-* `xsdba` now officially supports Python 3.14 and `pandas` v3.0+. (:issue:`251`, ::pull:`252`).
+* `xsdba` now officially supports Python 3.14 and `pandas` v3.0+. (:issue:`251`, :pull:`252`).
+* ``xsdba.processing.to_additive_space`` option `clip_next_to_bounds` was changed to an optional string with modes: "strict"  and "permissive". The "permissive" mode allows to reduce a larger range of a variable `[lower-a, upper+b]` to a smaller range `]lower, upper[`. The strict mode only allows to change closed bounds `[lower, upper]` to open bounds  `]lower, upper[` (to ensure non-singular behaviour with log / logit transforms).  (:pull:`194`).
 
 Fixes
 ^^^^^
@@ -21,6 +22,7 @@ Fixes
 * ``xsdba.processing.spectral_filter`` now works with a `lambda_long` and `lambda_short` that are not `None`. (:pull:`220`).
 * Prepend history instead of appending it. (:pull:`238`).
 * ``xsdba._processing._adapt_freq`` now avoids inserting nans. This was solved using `(dP0 <= 0)| (dP0.isnull())` and not `dP0 < 0` as a condition. (:pull:`239`,:issue:`248`, :pull:`249`).
+* More edge cases and compatibility with `numpy<2.0` were fixed  to ensure ``xsdba.processing.to_additive_space`` does not yield singular values in the log / logit transforms in relation with the machine resolution. (:pull:`194`).
 
 Internal changes
 ^^^^^^^^^^^^^^^^
