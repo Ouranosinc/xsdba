@@ -146,7 +146,7 @@ def dqm_train(
         jitter_under_thresh_value,
         jitter_over_thresh_value,
         jitter_over_thresh_upper_bnd,
-    ).assign(ref=ds.ref)
+    )
 
     # Ensures extra dimensions are only aggregated in datasets that have them
     ref_dim = Grouper.filter_dim(ds.ref, dim)
@@ -233,7 +233,7 @@ def eqm_train(
         jitter_under_thresh_value,
         jitter_over_thresh_value,
         jitter_over_thresh_upper_bnd,
-    ).assign(ref=ds.ref)
+    )
 
     # Ensures extra dimensions are only aggregated in datasets that have them
     ref_dim = Grouper.filter_dim(ds.ref, dim)
