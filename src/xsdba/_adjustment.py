@@ -841,7 +841,6 @@ def cdft_adjust(
     group: Grouper,
     interp: str,
     extrapolation: str,
-    kind: str,
     adapt_freq_thresh: str | None = None,
 ) -> xr.Dataset:
     """
@@ -858,8 +857,6 @@ def cdft_adjust(
         The grouper object.
     interp : str
         The interpolation method to use.
-    kind : str
-        The kind of correction to compute. See :py:func:`xsdba.utils.get_correction`.
     extrapolation : str
         The extrapolation method to use.
     detrend : int | PolyDetrend
@@ -904,7 +901,7 @@ def cdft_adjust(
     scen = u.interp_on_quantiles(
         q0,
         ds.quantiles,
-        ds.sim_q,
+        sim_q,
         group=group,
         method=interp,
         extrapolation=extrapolation,
