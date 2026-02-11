@@ -5,36 +5,37 @@ Changelog
 `Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
 ------------------------------------------------------------
 
-Contributors: Éric Dupuis (:user:`coxipi`), Trevor James Smith (:user:`Zeitsperre`), Pascal Bourgault (:user:`aulemahal`), Juliette Lavoie (:user: `juliettelavoie`).
+Contributors: Éric Dupuis (:user:`coxipi`), Trevor James Smith (:user:`Zeitsperre`), Pascal Bourgault (:user:`aulemahal`), Juliette Lavoie (:user:`juliettelavoie`).
 
 Changes
 ^^^^^^^
 * `numpy` >=1.26 and `numba` >=0.58.1 are now required. (:pull:`231`).
-* `xsdba` now officially supports Python 3.14 and `pandas` v3.0+. (:issue:`251`, ::pull:`252`).
+* `xsdba` now officially supports Python 3.14 and `pandas` >=3.0. (:issue:`251`, ::pull:`252`).
 
 Fixes
 ^^^^^
-* ``xsdba.adjustment.ExtremeValues`` throws an error with a clear message when the clustered precipitation exceed `1-q_thresh`. This happens when `cluster_thresh` is too small (still in the bulk of the distribution). (:issue:`177`, :pull:`184`).
+* ``xsdba.adjustment.ExtremeValues`` now throws an error with a clear message when the clustered precipitation exceed `1-q_thresh`.
+  This happens when `cluster_thresh` is too small (still in the bulk of the distribution). (:issue:`177`, :pull:`184`).
 * ``xsdba.properties.spectral_variance`` now works with a `delta` that is not `None`. (:pull:`217`).
 * ``xsdba.loess.loess_smoothing`` fixed for cases when the input has many zeros. (:issue:`100`, :pull:`208`).
 * Fixed an issue with attribute fields added to normalized arrays under newer `xarray` versions. (:pull:`223`).
 * ``xsdba.processing.spectral_filter`` now works with a `lambda_long` and `lambda_short` that are not `None`. (:pull:`220`).
-* Prepend history instead of appending it. (:pull:`238`).
-* ``xsdba._processing._adapt_freq`` now avoids inserting nans. This was solved using `(dP0 <= 0)| (dP0.isnull())` and not `dP0 < 0` as a condition. (:pull:`239`,:issue:`248`, :pull:`249`).
+* Prepend history of operations within dataset attributes instead of appending them. (:pull:`238`).
+* ``xsdba._processing._adapt_freq`` now avoids inserting nans. This was solved using `(dP0 <= 0)| (dP0.isnull())` and not `dP0 < 0` as a condition. (:pull:`239`, :issue:`248`, :pull:`249`).
 * ``xsdba.properties.decorrelation_length`` now handles all-nan slices correctly. (:issue:`255`, :pull:`256`).
 
 Internal changes
 ^^^^^^^^^^^^^^^^
 * Removed the ``benchmark.ipynb`` notebook from the documentation as it was specifically written for benchmarking purposes. (:issue:`167`, :pull:`206`).
 * Removed the API references to ensure that the documentation favours the user guide for learning how to use `xsdba` and the module index for finding specific functions/classes. (:issue:`63`, :pull:`206`)
-* Adjusted docstrings to allow RST210 and RST213 violations (`\*\*` and `\*` syntax) in docstrings and `pylint` exceptions for titles with underbars. (:issue:`167`, :pull:`206`)
+* Adjusted docstrings to allow `flake8` violations (``RST210`` and ``RST213``; `\*\*` and `\*` syntax) in docstrings and `pylint` exceptions for titles with underbars. (:issue:`167`, :pull:`206`)
 * Updated the cookiecutter template to use the latest version of `cookiecutter-pypackage`. (:pull:`205`):
     * Added a `CITATION.cff` file for better citation metadata.
     * Replace `black`, `blackdocs` and `isort` pre-commit hooks with `ruff`.
     * Updated Contributor Covenant Agreement to v3.0.
     * Various updates to CI dependencies and configurations.
 * The minimum supported `pytest` is now v9.0 and above. `pytest` conventions and configurations have been updated to use the new TOML format. (:pull:`231`).
-* Many DeprecationWarning API changes from dependencies have been addressed. (:pull:`250`):
+* Many `DeprecationWarning` API changes from dependencies have been addressed. (:pull:`250`):
     * Replaced `xarray.cftime_range` with `xarray.date_range(..., use_cftime=True)`.
     * Import check for `numpy.trapezoid` (replacement of `numpy.trapz`).
     * Refactored `grouped_time_indexes` to use `GroupBy.map` instead of `GroupBy.apply`.
