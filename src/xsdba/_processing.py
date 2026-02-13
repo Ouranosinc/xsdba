@@ -18,11 +18,11 @@ from xsdba.utils import ADDITIVE, apply_correction, ecdf, invert, rank
 
 
 @map_groups(
-    sim_ad=[Grouper.ADD_DIMS, Grouper.DIM],
-    dP0=[Grouper.PROP],
+    sim_ad=[Grouper.DIM, Grouper.ADD_DIMS],
+    dP0=[Grouper.PROP, Grouper.ADD_DIMS],
     P0_ref=[Grouper.PROP],
-    P0_hist=[Grouper.PROP],
-    pth=[Grouper.PROP],
+    P0_hist=[Grouper.PROP, Grouper.ADD_DIMS],
+    pth=[Grouper.PROP, Grouper.ADD_DIMS],
 )
 def _adapt_freq(ds: xr.Dataset, *, dim: Sequence[str], thresh: float = 0, kind: str = "+") -> xr.Dataset:
     r"""
@@ -65,17 +65,22 @@ def _adapt_freq(ds: xr.Dataset, *, dim: Sequence[str], thresh: float = 0, kind: 
         `ds.ref` is optional: If `P0_ref`, `P0_hist`,`pth` are given, these values will be used and `ds.ref` is not necessary.
         Either `ds.ref` or the triplet (`P0_ref`, `P0_hist`,`pth`)  must be given.
     """
+    # Different behaviours on training and adjust branches. In the latter, the outputs can be reused
     ref, P0_ref, P0_hist, pth = (ds.get(k, None) for k in ["ref", "P0_ref", "P0_hist", "pth"])
     reuse_adapt_output = {P0_ref is not None, P0_hist is not None, pth is not None}
     if len(reuse_adapt_output) != 1:
         raise ValueError("`P0_ref`, `P0_hist`, `pth` must all be given, or be `None`.")
     reuse_adapt_output = list(reuse_adapt_output)[0]
+
     if len({ref is not None, reuse_adapt_output}) != 2:
         raise ValueError("Either `ref` or the triplet (`P0_ref`,`P0_hist`,`pth`) must be None.")
     dim = [dim] if isinstance(dim, str) else dim
+
+    # ADD_DIMS are not pooled with other dims for frequency adaptation
+    dim = Grouper.filter_add_dims(dim)
+
     # map_groups quirk: datasets are broadcasted and must be sliced
     P0_ref, P0_hist, pth = (da if da is None else da[{d: 0 for d in set(dim).intersection(set(da.dims))}] for da in [P0_ref, P0_hist, pth])
-
     # Compute the probability of finding a value <= thresh
     # This is the "dry-day frequency" in the precipitation case
     P0_sim = ecdf(ds.sim, thresh, dim=dim)
@@ -89,7 +94,7 @@ def _adapt_freq(ds: xr.Dataset, *, dim: Sequence[str], thresh: float = 0, kind: 
         # Compute : ecdf_ref^-1( ecdf_sim( thresh ) )
         # The value in ref with the same rank as the first non-zero value in sim.
         # pth is meaningless when freq. adaptation is not needed
-        pth = nbu.vecquantiles(ref, P0_hist, dim).where(dP0 > 0) if pth is None else pth
+        pth = nbu.vecquantiles(ref, P0_hist.broadcast_like(ref[{d: 0 for d in dim}]), dim).where(dP0 > 0) if pth is None else pth
         # Probabilities and quantiles computed within all dims, but correction along the first one only.
         sim = ds.sim
         # Get the percentile rank of each value in sim.
