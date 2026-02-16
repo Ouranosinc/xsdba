@@ -1069,8 +1069,8 @@ def spectral_filter(
             lat = da.rlat
         else:
             lat = da.lat
-        # is this a good approximation?
-        delta = f"{(lat[1] - lat[0]).values.item() * 111} km"
+        # 111.2 km is the meridian length for 1-deg latitude
+        delta = f"{np.abs((lat[1] - lat[0]).values.item() * 111.2)} km"
     if alpha_low_high is None and None in {lam_long, lam_short}:
         raise ValueError("`lam_long` or `lam_short` can only be None if `alpha_low_high` is provided.")
     if alpha_low_high is not None:

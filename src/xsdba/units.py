@@ -477,7 +477,12 @@ def normalized_wavenumber_to_wavelength(alpha: xr.DataArray | float, delta: str 
     delta = np.abs(delta)
     lam = 2 * delta / alpha
     if isinstance(alpha, xr.DataArray):
-        lam = lam.assign_attrs({"units": u})
+        lam = lam.assign_attrs(
+            {
+                "units": u,
+                "long_name": "Wavelength",
+            }
+        )
     else:
         lam = f"{lam} {u}"
     return lam

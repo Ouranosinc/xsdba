@@ -1574,13 +1574,26 @@ def _spectral_variance_alpha(da, dims):
     sizes = [da[d].size for d in dims]
     # \sigma_{m,n} = F_{m,n} / (M*N)
     sigmn = (1 / np.prod(sizes)) * (Fmn**2)
+
     sigmn["alpha"] = _normalized_radial_wavenumber(da, dims)
 
-    # eq.13 and 14 of the reference
-    # alpha should increase in integer steps of 1/min(N_i,N_j)
+    # eq.13 and 14 of the reference. alpha should increase in integer steps of 1/min(N_i,N_j)
     step = 1 / min(sizes)
-    sigmn["alpha"] = (sigmn["alpha"] // step) * step
-    return sigmn.groupby("alpha").sum(keep_attrs=True)
+    with xr.set_options(keep_attrs=True):
+        sigmn["alpha"] = (sigmn["alpha"] // step) * step
+    # sum the variances in each band delimited by radial steps in alpha
+    var = sigmn.groupby("alpha").sum(keep_attrs=True)
+
+    # assign attrs
+    var = var.assign_attrs(da.attrs)
+    var.attrs["long_name"] = "Spectral variance"
+    if long_name := da.attrs.get("long_name", None):
+        var.attrs["long_name"] = var.attrs["long_name"] + f" of {long_name}"
+    if units := da.attrs.get("units", None):
+        var.attrs["units"] = _parse_str(str(str2pint(units) ** 2))[-1]
+
+    var.name = "spectral_variance" if var.name is None else f"{var.name}_spectral_variance"
+    return var
 
 
 # TODO: Why can't I make `dims` as positional argument?
@@ -1623,13 +1636,6 @@ def _spectral_variance(
     if delta is not None:
         var["alpha"] = normalized_wavenumber_to_wavelength(var.alpha, delta=delta)
         var = var.rename({"alpha": "wavelength"})
-    var = var.assign_attrs(da.attrs)
-    if "units" in da.attrs:
-        var.attrs["units"] = _parse_str(str(str2pint(da.units) ** 2))[-1]
-    name = "variance"
-    if var.name:
-        name = f"{var.name}_{name}"
-    var = var.to_dataset(name=name)[name]
     return var
 
 
