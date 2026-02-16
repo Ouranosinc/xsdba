@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import numpy as np
 import pytest
 import xarray as xr
 
@@ -28,7 +29,6 @@ class TestConvertUnitsTo:
 
 class TestUnitConversion:
     def test_pint2str(self):
-        pytest.importorskip("cf-xarray")
         u = units("mm/d")
         assert str(u.units) == "mm d-1"
 
@@ -36,8 +36,7 @@ class TestUnitConversion:
         assert str(u.units) == "%"
 
     def test_units2pint(self, timelonlatseries):
-        pytest.importorskip("cf-xarray")
-        u = units2pint(timelonlatseries([1, 2], attrs={"units": "kg m-2 s-1"}))
+        u = units2pint(timelonlatseries(np.asarray([1, 2]), attrs={"units": "kg m-2 s-1"}))
         assert str(u) == "kg m-2 s-1"
 
         u = units2pint("m^3 s-1")
@@ -47,7 +46,7 @@ class TestUnitConversion:
         assert str(u) == "%"
 
         u = units2pint("1")
-        assert str(u) == ""
+        assert str(u) == "1"
 
     def test_str2pint(self):
         Q_ = units.Quantity

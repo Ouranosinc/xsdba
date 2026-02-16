@@ -81,9 +81,9 @@ def _adapt_freq(ds: xr.Dataset, *, dim: Sequence[str], thresh: float = 0, kind: 
     P0_sim = ecdf(ds.sim, thresh, dim=dim)
     P0_hist = P0_sim if P0_hist is None else P0_hist
     P0_ref = ecdf(ref, thresh, dim=dim) if P0_ref is None else P0_ref
-    dP0 = (P0_hist - P0_ref) / P0_hist
-    if dP0.isnull().all():
-        pth = dP0.copy()
+    dP0 = xr.where(P0_hist == 0, np.nan, (P0_hist - P0_ref) / P0_hist)
+    if ((dP0 <= 0) | (dP0.isnull())).all():
+        pth = np.nan * dP0
         sim_ad = ds.sim.copy()
     else:
         # Compute : ecdf_ref^-1( ecdf_sim( thresh ) )
@@ -96,7 +96,7 @@ def _adapt_freq(ds: xr.Dataset, *, dim: Sequence[str], thresh: float = 0, kind: 
         rnk = rank(sim, dim=dim, pct=True)
         # Frequency-adapted sim
         sim_ad = sim.where(
-            dP0 <= 0,  # dP0 <= 0 means no-adaptation.
+            (dP0 <= 0) | (dP0.isnull()),  # if True, no adaptation required
             sim.where(
                 (rnk < (P0_ref / P0_hist) * P0_sim) | (rnk > P0_sim) | sim.isnull(),  # Preserve current values
                 # Generate random numbers ~ U[T0, Pth]

@@ -5,6 +5,7 @@ Pre- and Post-Processing Submodule
 
 from __future__ import annotations
 import types
+import warnings
 from collections.abc import Callable, Sequence
 from typing import cast
 
@@ -494,7 +495,7 @@ def to_additive_space(
     lower_bound: str,
     upper_bound: str | None = None,
     trans: str = "log",
-    clip_next_to_bounds: bool = False,
+    clip_next_to_bounds: str | None = None,
 ):
     r"""
     Transform a non-additive variable into an additive space by the means of a log or logit transformation.
@@ -514,9 +515,11 @@ def to_additive_space(
         The data should only have values strictly smaller than this bound.
     trans : {'log', 'logit'}
         The transformation to use. See notes.
-    clip_next_to_bounds : bool
-        If `True`, values are clipped to ensure `data > lower_bound`  and `data < upper_bound` (if specified).
-        Defaults to `False`. `data` must be in the range [lower_bound, upper_bound], else an error is thrown.
+    clip_next_to_bounds : {None, 'strict', 'permissive'}
+        If not None, values are clipped to ensure `data > lower_bound`  and `data < upper_bound` (if specified).
+        Further, if trans is `logit` or `log`, also a clip the normalized data to ]0, 1[ or ]0,None, respectively.
+        If 'strict`, `data` must be in the range [lower_bound, upper_bound], else an error is thrown.
+        If 'permissive', `data` will be clipped no matter the maximum and minimum.
 
     See Also
     --------
@@ -560,32 +563,51 @@ def to_additive_space(
     ----------
     :cite:cts:`alavoine_distinct_2022`.
     """
-    lower_bound_array = np.array(lower_bound).astype(float)
+    dt = data.dtype
+    lower_bound_array = np.array(lower_bound).astype(dt)
     upper_bound_array = None
     if upper_bound is not None:
-        upper_bound_array = np.array(upper_bound).astype(float)
+        upper_bound_array = np.array(upper_bound).astype(dt)
+
+    if isinstance(clip_next_to_bounds, bool):
+        warnings.warn(
+            "`clip_next_to_bounds` as a boolean is deprecated and will be removed in future versions. "
+            "Please use None, 'strict' or 'permissive' instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        clip_next_to_bounds = "strict" if clip_next_to_bounds else None
 
     # clip bounds
     if clip_next_to_bounds:
-        if (data < lower_bound).any() or (data > (upper_bound or np.nan)).any():
+        # check that inputs are valid
+        if clip_next_to_bounds not in ["strict", "permissive"]:
+            raise ValueError("`clip_next_to_bounds` must be one of {None, 'strict', 'permissive'}.")
+        if ((data < lower_bound).any() or (data > (upper_bound or np.nan)).any()) and clip_next_to_bounds != "permissive":
             raise ValueError(
                 "The input dataset contains values outside of the range [lower_bound, upper_bound] "
                 "(with upper_bound given by infinity if it is not specified). Clipping the values to the range "
                 "]lower_bound, upper_bound[ is not allowed in this case. Check if the bounds are taken appropriately or "
-                "if your input dataset has unphysical values."
+                "if your input dataset has unphysical values and you meant to use 'permissive' instead of 'strict'."
             )
-
-        low = np.nextafter(lower_bound, np.inf, dtype=np.float32)
-        high = None if upper_bound is None else np.nextafter(upper_bound, -np.inf, dtype=np.float32)
+        low = np.nextafter(lower_bound_array, np.inf, dtype=dt)
+        high = None if upper_bound is None else np.nextafter(upper_bound, -np.inf, dtype=dt)  # , dtype=np.float32)
         data = data.clip(low, high)
 
     with xr.set_options(keep_attrs=True), np.errstate(divide="ignore"):
         if trans == "log":
-            out = cast(xr.DataArray, np.log(data - lower_bound_array))
+            data_prime = data - lower_bound_array
+            if clip_next_to_bounds:
+                zero = np.nextafter(np.array(0, dtype=dt), np.inf).astype(dt)
+                data_prime = data_prime.clip(zero, None)
+            out = cast(xr.DataArray, np.log(data_prime))
         elif trans == "logit" and upper_bound is not None:
-            data_prime = (data - lower_bound_array) / (
-                upper_bound_array - lower_bound_array  # pylint: disable=E0606
-            )
+            data_prime = ((data - lower_bound_array) / (upper_bound_array - lower_bound_array)).astype(dt)
+            if clip_next_to_bounds:
+                zero = np.nextafter(np.array(0), np.inf, dtype=dt)
+                one = np.nextafter(np.array(1), -np.inf, dtype=dt)
+                data_prime = data_prime.clip(zero, one)
+
             out = cast(xr.DataArray, np.log(data_prime / (1 - data_prime)))
         else:
             raise NotImplementedError("`trans` must be one of 'log' or 'logit'.")
@@ -805,7 +827,7 @@ def unstack_variables(da: xr.DataArray, dim: str | None = None) -> xr.Dataset:
 
 def grouped_time_indexes(times, group):
     """
-    Time indexes for every group blocks
+    Time indexes for every group blocks.
 
     Time indexes can be used to implement a pseudo-"numpy.groupies" approach to grouping.
 
@@ -821,67 +843,77 @@ def grouped_time_indexes(times, group):
     g_idxs : xr.DataArray
         Time indexes of the blocks (only using `group.name` and not `group.window`).
     gw_idxs : xr.DataArray
-        Time indexes of the blocks (built with a rolling window of `group.window` if any).
+        Time indexes of the blocks (with rolling window if any).
     """
 
-    def _get_group_complement(da, group):
-        # complement of "dayofyear": "year", etc.
-        gr = group if isinstance(group, str) else group.name
-        if gr == "time.dayofyear":
+    def _get_group_complement(da, _gr):
+        if _gr == "time.dayofyear":
             return da.time.dt.year
-        if gr == "time.month":
-            return da.time.dt.strftime("%Y-%d")
-        raise NotImplementedError(f"Grouping {gr} not implemented.")
+        if _gr == "time.month":
+            return da.time.dt.strftime("%Y-%m")
+        raise NotImplementedError(f"Grouping {_gr} not implemented.")
 
-    # does not work with group == "time.month"
     group = group if isinstance(group, Grouper) else Grouper(group)
     gr, win = group.name, group.window
-    # get time indices (0,1,2,...) for each block
-    timeind = xr.DataArray(np.arange(times.size), coords={"time": times})
-    win_dim0, win_dim = (get_temp_dimname(timeind.dims, lab) for lab in ["win_dim0", "win_dim"])
+
+    timeind = xr.DataArray(
+        np.arange(times.size),
+        coords={"time": times},
+        dims="time",
+    )
+    win_dim0, win_dim = (get_temp_dimname(timeind.dims, lab) for lab in ("win_dim0", "win_dim"))
+
     if gr == "time.dayofyear":
-        # time indices for each block with window = 1
-        g_idxs = timeind.groupby(gr).apply(lambda da: da.assign_coords(time=_get_group_complement(da, gr)).rename({"time": "year"}))
-        # time indices for each block with general window
-        da = timeind.rolling(time=win, center=True).construct(window_dim=win_dim0)
-        gw_idxs = da.groupby(gr).apply(lambda da: da.assign_coords(time=_get_group_complement(da, gr)).stack({win_dim: ["time", win_dim0]}))
-        gw_idxs = gw_idxs.transpose(..., win_dim)
+
+        def _map_group(da):
+            return da.assign_coords(time=_get_group_complement(da, gr)).rename(time="group")
+
+        g_idxs = timeind.groupby(gr).map(_map_group)
+        rolled = timeind.rolling(time=win, center=True).construct(window_dim=win_dim0)
+
+        def _map_group_window(da):
+            return da.assign_coords(time=_get_group_complement(da, gr)).stack({win_dim: ["time", win_dim0]})
+
+        gw_idxs = rolled.groupby(gr).map(_map_group_window).transpose(..., win_dim)
+
     elif gr == "time":
-        gw_idxs = timeind.rename({"time": win_dim}).expand_dims({win_dim0: [-1]})
+        gw_idxs = timeind.rename(time=win_dim).expand_dims({win_dim0: [-1]})
         g_idxs = gw_idxs.copy()
-    # TODO : Implement a proper Grouper treatment
-    # This would normally not be allowed with sdba.Grouper.
-    # A proper implementation in Grouper may be given in the future, but here is the implementation
-    # that I used for a project
+
     elif gr == "5D":
         if win % 2 == 0:
-            raise ValueError(f"Group 5D only works with an odd window, got `window` = {win}")
+            raise ValueError(f"Group 5D only works with an odd window, got `window`={win}")
 
         gr_dim = "five_days"
         imin, imax = 0, times.size - 1
+        years = np.unique(times.dt.year.values)
 
-        def _get_idxs(win):
-            block0 = np.concatenate(
-                [
-                    np.arange(5) + iwin * 5 + iyear * 365
-                    for iyear in range(len(set(times.dt.year.values)))
-                    for iwin in range(-(win - 1) // 2, (win - 1) // 2 + 1)
-                ]
+        def _build_idxs(win):
+            offsets = np.arange(-(win - 1) // 2, (win - 1) // 2 + 1)
+            base = np.concatenate([np.arange(5) + 5 * iwin + 365 * iyear for iyear in range(len(years)) for iwin in offsets])
+
+            base = xr.DataArray(
+                base,
+                dims=win_dim,
+                coords={win_dim: np.arange(base.size)},
             )
-            base = xr.DataArray(block0, dims=[win_dim], coords={win_dim: np.arange(len(block0))})
+
             idxs = xr.concat(
-                [(base + i * 5).expand_dims({gr_dim: [i]}) for i in range(365 // 5)],
+                [(base + 5 * i).expand_dims({gr_dim: [i]}) for i in range(365 // 5)],
                 dim=gr_dim,
             )
+
             return idxs.where((idxs >= imin) & (idxs <= imax), -1)
 
-        gw_idxs, g_idxs = _get_idxs(win), _get_idxs(1)
+        g_idxs = _build_idxs(1)
+        gw_idxs = _build_idxs(win)
 
     else:
         raise NotImplementedError(f"Grouping {gr} not implemented.")
+
     gw_idxs.attrs["group"] = (gr, win)
     gw_idxs.attrs["time_dim"] = win_dim
-    gw_idxs.attrs["group_dim"] = [d for d in g_idxs.dims if d != win_dim][0]
+    gw_idxs.attrs["group_dim"] = next(d for d in g_idxs.dims if d != win_dim)
     return g_idxs, gw_idxs
 
 
@@ -986,10 +1018,10 @@ def _normalized_radial_wavenumber(da, dims):
     """
     # Replace lat/lon coordinates with integers (wavenumbers in reciprocal space)
     ds_dims = da[dims] if isinstance(da, xr.Dataset) else (da.to_dataset())[dims]
-    da0 = xr.Dataset(coords={d: range(sh) for d, sh in ds_dims.dims.items()})
+    da0 = xr.Dataset(coords={d: range(sh) for d, sh in ds_dims.sizes.items()})
     # Radial distance in Fourier space
-    alpha = sum([da0[d] ** 2 / da0[d].size ** 2 for d in da0.dims]) ** 0.5
-    alpha = alpha.assign_coords({d: ds_dims[d] for d in ds_dims.dims}).rename("alpha")
+    alpha = sum([da0[d] ** 2 / da0[d].size ** 2 for d in da0.sizes]) ** 0.5
+    alpha = alpha.assign_coords({d: ds_dims[d] for d in ds_dims.sizes}).rename("alpha")
     alpha = alpha.assign_attrs(
         {
             "units": "",

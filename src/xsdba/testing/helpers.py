@@ -99,7 +99,7 @@ def test_timeseries(
         A DataArray or Dataset with time, lon and lat dimensions.
     """
     if calendar or cftime:
-        coords = xr.cftime_range(start, periods=len(values), freq=freq, calendar=calendar or "standard")
+        coords = xr.date_range(start, periods=len(values), freq=freq, calendar=calendar or "standard", use_cftime=True)
     else:
         coords = pd.date_range(start, periods=len(values), freq=freq)
 

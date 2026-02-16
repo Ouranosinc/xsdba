@@ -420,7 +420,8 @@ class TestProperties:
         )
 
     @pytest.mark.slow
-    def test_decorrelation_length(self, gosset):
+    @pytest.mark.parametrize("use_dask", [True, False])
+    def test_decorrelation_length(self, gosset, use_dask):
         sim = (
             xr.open_dataset(
                 gosset.fetch("NRCANdaily/nrcan_canada_daily_tasmax_1990.nc"),
@@ -429,11 +430,32 @@ class TestProperties:
             .tasmax.isel(lon=slice(0, 5), lat=slice(0, 1))
             .load()
         )
+        if use_dask:
+            sim = sim.chunk({"lon": 1})
 
         out = properties.decorrelation_length(sim, dims=["lat", "lon"], bins=10, radius=30)
         np.testing.assert_allclose(
             out[0],
             [4.5, 4.5, 4.5, 4.5, 10.5],
+        )
+
+    @pytest.mark.slow
+    def test_decorrelation_length_allnan(self, gosset):
+        sim = (
+            xr.open_dataset(
+                gosset.fetch("NRCANdaily/nrcan_canada_daily_tasmax_1990.nc"),
+                engine="h5netcdf",
+            )
+            .tasmax.isel(lon=slice(0, 5), lat=slice(0, 1))
+            .load()
+        )
+        # sim = np.nan*sim
+        sim = sim.where(sim.lon == sim.lon.values[0], np.nan)
+        out = properties.decorrelation_length(sim, dims=["lat", "lon"], bins=10, radius=30)
+
+        np.testing.assert_allclose(
+            out[0],
+            [np.nan] * 5,
         )
 
     @pytest.mark.slow

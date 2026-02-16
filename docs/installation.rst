@@ -138,12 +138,20 @@ Eigen3 is also available on conda-forge, so, if already using Anaconda, one can 
 
     $ conda install -c conda-forge eigen
 
+To build `SBCK` from source, one also needs `pybind11`_:
+
+.. code-block:: console
+
+    $ python -m pip install pybind11
+    # or, alternatively:
+    $ conda install -c conda-forge pybind11
+
 Afterwards, `SBCK` can be installed from PyPI using `pip`:
 
 .. code-block:: console
 
-    $ python -m pip install pybind11  # must be installed before SBCK
     $ python -m pip install SBCK
 
 .. _SBCK: https://github.com/yrobink/SBCK
 .. _Eigen3: https://eigen.tuxfamily.org/index.php
+.. _pybind11: https://pybind11.readthedocs.io/en/stable/index.html

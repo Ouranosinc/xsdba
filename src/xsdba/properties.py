@@ -1484,8 +1484,11 @@ def _decorrelation_length(
     def _bin_corr(_corr, _distance):
         """Bin and mean."""
         mask_nan = ~np.isnan(_corr)
-        binned_corr = stats.binned_statistic(_distance[mask_nan], _corr[mask_nan], statistic="mean", bins=bin_array)
-        stat = binned_corr.statistic
+        if mask_nan.any():
+            binned_corr = stats.binned_statistic(_distance[mask_nan], _corr[mask_nan], statistic="mean", bins=bin_array)
+            stat = binned_corr.statistic
+        else:
+            stat = np.nan * stats.binned_statistic([0], [0], statistic="mean", bins=bin_array).statistic
         return stat
 
     # (_spatial, _spatial2) -> (_spatial, distance_bins)
@@ -1501,7 +1504,7 @@ def _decorrelation_length(
             output_dtypes=[float],
             dask_gufunc_kwargs={
                 "allow_rechunk": True,
-                "output_sizes": {"distance_bins": len(bin_array)},
+                "output_sizes": {"distance_bins": len(bin_array) - 1},
             },
         )
         .rename("corr")
