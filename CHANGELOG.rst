@@ -16,7 +16,6 @@ Fixes
 ^^^^^
 * No change.
 
-
 Internal changes
 ^^^^^^^^^^^^^^^^
 * Replace `np.in1d` with `np.isin`. (:issue:`260`, ::pull:`261`)
