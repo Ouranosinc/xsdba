@@ -2,19 +2,23 @@
 Changelog
 =========
 
-..
-    `Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
-    ------------------------------------------------------------
 
-    Contributors:
+`Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
+------------------------------------------------------------
 
-    Changes
-    ^^^^^^^
-    * No change.
+Contributors:  Éric Dupuis (:user:`coxipi`).
 
-    Fixes
-    ^^^^^
-    * No change.
+Changes
+^^^^^^^
+* No change.
+
+Fixes
+^^^^^
+* No change.
+
+Internal changes
+^^^^^^^^^^^^^^^^
+* Replace `np.in1d` with `np.isin`. (:issue:`260`, ::pull:`261`)
 
 .. _changes_0.6.0:
 
