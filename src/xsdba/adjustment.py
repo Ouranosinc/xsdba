@@ -710,7 +710,7 @@ class ExtremeValues(TrainAdjust):
     r"""
     Adjustment correction for extreme values.
 
-    This adjustment method should be considered experimental and used with care. See the `Notes` section for more details.
+    This adjustment method should be considered experimental and used with care. See the `Warnings` and `Notes` sections for more details.
 
     Parameters
     ----------
