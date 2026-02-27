@@ -710,12 +710,7 @@ class ExtremeValues(TrainAdjust):
     r"""
     Adjustment correction for extreme values.
 
-    The tail of the distribution of adjusted data is corrected according to the bias between the parametric Generalized
-    Pareto distributions of the simulated and reference data :cite:p:`roy_extremeprecip_2023`. The distributions are composed of the
-    maximal values of clusters of "large" values.  With "large" values being those above `cluster_thresh`. Only extreme
-    values, whose quantile within the pool of large values are above `q_thresh`, are re-adjusted. See `Notes`.
-
-    This adjustment method should be considered experimental and used with care.
+    This adjustment method should be considered experimental and used with care. See the `Notes` section for more details.
 
     Parameters
     ----------
@@ -723,8 +718,9 @@ class ExtremeValues(TrainAdjust):
 
     cluster_thresh : Quantified (str with units or DataArray with units)
         The threshold value for defining clusters.
+        For precipitation data, a common choice is "1 mm/day" (in the units of the data).
     q_thresh : float
-        The quantile of "extreme" values, [0, 1[. Defaults to 0.95.
+        The thresholded quantile (x > cluster_thresh) over which values are used to fit the Generalized Pareto distribution. See `Notes`. Defaults to 0.95.
     ref_params :  xr.DataArray, optional
         Distribution parameters to use instead of fitting a GenPareto distribution on `ref`.
 
@@ -738,24 +734,41 @@ class ExtremeValues(TrainAdjust):
     extrapolation : {'constant', 'nan'}
         The type of extrapolation to use. Defaults to "constant".
     frac : float
-        Fraction where the cutoff happens between the original scen and the corrected one.
-        See Notes, ]0, 1]. Defaults to 0.25.
+        Fraction of the correction space where a transition between `scen` and the newly corrected extremes happens.
+        The correction space is defined as the range of values between the `q_thresh` quantile of `hist` and the maximum value of `sim`.
+        See Notes, ]0, 1]. Defaults to 0.70.
     power : float
-        Shape of the correction strength, see Notes. Defaults to 1.0.
+        Shape of the transition function. See `Notes`. Defaults to 3 (cubic transition function).
+
+    Warnings
+    --------
+    - This method has been primarily designed for precipitation data and may not be suitable for other variables without careful consideration.
+    - The actual value of `thresh` is the average of `q_thresh` in `hist` and `ref`. This might produce unexpected results if `hist` and `ref`
+      have very different distributions of large values.
+    - Results can be very sensitive to the choice of `q_thresh`, `frac` and `power` parameters. In limited testing made in Southern Quebec using an
+      ensemble of 12 CMIP6 climate models and 2 reference datasets (both reanalyses), the best results were obtained with a relatively low `q_thresh` (~0.95),
+      combined with a smooth transition (frac ~ 0.7, power ~ 3). However, these values may not be optimal for other regions and datasets.
+    - While this is not currently implemented within the method itself, assumptions that underlie the theoretical framework of extreme value theory should
+      be taken in consideration. In particular, using coherent seasons (e.g. separately correcting winter and summer extremes) has been shown to improve results.
+    - Non-stationarity is not explicitly accounted for in this method, but can be partially addressed by wrapping this method in a moving window approach,
+      using the xsdba.stack_periods function.
 
     Notes
     -----
-    Extreme values are extracted from `ref`, `hist` and `sim` by finding all "clusters", i.e. runs of consecutive values
-    above `cluster_thresh`. The `q_thresh`th percentile of these values is taken on `ref` and `hist` and becomes
-    `thresh`, the extreme value threshold. The maximal value of each cluster, if it exceeds that new threshold, is taken
-    and Generalized Pareto distributions are fitted to them, for both `ref` and `hist`. The probabilities associated
-    with each of these extremes in `hist` is used to find the corresponding value according to `ref`'s distribution.
-    Adjustment factors are computed as the bias between those new extremes and the original ones.
+    This method is designed to correct the tail of the distribution of `sim` according to the bias between the tails of `ref` and `hist`.
+    This is a second-order adjustment, meaning that it should be applied after a first-order adjustment (e.g. quantile mapping) has already been performed on `sim`.
+    Based on the "extremes" method of :cite:p:`roy_extremeprecip_2023`.
 
-    In the adjust step, a Generalized Pareto distributions is fitted on the cluster-maximums of `sim` and it is used to
-    associate a probability to each extreme, values over the `thresh` compute in the training, without the clustering.
-    The adjustment factors are computed by interpolating the trained ones using these probabilities and the
-    probabilities computed from `hist`.
+    Extreme values are extracted from `ref`, `hist` and `sim` by finding all "clusters", i.e. runs of consecutive values
+    above `cluster_thresh`. The `q_thresh`th percentile of these values is taken on `ref` and `hist` and its average becomes
+    `thresh`, the extreme value threshold. The maximal values of each cluster, if they exceed that new threshold, are used
+    to fit Generalized Pareto distributions for both `ref` and `hist`. The probabilities associated
+    with each of these extremes in `hist` is used to find the corresponding value according to `ref`'s distribution.
+    Adjustment factors are computed as the bias between those new extremes and the original ones, in the probability space.
+
+    In the adjust step, a Generalized Pareto distribution is fitted on the cluster-maximums of `sim` and is used to
+    associate a probability to each extreme. The adjustment factors are applied based on these probabilities. This
+    correction is applied to all values of `sim` above `thresh`, so multiple values can be corrected in the same cluster.
 
     Finally, the adjusted values (:math:`C_i`) are mixed with the pre-adjusted ones (`scen`, :math:`D_i`) using the
     following transition function:
@@ -848,8 +861,8 @@ class ExtremeValues(TrainAdjust):
         sim: xr.DataArray,
         scen: xr.DataArray,
         *,
-        frac: float = 0.25,
-        power: float = 1.0,
+        frac: float = 0.70,
+        power: float = 3.0,
         interp: str = "linear",
         extrapolation: str = "constant",
     ):
