@@ -9,7 +9,7 @@ Contributors:  Éric Dupuis (:user:`coxipi`).
 
 Changes
 ^^^^^^^
-* No change.
+* New example in notebook `advanced_example.ipynb` showing how to use spectral utils (``xsdba.processing.spectral_filter`` and ``xsdba.properties.spectral_variance``). (:issue:`247`,:pull:`259`).
 
 Fixes
 ^^^^^
@@ -17,9 +17,7 @@ Fixes
 
 Internal changes
 ^^^^^^^^^^^^^^^^
-* Replace `np.in1d` with `np.isin`. (:issue:`260`, ::pull:`261`)
-* New example in notebook `advanced_example.ipynb` showing how to use spectral utils (``xsdba.processing.spectral_filter`` and ``xsdba.properties.spectral_variance``). (:issue:`247`,:pull:`259`)
-
+* Replace `np.in1d` with `np.isin`. (:issue:`260`, ::pull:`261`).
 
 .. _changes_0.6.0:
 
