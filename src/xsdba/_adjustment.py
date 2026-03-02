@@ -547,7 +547,7 @@ def mbcn_adjust(
         reordered = reordering(ref=npdft_block, sim=scen_block)
         if win > 1:
             # keep  central value of window (intersecting indices in gw_idxs and g_idxs)
-            scen_mbcn[{"time": ind_g}] = reordered[{"time": np.in1d(ind_gw, ind_g)}]
+            scen_mbcn[{"time": ind_g}] = reordered[{"time": np.isin(ind_gw, ind_g)}]
         else:
             scen_mbcn[{"time": ind_g}] = reordered
 

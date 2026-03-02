@@ -5,15 +5,21 @@ Changelog
 `Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
 ------------------------------------------------------------
 
-Contributors: Éric Dupuis (:user:`coxipi`).
+Contributors:  Éric Dupuis (:user:`coxipi`).
 
 Changes
 ^^^^^^^
-* New example in notebook `advanced_example.ipynb` showing how to use spectral utils (``xsdba.processing.spectral_filter`` and ``xsdba.properties.spectral_variance``). (:issue:`247`,:pull:`259`)
+* No change.
 
 Fixes
 ^^^^^
 * No change.
+
+Internal changes
+^^^^^^^^^^^^^^^^
+* Replace `np.in1d` with `np.isin`. (:issue:`260`, ::pull:`261`)
+* New example in notebook `advanced_example.ipynb` showing how to use spectral utils (``xsdba.processing.spectral_filter`` and ``xsdba.properties.spectral_variance``). (:issue:`247`,:pull:`259`)
+
 
 .. _changes_0.6.0:
 
