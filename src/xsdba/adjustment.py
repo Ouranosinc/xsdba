@@ -861,11 +861,22 @@ class ExtremeValues(TrainAdjust):
         sim: xr.DataArray,
         scen: xr.DataArray,
         *,
-        frac: float = 0.70,
-        power: float = 3.0,
+        frac: float | None = None,
+        power: float | None = None,
         interp: str = "linear",
         extrapolation: str = "constant",
     ):
+        if frac is None or power is None:
+            warn(
+                "No value was provided for the `frac` and/or `power` parameters. Be aware that from v.0.6.1-dev.1, the default values have "
+                "been changed 0.70 and 3, respectively (from 0.25 and 1). If you were relying on the previous defaults, please set these "
+                "parameters explicitly to avoid unexpected results.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            frac = frac or 0.70
+            power = power or 3
+
         # TODO: `extrapolate_qm` doesn't exist anymore, is this cheat still relevant?
         # Quantiles coord : cheat and assign 0 - 1, so we can use `extrapolate_qm`.
         ds = self.ds.assign(quantiles=(np.arange(self.ds.quantiles.size) + 1) / (self.ds.quantiles.size + 1))
