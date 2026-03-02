@@ -27,7 +27,6 @@ from xsdba.base import Grouper, map_groups, parse_group, uses_dask
 from xsdba.nbutils import _pairwise_haversine_and_bins
 from xsdba.processing import _normalized_radial_wavenumber
 from xsdba.units import (
-    _parse_str,
     convert_units_to,
     infer_sampling_units,
     normalized_wavenumber_to_wavelength,
