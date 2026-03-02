@@ -1593,7 +1593,7 @@ def _spectral_variance_alpha(da, dims):
     if long_name := da.attrs.get("long_name", None):
         var.attrs["long_name"] = var.attrs["long_name"] + f" of {long_name}"
     if units := da.attrs.get("units", None):
-        var.attrs["units"] = _parse_str(str(str2pint(units) ** 2))[-1]
+        var.attrs["units"] = f"{(str2pint(units) ** 2).units:~cf}"
 
     var.name = "spectral_variance" if var.name is None else f"{var.name}_spectral_variance"
     return var
