@@ -720,7 +720,7 @@ class ExtremeValues(TrainAdjust):
         The threshold value for defining clusters.
         For precipitation data, a common choice is "1 mm/day" (in the units of the data).
     q_thresh : float
-        The thresholded quantile (x > cluster_thresh) over which values are used to fit the Generalized Pareto distribution. See `Notes`. Defaults to 0.95.
+        The quantile threshold for the peak-over-threshold selection of values in clusters `x > cluster_thresh`. See `Notes`. Defaults to 0.95.
     ref_params :  xr.DataArray, optional
         Distribution parameters to use instead of fitting a GenPareto distribution on `ref`.
 
