@@ -747,7 +747,7 @@ class ExtremeValues(TrainAdjust):
       have very different distributions of large values.
     - Results can be very sensitive to the choice of `q_thresh`, `frac` and `power` parameters. In limited testing made in Southern Quebec using an
       ensemble of 12 CMIP6 climate models and 2 reference datasets (both reanalyses), the best results were obtained with a relatively low `q_thresh` (~0.95),
-      combined with a smooth transition (frac ~ 0.7, power ~ 3). However, these values may not be optimal for other regions and datasets.
+      combined with a smooth transition (frac ~ 0.6 to 0.7, power ~ 3). However, these values may not be optimal for other regions and datasets.
     - While this is not currently implemented within the method itself, assumptions that underlie the theoretical framework of extreme value theory should
       be taken in consideration. In particular, using coherent seasons (e.g. separately correcting winter and summer extremes) has been shown to improve results.
     - Non-stationarity is not explicitly accounted for in this method, but can be partially addressed by wrapping this method in a moving window approach,
