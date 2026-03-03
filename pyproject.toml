@@ -379,7 +379,7 @@ ignore = [
   "N803", # invalid-argument-name
   "N806", # non-lowercase-variable-in-function
   "PERF203", # try-except-in-loop
-  "PERF401", # manual-list-comprehension 	
+  "PERF401", # manual-list-comprehension
   "PTH123", # builtin-open
   "S310", # suspicious-url-open-usage
   "W505" # doc-line-too-long
