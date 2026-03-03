@@ -16,10 +16,10 @@ Breaking changes
 ^^^^^^^^^^^^^^^^
 * Default values for `frac` and `power` in ``xsdba.adjustment.ExtremeValues`` have been changed to 0.7, and 3, respectively. (:pull:`262`).
 
-
 Fixes
 ^^^^^
 * No change.
+
 
 .. _changes_0.6.1:
 
