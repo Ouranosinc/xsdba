@@ -78,6 +78,7 @@ dev = [
   "pytest >=9.0.0",
   "pytest-cov >=5.0.0",
   "pytest-xdist >=3.2.0",
+  "rstcheck[sphinx,toml] >=6.2.5",
   "ruff >=0.15.4",
   "tox >=4.30.3",
   "vulture >=2.14",
@@ -340,6 +341,11 @@ markers = [
   "slow: mark test as slow",
   "requires_internet: mark test as requiring network access"
 ]
+
+[tool.rstcheck]
+report_level = "WARNING"
+ignore_directives = ["bibliography"]
+ignore_roles = ["cite:cts", "cite:p", "cite:t", "issue", "pull", "user"]
 
 [tool.ruff]
 src = ["xsdba"]

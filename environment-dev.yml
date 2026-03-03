@@ -43,7 +43,9 @@ dependencies:
 - pytest >=9.0.0
 - pytest-cov >=5.0.0
 - pytest-xdist >=3.2.0
+- rstcheck >=6.2.5
 - ruff >=0.15.4
+- sphinx >=8.2.2 # for rstcheck
 - tox >=4.30.3
 - vulture >=2.14
 - watchdog >=4.0.0
