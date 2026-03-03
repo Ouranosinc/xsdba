@@ -6,7 +6,7 @@ Changelog
 `Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
 ------------------------------------------------------------
 
-Contributors:  Éric Dupuis (:user:`coxipi`), Gabriel Rondeau-Genesse (:user:`RondeauG`).
+Contributors: Gabriel Rondeau-Genesse (:user:`RondeauG`).
 
 Changes
 ^^^^^^^
@@ -16,13 +16,25 @@ Breaking changes
 ^^^^^^^^^^^^^^^^
 * Default values for `frac` and `power` in ``xsdba.adjustment.ExtremeValues`` have been changed to 0.7, and 3, respectively. (:pull:`262`).
 
+
 Fixes
 ^^^^^
-* Fixed an issue when using an even `frac` value in ``xsdba.adjustment.ExtremeValues``. (:pull:`262`).
+* No change.
+
+.. _changes_0.6.1:
+
+`v0.6.1 <https://github.com/Ouranosinc/xsdba/tree/0.6.1>`_ (2026-03-03)
+-----------------------------------------------------------------------
+
+Contributors: Éric Dupuis (:user:`coxipi`), Trevor James Smith (:user:`Zeitsperre`).
+
+Fixes
+^^^^^
+* Replace deprecated `numpy.in1d` call with `numpy.isin`. (:issue:`260`, :pull:`261`).
 
 Internal changes
 ^^^^^^^^^^^^^^^^
-* Replace `np.in1d` with `np.isin`. (:issue:`260`, ::pull:`261`)
+* Updated pre-commit hooks and ignored `ruff` rule ``D420`` due to a bug in its implementation. (:pull:`263`).
 
 .. _changes_0.6.0:
 
