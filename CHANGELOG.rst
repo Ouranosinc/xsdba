@@ -6,19 +6,15 @@ Changelog
 `Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
 ------------------------------------------------------------
 
-Contributors:  Éric Dupuis (:user:`coxipi`).
-
-Changes
-^^^^^^^
-* No change.
+Contributors: Éric Dupuis (:user:`coxipi`), Trevor James Smith (:user:`Zeitsperre`).
 
 Fixes
 ^^^^^
-* No change.
+* Replace deprecated `numpy.in1d` call with `numpy.isin`. (:issue:`260`, :pull:`261`).
 
 Internal changes
 ^^^^^^^^^^^^^^^^
-* Replace `np.in1d` with `np.isin`. (:issue:`260`, ::pull:`261`)
+* Updated pre-commit hooks and ignored `ruff` rule ``D420`` due to a bug in its implementation. (::pull:`263`).
 
 .. _changes_0.6.0:
 
