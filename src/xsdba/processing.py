@@ -1038,12 +1038,31 @@ def _dctn_filter(arr, mask):
     return idctn(coeffs * mask, norm="ortho")
 
 
+def estimate_delta_from_cf(da: xr.DataArray):
+    """
+    Estimate length scale of the grid using cf coordinates.
+
+    Parameters
+    ----------
+    da : xr.DataArray
+        Input physical field.
+    """
+    if "Y" in da.cf and (units := da.cf["Y"].attrs.get("units", None)):
+        Ycoords = sorted(da.cf["Y"].values)
+        if units in ["degrees", "degrees_north"]:
+            return f"{np.abs((Ycoords[1] - Ycoords[0]).values.item() * 111.2)} km"
+        else:
+            return f"{np.abs((Ycoords[1] - Ycoords[0]).values.item())} {units}"
+    else:
+        raise ValueError("Could not find a `Y` field or its units in the input cf-coordinates `da.cf`.")
+
+
 def spectral_filter(
     da: xr.DataArray,
     lam_long: str | None,
     lam_short: str | None,
     dims: list[str],
-    delta: str | None = None,
+    delta: str | None,
     mask_func: Callable = cos2_mask_func,
     alpha_low_high: tuple[float, float] | None = None,
 ):
@@ -1097,30 +1116,11 @@ def spectral_filter(
             out[v] = spectral_filter(da[v], lam_long, lam_short, dims, delta=delta)
         return out.assign_attrs(da.attrs)
 
-    if alpha_low_high is None and None in {lam_long, lam_short}:
-        raise ValueError("`lam_long` or `lam_short` can only be None if `alpha_low_high` is provided.")
+    if alpha_low_high is None and None in {lam_long, lam_short, delta}:
+        raise ValueError("`lam_long` or `lam_short` or `delta` must all be provided if `alpha_low_high` is `None`.")
     if alpha_low_high is not None:
         alpha_low, alpha_high = alpha_low_high
     else:
-        if delta is None:
-            if "rlat" in da.dims and "rlat" in dims:
-                lat = da.rlat
-                # 111.2 km is the meridian length for 1-deg latitude
-                delta = f"{np.abs((lat[1] - lat[0]).values.item() * 111.2)} km"
-            elif "lat" in da.dims and "lat" in dims:
-                lat = da.lat
-                delta = f"{np.abs((lat[1] - lat[0]).values.item() * 111.2)} km"
-            elif "y" in da.dims and "y" in dims:
-                y = da.y
-                units = da.y.attrs.get("units", None)
-                if units:
-                    delta = f"{np.abs((y[1] - lat[0]).values.item() * 111.2)} km"
-            if delta is None:
-                raise ValueError(
-                    "Dimensionful cutoffs `lam_short` and `lam_long` were given without a reference scale"
-                    " `Delta`. An unsuccessful attempt was made to use information on `dims`, e.g. a latitude coordinate"
-                    " can be used to infer a spatial scale length. Please provide `delta`."
-                )
         alpha_low = wavelength_to_normalized_wavenumber(lam_long, delta=delta)
         alpha_high = wavelength_to_normalized_wavenumber(lam_short, delta=delta)
     alpha = _normalized_radial_wavenumber(da, dims)
