@@ -30,7 +30,7 @@ Fixes
 
 Internal changes
 ^^^^^^^^^^^^^^^^
-* Updated pre-commit hooks and ignored `ruff` rule ``D420`` due to a bug in its implementation. (::pull:`263`).
+* Updated pre-commit hooks and ignored `ruff` rule ``D420`` due to a bug in its implementation. (:pull:`263`).
 
 .. _changes_0.6.0:
 
