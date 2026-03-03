@@ -1038,12 +1038,31 @@ def _dctn_filter(arr, mask):
     return idctn(coeffs * mask, norm="ortho")
 
 
+def estimate_delta_from_cf(da: xr.DataArray):
+    """
+    Estimate length scale of the grid using cf coordinates.
+
+    Parameters
+    ----------
+    da : xr.DataArray
+        Input physical field.
+    """
+    if "Y" in da.cf and (units := da.cf["Y"].attrs.get("units", None)):
+        Ycoords = sorted(da.cf["Y"].values)
+        if units in ["degrees", "degrees_north"]:
+            return f"{np.abs((Ycoords[1] - Ycoords[0]).values.item() * 111.2)} km"
+        else:
+            return f"{np.abs((Ycoords[1] - Ycoords[0]).values.item())} {units}"
+    else:
+        raise ValueError("Could not find a `Y` field or its units in the input cf-coordinates `da.cf`.")
+
+
 def spectral_filter(
     da: xr.DataArray,
     lam_long: str | None,
     lam_short: str | None,
-    dims: list[str] | None = None,
-    delta: str | None = None,
+    dims: list[str],
+    delta: str | None,
     mask_func: Callable = cos2_mask_func,
     alpha_low_high: tuple[float, float] | None = None,
 ):
@@ -1085,8 +1104,9 @@ def spectral_filter(
     ----------
     :cite:cts:`denis_spectral_2002`
     """
+    # TODO: Remove this in xsdba >0.7
     if dims is None:
-        dims = ["lat", "lon"]
+        raise ValueError("Value `None` is not longer supported for `dims`. Please give a list of dimensions.")
     if isinstance(dims, str):
         dims = [dims]
 
@@ -1096,15 +1116,8 @@ def spectral_filter(
             out[v] = spectral_filter(da[v], lam_long, lam_short, dims, delta=delta)
         return out.assign_attrs(da.attrs)
 
-    if delta is None and alpha_low_high is None:
-        if "rlat" in da.dims:
-            lat = da.rlat
-        else:
-            lat = da.lat
-        # is this a good approximation?
-        delta = f"{(lat[1] - lat[0]).values.item() * 111} km"
-    if alpha_low_high is None and None in {lam_long, lam_short}:
-        raise ValueError("`lam_long` or `lam_short` can only be None if `alpha_low_high` is provided.")
+    if alpha_low_high is None and None in {lam_long, lam_short, delta}:
+        raise ValueError("`lam_long` or `lam_short` or `delta` must all be provided if `alpha_low_high` is `None`.")
     if alpha_low_high is not None:
         alpha_low, alpha_high = alpha_low_high
     else:
