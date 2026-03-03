@@ -10,7 +10,6 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
-
       - id: check-json
       - id: pretty-format-json
         args: [ '--autofix', '--no-ensure-ascii', '--no-sort-keys' ]
@@ -57,7 +56,7 @@ repos:
     rev: 7.3.0
     hooks:
       - id: flake8
-        additional_dependencies: [ 'flake8-rst-docstrings==0.3.1' ]
+        additional_dependencies: [ 'flake8-rst-docstrings==0.4.0' ]
         args: [ '--config=.flake8' ]
   - repo: https://github.com/jendrikseipp/vulture
     rev: 'v2.14'
