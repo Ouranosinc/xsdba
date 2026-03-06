@@ -22,6 +22,7 @@ on:
       - CI/**/*.in
       - CI/**/*.py
       - CI/**/*.txt
+      - CITATION.cff
       - CODE_OF_CONDUCT.md
       - CONTRIBUTING.rst
       - Makefile
