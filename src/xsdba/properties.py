@@ -1295,13 +1295,13 @@ def _return_value(
     """
 
     @map_groups(out=[Grouper.PROP], main_only=True)
-    def frequency_analysis_method(ds, *, dim, method):
+    def frequency_analysis_method(ds, *, dim, method, op, period):
         sub = select_resample_op(ds.x, op=op)
         params = fit(sub, dist="genextreme", method=method)
         out = parametric_quantile(params, q=1 - 1.0 / period)
         return out.isel(quantile=0, drop=True).rename("out").to_dataset()
 
-    out = frequency_analysis_method(da.rename("x").to_dataset(), method=method, group=group).out
+    out = frequency_analysis_method(da.rename("x").to_dataset(), method=method, group=group, op=op, period=period).out
     return out.assign_attrs(units=da.units)
 
 
