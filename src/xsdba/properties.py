@@ -1295,13 +1295,13 @@ def _return_value(
     """
 
     @map_groups(out=[Grouper.PROP], main_only=True)
-    def frequency_analysis_method(ds, *, dim, method):
+    def frequency_analysis_method(ds, *, dim, method, op, period):
         sub = select_resample_op(ds.x, op=op)
         params = fit(sub, dist="genextreme", method=method)
         out = parametric_quantile(params, q=1 - 1.0 / period)
         return out.isel(quantile=0, drop=True).rename("out").to_dataset()
 
-    out = frequency_analysis_method(da.rename("x").to_dataset(), method=method, group=group).out
+    out = frequency_analysis_method(da.rename("x").to_dataset(), method=method, group=group, op=op, period=period).out
     return out.assign_attrs(units=da.units)
 
 
@@ -1349,8 +1349,9 @@ def _spatial_correlogram(
     if dims is None:
         dims = [d for d in da.dims if d != "time"]
 
-    corr = _pairwise_spearman(da, dims)
-    dists, mn, mx = _pairwise_haversine_and_bins(corr.cf["longitude"].values, corr.cf["latitude"].values)
+    with xr.set_options(keep_attrs=True):
+        corr = _pairwise_spearman(da, dims)
+        dists, mn, mx = _pairwise_haversine_and_bins(corr.cf["longitude"].values, corr.cf["latitude"].values)
     dists = xr.DataArray(dists, dims=corr.dims, coords=corr.coords, name="distance")
     if np.isscalar(bins):
         bins = np.linspace(mn * 0.9999, mx * 1.0001, bins + 1)
@@ -1368,24 +1369,26 @@ def _spatial_correlogram(
     )
 
     dists = dists.where(corr.notnull())
+    edges = xr.DataArray(bins, dims=("bin_edges",))
 
-    def _bin_corr(corr, distance):
+    def _bin_corr(corr, distance, edges):
         """Bin and mean."""
-        return stats.binned_statistic(distance.flatten(), corr.flatten(), statistic="mean", bins=bins).statistic
+        return stats.binned_statistic(distance.flatten(), corr.flatten(), statistic="mean", bins=edges).statistic
 
     # (_spatial, _spatial2) -> (_spatial, distance_bins)
     binned = xr.apply_ufunc(
         _bin_corr,
         corr,
         dists,
-        input_core_dims=[["_spatial", "_spatial2"], ["_spatial", "_spatial2"]],
+        edges,
+        input_core_dims=[["_spatial", "_spatial2"], ["_spatial", "_spatial2"], ["bin_edges"]],
         output_core_dims=[["distance_bins"]],
         dask="parallelized",
         vectorize=True,
         output_dtypes=[float],
         dask_gufunc_kwargs={
             "allow_rechunk": True,
-            "output_sizes": {"distance_bins": bins},
+            "output_sizes": {"distance_bins": edges.bin_edges.size - 1},
         },
     )
     binned = binned.assign_coords(distance_bins=centers).rename(distance_bins="distance").assign_attrs(units="").rename("corr")
@@ -1447,9 +1450,9 @@ def _decorrelation_length(
     if dims is None and group is not None:
         dims = [d for d in da.dims if d != group.dim]
 
-    corr = _pairwise_spearman(da, dims)
-
-    dists, _, _ = _pairwise_haversine_and_bins(corr.cf["longitude"].values, corr.cf["latitude"].values, transpose=True)
+    with xr.set_options(keep_attrs=True):
+        corr = _pairwise_spearman(da, dims)
+        dists, _, _ = _pairwise_haversine_and_bins(corr.cf["longitude"].values, corr.cf["latitude"].values, transpose=True)
 
     dists = xr.DataArray(dists, dims=corr.dims, coords=corr.coords, name="distance")
 
