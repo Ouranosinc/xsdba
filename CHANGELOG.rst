@@ -17,6 +17,16 @@ Changelog
     ^^^^^
     * No change.
 
+`Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
+------------------------------------------------------------
+
+Contributors: Pascal Bourgault (:user:`aulemahal`).
+
+Fixes
+^^^^^
+* Fixed property ``return_value`` for dask inputs (:issue:`266`, :pull:`267`).
+
+
 .. _changes_0.6.1:
 
 `v0.6.1 <https://github.com/Ouranosinc/xsdba/tree/0.6.1>`_ (2026-03-03)
