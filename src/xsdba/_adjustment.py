@@ -69,7 +69,11 @@ def _preprocess_dataset(
         ds = _adapt_freq_preprocess(ds, adapt_freq_thresh, None, dim)
 
     else:
-        dummy = xr.full_like(ds["sim"][{d: 0 for d in dim}], np.nan)
+        # pick the dataset with the largest number of dimensions
+        # keep add_dims on the new datasets
+        dim = Grouper.filter_add_dims(dim)
+        ds0 = ds.sim if len(ds.sim.dims) >= len(ds.ref.dims) else ds.ref
+        dummy = xr.full_like(ds0[{d: 0 for d in dim}], np.nan)
         ds = ds.assign(P0_ref=dummy, P0_hist=dummy, pth=dummy)
 
     if rename_hist:
@@ -83,8 +87,8 @@ def _preprocess_dataset(
     hist_q=[Grouper.PROP, "quantiles"],
     scaling=[Grouper.PROP],
     P0_ref=[Grouper.PROP],
-    P0_hist=[Grouper.PROP],
-    pth=[Grouper.PROP],
+    P0_hist=[Grouper.PROP, Grouper.ADD_DIMS],
+    pth=[Grouper.PROP, Grouper.ADD_DIMS],
 )
 def dqm_train(
     ds: xr.Dataset,
@@ -144,7 +148,7 @@ def dqm_train(
         jitter_over_thresh_upper_bnd,
     )
 
-    # Ensure we only reduce on valid dims, allows for extra dims like "realization" on the sim
+    # Ensures extra dimensions are only aggregated in datasets that have them
     ref_dim = Grouper.filter_dim(ds.ref, dim)
     sim_dim = Grouper.filter_dim(ds.hist, dim)
     refn = u.apply_correction(ds.ref, u.invert(ds.ref.mean(ref_dim), kind), kind)
@@ -173,8 +177,8 @@ def dqm_train(
     af=[Grouper.PROP, "quantiles"],
     hist_q=[Grouper.PROP, "quantiles"],
     P0_ref=[Grouper.PROP],
-    P0_hist=[Grouper.PROP],
-    pth=[Grouper.PROP],
+    P0_hist=[Grouper.PROP, Grouper.ADD_DIMS],
+    pth=[Grouper.PROP, Grouper.ADD_DIMS],
 )
 def eqm_train(
     ds: xr.Dataset,
@@ -231,13 +235,12 @@ def eqm_train(
         jitter_over_thresh_upper_bnd,
     )
 
-    # Ensure we only reduce on valid dims, allows for extra dims like "realization" on the sim
+    # Ensures extra dimensions are only aggregated in datasets that have them
     ref_dim = Grouper.filter_dim(ds.ref, dim)
     sim_dim = Grouper.filter_dim(ds.hist, dim)
     ref_q = nbu.quantile(ds.ref, quantiles, ref_dim)
     hist_q = nbu.quantile(ds.hist, quantiles, sim_dim)
     af = u.get_correction(hist_q, ref_q, kind)
-
     return xr.Dataset(
         data_vars={
             "af": af,
@@ -598,7 +601,7 @@ def qm_adjust(
         ds["sim"] = _adapt_freq_preprocess(
             ds[["sim", "P0_ref", "P0_hist", "pth"]],
             adapt_freq_thresh,
-            group=Grouper(group.name),
+            group=Grouper(group.name, add_dims=group.add_dims),
             dim=None,
         ).sim
 
@@ -664,7 +667,7 @@ def dqm_adjust(
         ds["sim"] = _adapt_freq_preprocess(
             ds[["sim", "P0_ref", "P0_hist", "pth"]],
             adapt_freq_thresh,
-            group=Grouper(group.name),
+            group=Grouper(group.name, add_dims=group.add_dims),
             dim=None,
         ).sim
     scaled_sim = u.apply_correction(
@@ -741,7 +744,7 @@ def qdm_adjust(
         ds["sim"] = _adapt_freq_preprocess(
             ds[["sim", "P0_ref", "P0_hist", "pth"]],
             adapt_freq_thresh,
-            group=Grouper(group.name),
+            group=Grouper(group.name, add_dims=group.add_dims),
             dim=None,
         ).sim
 
