@@ -112,6 +112,47 @@ class TestBaseAdjustment:
             BaseAdjustment._check_matching_time_sizes(da, da2)
 
 
+@pytest.mark.slow
+class TestBase:
+    def test_add_dims_error(
+        self,
+        mon_timelonlatseries,
+        timelonlatseries,
+        random,
+    ):
+        """
+        Check the error when `add_dims` is passed for a dimension that is not in the input datasets.
+        """
+        kind, units = "+", "K"
+        u = random.random(100)
+
+        # Define distributions
+        xd = uniform(loc=1, scale=1)
+        yd = uniform(loc=2, scale=2)
+        noise = uniform(loc=0, scale=1e-7)
+
+        # Generate random numbers
+        x = xd.ppf(u)
+        y = yd.ppf(u) + noise.ppf(u)
+
+        # Test train
+        attrs = {"units": units, "kind": kind}
+
+        ref = mon_timelonlatseries(y, attrs=attrs)
+        hist = timelonlatseries(x, attrs=attrs)
+        with pytest.raises(
+            ValueError,
+            match=r"`add_dims` argument needs to be a dimension in one of the input datasets.",
+        ):
+            QuantileDeltaMapping.train(
+                ref,
+                hist,
+                kind=kind,
+                group=Grouper("time.month", add_dims=["dim_not_in_ref_or_hist"]),
+                nquantiles=40,
+            )
+
+
 class TestLoci:
     @pytest.mark.parametrize("group,dec", (["time", 2], ["time.month", 1]))
     def test_time_and_from_ds(self, timelonlatseries, group, dec, tmp_path, random):
@@ -236,6 +277,43 @@ class TestScaling:
 
 @pytest.mark.slow
 class TestDQM:
+    @pytest.mark.parametrize("kind,units", [(ADDITIVE, "K"), (MULTIPLICATIVE, "kg m-2 s-1")])
+    def test_add_dims(self, timelonlatseries, kind, units, random):
+        """
+        Train on
+        hist: U
+        ref: Normal
+
+        Predict on hist to get ref
+        """
+        ns = 10000
+        u = random.random(ns)
+
+        # Define distributions
+        xd = uniform(loc=10, scale=1)
+        yd = norm(loc=12, scale=1)
+
+        # Generate random numbers with u so we get exact results for comparison
+        x = xd.ppf(u)
+        y = yd.ppf(u)
+
+        # Test train
+        attrs = {"units": units, "kind": kind}
+
+        hist = timelonlatseries(x, attrs=attrs).expand_dims(tt=[0, 1]).chunk({"tt": 1})
+        hist = xr.concat([hist.expand_dims(dummy=[0]), hist.expand_dims(dummy=[1])], dim="dummy").chunk({"dummy": -1})
+        ref = timelonlatseries(y, attrs=attrs).expand_dims(tt=[0, 1]).chunk({"tt": 1})
+
+        group = Grouper("time.dayofyear", 31, add_dims=["dummy"])
+        DQM = DetrendedQuantileMapping.train(
+            ref,
+            hist,
+            kind=kind,
+            group=group,
+            nquantiles=50,
+        )
+        DQM.adjust(hist, interp="linear")
+
     @pytest.mark.parametrize("kind,units", [(ADDITIVE, "K"), (MULTIPLICATIVE, "kg m-2 s-1")])
     def test_quantiles(self, timelonlatseries, kind, units, random):
         """
@@ -419,6 +497,45 @@ class TestDQM:
         dqm = DetrendedQuantileMapping.train(ref, hist, kind="*", group=group, adapt_freq_thresh="1 kg m-2 d-1")
         dqm.adjust(sim)
 
+    @pytest.mark.parametrize("group", ["time", "time.month"])
+    def test_adapt_freq_add_dims(self, cannon_2015_rvs, random, group):
+        np.random.seed(42)
+        ref, hist, _ = cannon_2015_rvs(15000, random=random)
+        hist = hist.copy()
+        # remove values below 1 kg m-2 d-1 thresh
+        ref, hist = (convert_units_to(da, "kg m-2 d-1").expand_dims(point=[0, 1]).clip(2, None) for da in [ref, hist])
+        # second site with a 10 extra values below thresh in hist, and 5 zero values in ref
+        itimes = np.arange(0, 1000, 100)
+        hist[{"time": itimes, "point": 1}] = np.arange(len(itimes)) / (len(itimes))  # stay below thresh
+
+        ref[{"time": range(5)}] = 0
+
+        # bare-adapt
+        adapted, _, dP0 = adapt_freq(ref, hist, thresh="1 kg m-2 d-1", group=group)
+
+        # dqm = DetrendedQuantileMapping.train(ref, hist, kind="*", group=Grouper(group), adapt_freq_thresh="1 kg m-2 d-1")
+        dqm = DetrendedQuantileMapping.train(ref, hist, kind="*", group=Grouper(group, add_dims=["point"]), adapt_freq_thresh="1 kg m-2 d-1")
+        P0_hist, P0_ref = dqm.ds.P0_hist, dqm.ds.P0_ref
+        dP0_tr = xr.where(P0_hist == 0, np.nan, (P0_hist - P0_ref) / P0_hist)
+
+        # no adjustment, just adapt-freq
+        dqm.ds["af"] = xr.where(dqm.ds["af"].isnull(), 1, 1)
+        dqm.ds["scaling"] = xr.where(dqm.ds["scaling"].isnull(), 1, 1)
+        adj_only_adapt = dqm.adjust(hist)
+
+        # bare adapt-freq and adapt-freq from DQM have the same dP0
+        np.testing.assert_allclose(dP0_tr.transpose("point", ...).values, dP0.transpose("point", ...).values)
+        # check that values supposed to be changed were changed
+        # even for values where nothing should happen, with add_dims, it's possible there is a weak change, but
+        # it's small, a small tolerance is accepted in difference
+        atol = 1e-6
+        cond1 = np.abs(adapted.values[1, itimes] - hist.values[1, itimes]) < atol
+        cond2 = np.abs(adj_only_adapt.transpose(*adapted.dims).values[1, itimes] - hist.values[1, itimes]) < atol
+        np.testing.assert_allclose(cond1, cond2)
+
+        # on point 0, nothing should change
+        np.testing.assert_allclose(hist.values[0, :], adj_only_adapt.transpose(*adapted.dims).values[0, :])
+
     def test_adapt_freq_time_explicit(self, cannon_2015_rvs, random):
         ref, hist, _ = cannon_2015_rvs(15000, random=random)
         thr = "1 kg m-2/d"
@@ -526,7 +643,7 @@ class TestQDM:
             hist = hist.expand_dims(site=[0, 1, 2, 3, 4]).drop_vars("site")
             sim = sim.expand_dims(site=[0, 1, 2, 3, 4]).drop_vars("site")
 
-        QDM = QuantileDeltaMapping.train(ref, hist, kind=kind, group="time.month", nquantiles=40, add_dims=["site"])
+        QDM = QuantileDeltaMapping.train(ref, hist, kind=kind, group="time.month", nquantiles=40, add_dims=["site"] if add_dims else None)
         p = QDM.adjust(sim, interp="linear" if kind == "+" else "nearest")
 
         q = QDM.ds.coords["quantiles"]
