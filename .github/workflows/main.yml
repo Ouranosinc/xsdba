@@ -84,7 +84,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install Eigen3 (SBCK)
-        if: ${{ matrix.eigen }}
+        if: ${{ matrix.eigen3 }}
         run: |
           sudo apt-get update
           sudo apt-get install libeigen3-dev
@@ -109,7 +109,7 @@ jobs:
       - name: Report Coverage
         uses: coverallsapp/github-action@648a8eb78e6d50909eff900e4ec85cab4524a45b # v2.3.6
         with:
-          flag-name: run-${{ matrix.python-version }}-pypi-eigen=${{ matrix.eigen }}
+          flag-name: run-${{ matrix.python-version }}-pypi-eigen=${{ matrix.eigen3 }}
           parallel: true
 
   test-conda:
