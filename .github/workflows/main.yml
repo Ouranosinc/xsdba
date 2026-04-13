@@ -61,7 +61,7 @@ jobs:
           python -m tox -e lint
 
   test-pypi:
-    name: Test with Python${{ matrix.python-version }} (tox, ${{ matrix.os }}, eigen=${{ matrix.eigen }})
+    name: Test with Python${{ matrix.python-version }} (tox, ${{ matrix.os }}, eigen3=${{ matrix.eigen3 }})
     needs: lint
     runs-on: ${{ matrix.os }}
     strategy:
