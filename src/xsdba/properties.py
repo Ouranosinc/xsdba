@@ -1115,7 +1115,7 @@ def _relative_frequency(
     if group.prop != "group":  # change the time resolution if necessary
         cond = cond.groupby(group.name)
         # length of the groupBy groups
-        length = np.array([len(v) for k, v in cond.groups.items()])
+        length = np.array([len(v) for v in cond.groups.values()])
         for _ in range(da.ndim - 1):  # add empty dimension(s) to match input
             length = np.expand_dims(length, axis=-1)
     # count days with the condition and divide by total nb of days
