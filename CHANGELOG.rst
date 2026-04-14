@@ -6,7 +6,7 @@ Changelog
 `Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
 ------------------------------------------------------------
 
-Contributors: Gabriel Rondeau-Genesse (:user:`RondeauG`).
+Contributors: Gabriel Rondeau-Genesse (:user:`RondeauG`), Pascal Bourgault (:user:`aulemahal`).
 
 Changes
 ^^^^^^^
@@ -15,16 +15,6 @@ Changes
 Breaking changes
 ^^^^^^^^^^^^^^^^
 * Default values for `frac` and `power` in ``xsdba.adjustment.ExtremeValues`` have been changed to 0.7, and 3, respectively. (:pull:`262`).
-
-Fixes
-^^^^^
-* No change.
-
-
-`Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
-------------------------------------------------------------
-
-Contributors: Pascal Bourgault (:user:`aulemahal`).
 
 Fixes
 ^^^^^
