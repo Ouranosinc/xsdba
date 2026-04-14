@@ -24,7 +24,7 @@ Contributors: Pascal Bourgault (:user:`aulemahal`).
 
 Fixes
 ^^^^^
-* Fixed property ``return_value`` for dask inputs (:issue:`266`, :pull:`267`).
+* Fixed property ``return_value`` and ``decorrelation_length`` for dask inputs (:issue:`266`, :pull:`267`).
 
 
 .. _changes_0.6.1:

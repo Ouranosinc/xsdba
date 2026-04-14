@@ -1308,6 +1308,17 @@ def _return_value(
 return_value = StatisticalProperty(identifier="return_value", aspect="temporal", compute=_return_value)
 
 
+def _bin_correlations(corr, distance, edges):
+    """Bin and mean."""
+    mask_nan = ~np.isnan(corr)
+    if mask_nan.any():
+        binned_corr = stats.binned_statistic(distance[mask_nan], corr[mask_nan], statistic="mean", bins=edges)
+        stat = binned_corr.statistic
+    else:
+        stat = np.nan * stats.binned_statistic([0], [0], statistic="mean", bins=edges).statistic
+    return stat
+
+
 @parse_group
 def _spatial_correlogram(
     da: xr.DataArray,
@@ -1371,13 +1382,9 @@ def _spatial_correlogram(
     dists = dists.where(corr.notnull())
     edges = xr.DataArray(bins, dims=("bin_edges",))
 
-    def _bin_corr(corr, distance, edges):
-        """Bin and mean."""
-        return stats.binned_statistic(distance.flatten(), corr.flatten(), statistic="mean", bins=edges).statistic
-
     # (_spatial, _spatial2) -> (_spatial, distance_bins)
     binned = xr.apply_ufunc(
-        _bin_corr,
+        _bin_correlations,
         corr,
         dists,
         edges,
@@ -1459,19 +1466,17 @@ def _decorrelation_length(
     trans_dists = xr.DataArray(dists.T, dims=corr.dims, coords=corr.coords, name="distance")
 
     if np.isscalar(bins):
-        bin_array = np.linspace(0, radius, bins + 1)
-    elif isinstance(bins, np.ndarray):
-        bin_array = bins
-    else:
+        bins = np.linspace(0, radius, bins + 1)
+    elif not isinstance(bins, np.ndarray):
         raise ValueError("bins must be a scalar or a numpy array.")
 
     if uses_dask(corr):
         dists = dists.chunk()
         trans_dists = trans_dists.chunk()
 
-    w = np.diff(bin_array)
+    w = np.diff(bins)
     centers = xr.DataArray(
-        bin_array[:-1] + w / 2,
+        bins[:-1] + w / 2,
         dims=("distance_bins",),
         attrs={
             "units": "km",
@@ -1484,22 +1489,15 @@ def _decorrelation_length(
     ds = ds.where(ds.distance < radius)
     ds = ds.where(ds.distance2 < radius)
 
-    def _bin_corr(_corr, _distance):
-        """Bin and mean."""
-        mask_nan = ~np.isnan(_corr)
-        if mask_nan.any():
-            binned_corr = stats.binned_statistic(_distance[mask_nan], _corr[mask_nan], statistic="mean", bins=bin_array)
-            stat = binned_corr.statistic
-        else:
-            stat = np.nan * stats.binned_statistic([0], [0], statistic="mean", bins=bin_array).statistic
-        return stat
+    edges = xr.DataArray(bins, dims=("bin_edges",))
 
     # (_spatial, _spatial2) -> (_spatial, distance_bins)
     binned = (
         xr.apply_ufunc(
-            _bin_corr,
+            _bin_correlations,
             ds.corr,
             ds.distance,
+            edges,
             input_core_dims=[["_spatial2"], ["_spatial2"]],
             output_core_dims=[["distance_bins"]],
             dask="parallelized",
@@ -1507,7 +1505,7 @@ def _decorrelation_length(
             output_dtypes=[float],
             dask_gufunc_kwargs={
                 "allow_rechunk": True,
-                "output_sizes": {"distance_bins": len(bin_array) - 1},
+                "output_sizes": {"distance_bins": edges.bin_edges.size - 1},
             },
         )
         .rename("corr")
