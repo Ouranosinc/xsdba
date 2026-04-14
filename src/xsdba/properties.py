@@ -1498,7 +1498,7 @@ def _decorrelation_length(
             ds.corr,
             ds.distance,
             edges,
-            input_core_dims=[["_spatial2"], ["_spatial2"]],
+            input_core_dims=[["_spatial2"], ["_spatial2"], ["bin_edges"]],
             output_core_dims=[["distance_bins"]],
             dask="parallelized",
             vectorize=True,
@@ -1511,7 +1511,6 @@ def _decorrelation_length(
         .rename("corr")
         .to_dataset()
     )
-
     binned = binned.assign_coords(distance_bins=centers).rename(distance_bins="distance").assign_attrs(units="")
 
     closest = abs(binned.corr - thresh).idxmin(dim="distance")
