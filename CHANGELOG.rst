@@ -46,16 +46,7 @@ Fixes
 
 Internal changes
 ^^^^^^^^^^^^^^^^
-* Replace `np.in1d` with `np.isin`. (:issue:`260`, ::pull:`261`).
 * Updated pre-commit hooks and ignored `ruff` rule ``D420`` due to a bug in its implementation. (:pull:`263`).
-* Updated the cookiecutter template to the latest version. (:pull:`276`):
-    * Migrated developement-based `optional-dependencies` to `dependency-groups`.
-    * Sets token-based workflows to run within an `automation` environment.
-    * Updated and synchornized dependencies.
-    * `pre-commit` has been replaced by `prek`.
-    * `Makefile` now handles some dependency installation logic.
-    * `tox.ini` has been replaced by `tox.toml` with v4.52.0 standards.
-
 
 .. _changes_0.6.0:
 
