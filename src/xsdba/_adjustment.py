@@ -1031,7 +1031,7 @@ def extremes_train(
     # Outputs of map_blocks must have dimensions.
     if not isinstance(thresh, xr.DataArray):
         thresh = xr.DataArray(thresh)
-    thresh = thresh.expand_dims(group=[1])
+    # thresh = thresh.expand_dims(group=[1])
     return xr.Dataset(
         {"px_hist": px_hist, "af": af, "thresh": thresh},
         coords={"quantiles": quantiles},
