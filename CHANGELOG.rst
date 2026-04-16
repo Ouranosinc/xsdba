@@ -19,6 +19,15 @@ Fixes
 ^^^^^
 * Fixed property ``return_value`` and ``decorrelation_length`` for dask inputs (:issue:`266`, :pull:`267`).
 
+Internal changes
+^^^^^^^^^^^^^^^^
+* Updated the cookiecutter template to the latest version. (:pull:`276`):
+    * Migrated developement-based `optional-dependencies` to `dependency-groups`.
+    * Sets token-based workflows to run within an `automation` environment.
+    * Updated and synchornized dependencies.
+    * `pre-commit` has been replaced by `prek`.
+    * `Makefile` now handles some dependency installation logic.
+    * `tox.ini` has been replaced by `tox.toml` with v4.52.0 standards.
 
 .. _changes_0.6.1:
 
