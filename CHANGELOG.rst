@@ -56,6 +56,7 @@ Internal changes
     * `Makefile` now handles some dependency installation logic.
     * `tox.ini` has been replaced by `tox.toml` with v4.52.0 standards.
 
+
 .. _changes_0.6.0:
 
 `v0.6.0 <https://github.com/Ouranosinc/xsdba/tree/0.6.0>`_ (2026-02-11)
