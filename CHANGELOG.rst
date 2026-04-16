@@ -2,15 +2,14 @@
 Changelog
 =========
 
-
 `Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
 ------------------------------------------------------------
 
-Contributors: Gabriel Rondeau-Genesse (:user:`RondeauG`), Pascal Bourgault (:user:`aulemahal`).
+Contributors: Gabriel Rondeau-Genesse (:user:`RondeauG`), Pascal Bourgault (:user:`aulemahal`), Éric Dupuis (:user:`coxipi`).
 
 Changes
 ^^^^^^^
-* No change.
+* New example in notebook `advanced_example.ipynb` showing how to use spectral utils (``xsdba.processing.spectral_filter`` and ``xsdba.properties.spectral_variance``). (:issue:`247`,:pull:`259`).
 
 Breaking changes
 ^^^^^^^^^^^^^^^^
@@ -20,6 +19,15 @@ Fixes
 ^^^^^
 * Fixed property ``return_value`` and ``decorrelation_length`` for dask inputs (:issue:`266`, :pull:`267`).
 
+Internal changes
+^^^^^^^^^^^^^^^^
+* Updated the cookiecutter template to the latest version. (:pull:`276`):
+    * Migrated developement-based `optional-dependencies` to `dependency-groups`.
+    * Sets token-based workflows to run within an `automation` environment.
+    * Updated and synchornized dependencies.
+    * `pre-commit` has been replaced by `prek`.
+    * `Makefile` now handles some dependency installation logic.
+    * `tox.ini` has been replaced by `tox.toml` with v4.52.0 standards.
 
 .. _changes_0.6.1:
 
@@ -39,13 +47,6 @@ Fixes
 Internal changes
 ^^^^^^^^^^^^^^^^
 * Updated pre-commit hooks and ignored `ruff` rule ``D420`` due to a bug in its implementation. (:pull:`263`).
-* Updated the cookiecutter template to the latest version. (:pull:`276`):
-    * Migrated developement-based `optional-dependencies` to `dependency-groups`.
-    * Sets token-based workflows to run within an `automation` environment.
-    * Updated and synchornized dependencies.
-    * `pre-commit` has been replaced by `prek`.
-    * `Makefile` now handles some dependency installation logic.
-    * `tox.ini` has been replaced by `tox.toml` with v4.52.0 standards.
 
 .. _changes_0.6.0:
 
