@@ -1,6 +1,6 @@
 {
   "template": "https://github.com/Ouranosinc/cookiecutter-pypackage",
-  "commit": "66708e5e15f00caaaaf1748bf0a7e041bc5c6243",
+  "commit": "cb8b26cb78a428f6ce447a0ab1b08c0c171ad5aa",
   "checkout": null,
   "context": {
     "cookiecutter": {
@@ -23,7 +23,7 @@
       "generated_with_cruft": "y",
       "__gh_slug": "https://github.com/Ouranosinc/xsdba",
       "_template": "https://github.com/Ouranosinc/cookiecutter-pypackage",
-      "_commit": "66708e5e15f00caaaaf1748bf0a7e041bc5c6243"
+      "_commit": "cb8b26cb78a428f6ce447a0ab1b08c0c171ad5aa"
     }
   },
   "directory": null

@@ -2,8 +2,9 @@
 # - Contents: Read and Write
 # - Metadata: Read-Only
 # - Pull Requests: Read and Write
+# This workflow also requires a dedicated environment to ensure that credentials are safely accessed ("automation").
 
-name: "Bump Patch Version"
+name: "Bump Version"
 
 on:
   push:
@@ -33,7 +34,7 @@ on:
       - environment-dev.yml
       - pyproject.toml
       - tests/**.py
-      - tox.ini
+      - tox.toml
       - src/xsdba/__init__.py
   workflow_dispatch:
 
@@ -42,7 +43,9 @@ permissions:
 
 jobs:
   bump_patch_version:
+    name: Bump build/patch version
     runs-on: ubuntu-latest
+    environment: automation
     permissions:
       actions: read
     strategy:
@@ -73,7 +76,7 @@ jobs:
           persist-credentials: false
           token: ${{ steps.token_generator.outputs.token }}
 
-      - name: Set up Python3
+      - name: Set up Python${{ matrix.python-version }}
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: ${{ matrix.python-version }}

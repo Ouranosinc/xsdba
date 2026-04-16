@@ -28,6 +28,10 @@ Fixes
 
 Contributors: Éric Dupuis (:user:`coxipi`), Trevor James Smith (:user:`Zeitsperre`).
 
+Changes
+^^^^^^^
+* Development dependencies now follow the `dependency-groups` standard (`PEP 735 <https://peps.python.org/pep-0735/>`_). (:pull:`276`).
+
 Fixes
 ^^^^^
 * Replace deprecated `numpy.in1d` call with `numpy.isin`. (:issue:`260`, :pull:`261`).
@@ -35,6 +39,13 @@ Fixes
 Internal changes
 ^^^^^^^^^^^^^^^^
 * Updated pre-commit hooks and ignored `ruff` rule ``D420`` due to a bug in its implementation. (:pull:`263`).
+* Updated the cookiecutter template to the latest version. (:pull:`276`):
+    * Migrated developement-based `optional-dependencies` to `dependency-groups`.
+    * Sets token-based workflows to run within an `automation` environment.
+    * Updated and synchornized dependencies.
+    * `pre-commit` has been replaced by `prek`.
+    * `Makefile` now handles some dependency installation logic.
+    * `tox.ini` has been replaced by `tox.toml` with v4.52.0 standards.
 
 .. _changes_0.6.0:
 

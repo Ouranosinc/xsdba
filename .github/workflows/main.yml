@@ -55,19 +55,24 @@ jobs:
         with:
           path: |
            .tox
-          key: ${{ hashFiles('pyproject.toml', 'tox.ini') }}-lint
+          key: ${{ hashFiles('pyproject.toml', 'tox.toml') }}-lint
       - name: Run linting suite
         run: |
           python -m tox -e lint
 
   test-pypi:
-    name: Test with Python${{ matrix.python-version }} (tox, ${{ matrix.os }})
+    name: Test with Python${{ matrix.python-version }} (tox, ${{ matrix.os }}, eigen3=${{ matrix.eigen3 }})
     needs: lint
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ 'ubuntu-latest' ]
         python-version: [ "3.10", "3.11", "3.12", "3.13", "3.14" ]
+        eigen3: [ false ]
+        include:
+          - os: 'ubuntu-latest'
+            python-version: "3.12"
+            eigen3: true
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@20cf305ff2072d973412fa9b1e3a4f227bda3c76 # v2.14.0
@@ -79,7 +84,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install Eigen3 (SBCK)
-        if: ${{ matrix.python-version == '3.11' && matrix.os == 'ubuntu-latest' }}
+        if: ${{ matrix.eigen3 }}
         run: |
           sudo apt-get update
           sudo apt-get install libeigen3-dev
@@ -95,15 +100,17 @@ jobs:
         uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
         with:
           path: .tox
-          key: ${{ matrix.os }}-Python${{ matrix.python-version }}-${{ hashFiles('pyproject.toml', 'tox.ini') }}
+          key: ${{ matrix.os }}-Python${{ matrix.python-version }}-${{ hashFiles('pyproject.toml', 'tox.toml') }}
       - name: Test with tox
         run: |
           python -m tox
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          COVERALLS_FLAG_NAME: run-${{ matrix.python-version }}
-          COVERALLS_PARALLEL: true
-          COVERALLS_SERVICE_NAME: github
+          EIGEN3: ${{ matrix.eigen3 }}
+      - name: Report Coverage
+        uses: coverallsapp/github-action@648a8eb78e6d50909eff900e4ec85cab4524a45b # v2.3.6
+        with:
+          flag-name: run-${{ matrix.python-version }}-pypi-eigen=${{ matrix.eigen3 }}
+          parallel: true
 
   test-conda:
     name: Test with Python${{ matrix.python-version }} (Anaconda, ${{ matrix.os }})
