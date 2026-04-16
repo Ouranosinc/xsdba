@@ -6,7 +6,7 @@ Changelog
 `Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
 ------------------------------------------------------------
 
-Contributors: Gabriel Rondeau-Genesse (:user:`RondeauG`).
+Contributors: Gabriel Rondeau-Genesse (:user:`RondeauG`), Pascal Bourgault (:user:`aulemahal`).
 
 Changes
 ^^^^^^^
@@ -18,7 +18,7 @@ Breaking changes
 
 Fixes
 ^^^^^
-* No change.
+* Fixed property ``return_value`` and ``decorrelation_length`` for dask inputs (:issue:`266`, :pull:`267`).
 
 
 .. _changes_0.6.1:
