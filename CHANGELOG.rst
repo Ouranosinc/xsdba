@@ -5,19 +5,48 @@ Changelog
 `Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
 ------------------------------------------------------------
 
-Contributors:  Éric Dupuis (:user:`coxipi`).
+Contributors: Gabriel Rondeau-Genesse (:user:`RondeauG`), Pascal Bourgault (:user:`aulemahal`).
 
 Changes
 ^^^^^^^
 * New example in notebook `advanced_example.ipynb` showing how to use spectral utils (``xsdba.processing.spectral_filter`` and ``xsdba.properties.spectral_variance``). (:issue:`247`,:pull:`259`).
 
+Breaking changes
+^^^^^^^^^^^^^^^^
+* Default values for `frac` and `power` in ``xsdba.adjustment.ExtremeValues`` have been changed to 0.7, and 3, respectively. (:pull:`262`).
+
 Fixes
 ^^^^^
-* No change.
+* Fixed property ``return_value`` and ``decorrelation_length`` for dask inputs (:issue:`266`, :pull:`267`).
 
 Internal changes
 ^^^^^^^^^^^^^^^^
-* Replace `np.in1d` with `np.isin`. (:issue:`260`, ::pull:`261`).
+* Updated the cookiecutter template to the latest version. (:pull:`276`):
+    * Migrated developement-based `optional-dependencies` to `dependency-groups`.
+    * Sets token-based workflows to run within an `automation` environment.
+    * Updated and synchornized dependencies.
+    * `pre-commit` has been replaced by `prek`.
+    * `Makefile` now handles some dependency installation logic.
+    * `tox.ini` has been replaced by `tox.toml` with v4.52.0 standards.
+
+.. _changes_0.6.1:
+
+`v0.6.1 <https://github.com/Ouranosinc/xsdba/tree/0.6.1>`_ (2026-03-03)
+-----------------------------------------------------------------------
+
+Contributors: Éric Dupuis (:user:`coxipi`), Trevor James Smith (:user:`Zeitsperre`).
+
+Changes
+^^^^^^^
+* Development dependencies now follow the `dependency-groups` standard (`PEP 735 <https://peps.python.org/pep-0735/>`_). (:pull:`276`).
+
+Fixes
+^^^^^
+* Replace deprecated `numpy.in1d` call with `numpy.isin`. (:issue:`260`, :pull:`261`).
+
+Internal changes
+^^^^^^^^^^^^^^^^
+* Updated pre-commit hooks and ignored `ruff` rule ``D420`` due to a bug in its implementation. (:pull:`263`).
 
 .. _changes_0.6.0:
 
@@ -30,6 +59,9 @@ Changes
 ^^^^^^^
 * `numpy` >=1.26 and `numba` >=0.58.1 are now required. (:pull:`231`).
 * `xsdba` now officially supports Python 3.14 and `pandas` >=3.0. (:issue:`251`, ::pull:`252`).
+* ``xsdba.processing.to_additive_space`` option `clip_next_to_bounds` was changed to an optional string with modes: "strict"  and "permissive".
+  The "permissive" mode allows to reduce a larger range of a variable `[lower-a, upper+b]` to a smaller range `]lower, upper[`.
+  The strict mode only allows to change closed bounds `[lower, upper]` to open bounds  `]lower, upper[` (to ensure non-singular behaviour with log / logit transforms). (:pull:`194`).
 
 Fixes
 ^^^^^
@@ -41,6 +73,7 @@ Fixes
 * ``xsdba.processing.spectral_filter`` now works with a `lambda_long` and `lambda_short` that are not `None`. (:pull:`220`).
 * Prepend history of operations within dataset attributes instead of appending them. (:pull:`238`).
 * ``xsdba._processing._adapt_freq`` now avoids inserting nans. This was solved using `(dP0 <= 0)| (dP0.isnull())` and not `dP0 < 0` as a condition. (:pull:`239`, :issue:`248`, :pull:`249`).
+* More edge cases and compatibility with `numpy <2.0` were fixed  to ensure ``xsdba.processing.to_additive_space`` does not yield singular values in the log / logit transforms in relation with the machine resolution. (:pull:`194`).
 * ``xsdba.properties.decorrelation_length`` now handles all-nan slices correctly. (:issue:`255`, :pull:`256`).
 
 Internal changes
