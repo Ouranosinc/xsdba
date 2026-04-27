@@ -28,16 +28,16 @@ from .units import convert_units_to
 from .utils import _fitfunc_1d
 
 
-def _adapt_freq_preprocess(ds, adapt_freq_thresh, group: Grouper | None, dim: str | None):
+def _adapt_freq_preprocess(ds, adapt_freq_thresh, group: Grouper | None, dim: str | None, quantiles: np.ndarray | None = None):
     if adapt_freq_thresh is None:
         return ds
     if (group is None) ^ (dim is None) is False:
         raise ValueError("Either `group` or `dim` must be None.")
     thresh = convert_units_to(adapt_freq_thresh, ds.sim)
     if group:
-        out = _adapt_freq(ds, group=group, thresh=thresh).rename({"sim_ad": "sim"})
+        out = _adapt_freq(ds, group=group, thresh=thresh, quantiles=quantiles).rename({"sim_ad": "sim"})
     else:
-        out = _adapt_freq.func(ds, dim=dim, thresh=thresh).rename({"sim_ad": "sim"})
+        out = _adapt_freq.func(ds, dim=dim, thresh=thresh, quantiles=quantiles).rename({"sim_ad": "sim"})
     ds = ds.assign({v: out[v] for v in out.data_vars})
     # `P0_ref` and `P0_hist` give enough information
     ds = ds.drop_vars("dP0")
@@ -51,6 +51,7 @@ def _preprocess_dataset(
     jitter_under_thresh_value: str | None = None,
     jitter_over_thresh_value: str | None = None,
     jitter_over_thresh_upper_bnd: str | None = None,
+    quantiles: np.ndarray | None = None,
 ):
     dim = dim if isinstance(dim, list) else [dim]
     # uniformize the notation, change back at the end
@@ -66,7 +67,7 @@ def _preprocess_dataset(
         ds["sim"] = jitter_over_thresh(ds.sim, jitter_over_thresh_value, jitter_over_thresh_upper_bnd)
 
     if adapt_freq_thresh:
-        ds = _adapt_freq_preprocess(ds, adapt_freq_thresh, None, dim)
+        ds = _adapt_freq_preprocess(ds, adapt_freq_thresh, None, dim, quantiles)
 
     else:
         dummy = xr.full_like(ds["sim"][{d: 0 for d in dim}], np.nan)
@@ -142,6 +143,7 @@ def dqm_train(
         jitter_under_thresh_value,
         jitter_over_thresh_value,
         jitter_over_thresh_upper_bnd,
+        quantiles,
     )
 
     # Ensure we only reduce on valid dims, allows for extra dims like "realization" on the sim
