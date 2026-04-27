@@ -1,6 +1,69 @@
 [build-system]
-requires = ["flit_core >=3.11.0,<4"]
+requires = ["flit_core >=3.12.0,<4"]
 build-backend = "flit_core.buildapi"
+
+[dependency-groups]
+lint = [
+  # Linting tools
+  "codespell >=2.4.2",
+  "deptry >=0.25.1",
+  "flake8 >=7.3.0",
+  "flake8-rst-docstrings >=0.4.0",
+  "mypy >=1.20.0",
+  "numpydoc >=1.10.0",
+  "pylint >=4.0.4",
+  "ruff >=0.15.9",
+  "vulture >=2.14",
+  "yamllint >=1.38.0"
+]
+io = [
+  "h5netcdf",
+  "h5py",
+  "pooch >=1.8.0"
+]
+test = [
+  # Base testing support
+  "coverage[toml] >=7.13.4",
+  "pytest >=9.0.2",
+  "pytest-cov >=7.0.0",
+  "pytest-xdist >=3.2.0",
+  "xdoctest >=1.1.5",
+  {include-group = "io"}
+]
+docs = [
+  # Documentation and example support
+  "furo >=2023.9.10",
+  "ipykernel",
+  "ipython >=8.10.0",
+  "jupyter_client",
+  "nbsphinx >=0.9.8", # requires system-installed pandoc
+  "nc-time-axis >=1.4.1",
+  "pygments",
+  "sphinx >=8.2.0",
+  "sphinx-autobuild >=2024.4.16",
+  "sphinx-autodoc-typehints >=3.1.0",
+  "sphinx-codeautolink >=0.16.2",
+  "sphinx-copybutton >=0.5.2",
+  "sphinx-intl",
+  "sphinx-mdinclude",
+  "sphinxcontrib-bibtex",
+  {include-group = "io"}
+]
+tox = [
+  "tox >=4.52.0",
+  "tox-gh >=1.7.1"
+]
+dev = [
+  # Development and testing tools
+  "bump-my-version >=1.3.0",
+  "pip >=26.0.1",
+  "prek >=0.3.0",
+  "watchdog >=6.0.0",
+  {include-group = "docs"},
+  {include-group = "lint"},
+  {include-group = "test"},
+  {include-group = "tox"}
+]
 
 [project]
 name = "xsdba"
@@ -45,6 +108,7 @@ dependencies = [
   "dask[array] >=2024.8.1",
   "filelock >=3.14.0",
   "jsonpickle >=3.1.0",
+  "matplotlib >=3.8.0",
   "numba >=0.58.1",
   "numpy >=1.26.0",
   "packaging",
@@ -53,60 +117,11 @@ dependencies = [
   "rich >=13.7.0",
   "scipy >=1.11.0",
   "statsmodels >=0.14.2",
-  "typer >=0.16.0",
+  "typer >=0.24.1",
   "xarray >=2023.11.0"
 ]
 
 [project.optional-dependencies]
-dev = [
-  # Dev tools and testing
-  "bump-my-version >=1.2.3",
-  "codespell >=2.4.1",
-  "coverage >=7.5.0",
-  "deptry >=0.23.1",
-  "flake8 >=7.3.0",
-  "flake8-rst-docstrings >=0.4.0",
-  "flit >=3.11.0,<4.0",
-  "h5netcdf >=1.3.0",
-  "h5py >=3.12.1",
-  "mypy >=1.18.2",
-  "matplotlib >=3.6.0",
-  "numpydoc >=1.9.0",
-  "pip >=25.2",
-  "pooch >=1.8.0",
-  "pre-commit >=3.5.0",
-  "pytest >=9.0.0",
-  "pytest-cov >=5.0.0",
-  "pytest-xdist >=3.2.0",
-  "ruff >=0.13.3",
-  "tox >=4.30.3",
-  "vulture >=2.14",
-  "watchdog >=4.0.0",
-  "xdoctest >=1.1.5",
-  "yamllint >=1.35.1"
-]
-docs = [
-  # Documentation and examples
-  "furo >=2023.9.10",
-  "h5netcdf >=1.5.0",
-  "h5py >=3.12.1",
-  "ipykernel",
-  "ipython >=8.5.0",
-  "jupyter_client",
-  "matplotlib >=3.8.0",
-  "nbsphinx >=0.9.8",
-  "nc-time-axis >=1.4.1",
-  "pooch >=1.8.0",
-  "pygments",
-  "sphinx >=8.2.2", # pinned until nbsphinx supports sphinx 8.2
-  "sphinx-autobuild >=2024.4.16",
-  "sphinx-autodoc-typehints >=3.1.0",
-  "sphinx-codeautolink>=0.16.2",
-  "sphinx-copybutton",
-  "sphinx-intl",
-  "sphinx-mdinclude",
-  "sphinxcontrib-bibtex"
-]
 extras = [
   "fastnanquantile >=0.0.2",
   "POT >=0.9.4",
@@ -116,7 +131,7 @@ sbck = [
   # The sbck dependency requires the "eigen3"/"libeigen3-dev" package to be installed on the system.
   "sbck >=1.4.2"
 ]
-all = ["xsdba[dev]", "xsdba[docs]", "xsdba[extras]", "xsdba[sbck]"]
+all = ["xsdba[extras]", "xsdba[sbck]"]
 
 [project.scripts]
 xsdba = "xsdba.cli:app"
@@ -131,7 +146,7 @@ xsdba = "xsdba.cli:app"
 [tool]
 
 [tool.bumpversion]
-current_version = "0.5.1-dev.11"
+current_version = "0.6.2-dev.2"
 commit = true
 commit_args = "--no-verify"
 tag = false
@@ -174,9 +189,9 @@ replace = """\
 [[tool.bumpversion.files]]
 filename = "CITATION.cff"
 include_bumps = ["release"]
-search = "version: \"[0-9]+\\.[0-9]+\\.[0-9]\""
+search = "^version: \"[0-9]+\\.[0-9]+\\.[0-9]\""
 regex = true
-replace = "version: {new_version}"
+replace = "version: \"{new_version}\""
 
 [[tool.bumpversion.files]]
 filename = "src/xsdba/__init__.py"
@@ -205,7 +220,7 @@ values = [
 
 [tool.codespell]
 skip = '*docs/_build,*docs/references.bib,*.gz,*.png,*.svg,*.whl'
-ignore-words-list = "astroid,hanel,indx,lond,ot,socio-economic"
+ignore-words-list = "astroid,hanel,indx,lond,ot,socio-economic,thirdparty"
 
 [tool.coverage.paths]
 source = ["src/xsdba/", "*/site-packages/xsdba/"]
@@ -216,9 +231,7 @@ relative_files = true
 source = ["xsdba"]
 
 [tool.deptry]
-extend_exclude = ["docs"]
 ignore_notebooks = true
-pep621_dev_dependency_groups = ["all", "dev", "docs", "extras", "sbck"]
 
 [tool.deptry.package_module_name_map]
 "scikit-learn" = "sklearn"
@@ -248,7 +261,7 @@ include = [
   "docs/make.bat",
   "src/xsdba",
   "tests/*.py",
-  "tox.ini"
+  "tox.toml"
 ]
 exclude = [
   "*.py[co]",
@@ -369,20 +382,20 @@ ignore = [
   "D205", # blank-line-after-summary
   "D400", # ends-in-period
   "D401", # non-imperative-mood
-  # WIP xsdba
-  "E402", # top import module
-  "E712", # use cond == False
-  "D200",
-  "FLY002",
-  "N801",
-  "N803",
-  "N806",
-  "PTH123",
-  "S310",
-  "PERF401", # don't force list comprehensions
-  "PERF203", # allow try/except in loop
-  "E501", # line too long
-  "W505" # doc line too long
+  # The following is disabled due to a bug in ruff 0.15.4 (#23682)
+  "D420",
+  # The following are disabled until xsdba code base is compliant
+  "E402", # module-import-not-at-top-of-file
+  "E501", # line-too-long
+  "E712", # true-false-comparison
+  "N801", # invalid-class-name
+  "N803", # invalid-argument-name
+  "N806", # non-lowercase-variable-in-function
+  "PERF203", # try-except-in-loop
+  "PERF401", # manual-list-comprehension
+  "PTH123", # builtin-open
+  "S310", # suspicious-url-open-usage
+  "W505" # doc-line-too-long
 ]
 preview = true
 select = [

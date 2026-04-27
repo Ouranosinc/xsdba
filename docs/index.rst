@@ -35,6 +35,11 @@ users can easily bias-adjust large datasets.
 
    apidoc/modules
 
+.. toctree::
+   :caption: GitHub Repository
+
+   Ouranosinc/xsdba <https://github.com/Ouranosinc/xsdba>
+
 Indices and tables
 ==================
 * :ref:`genindex`
