@@ -82,6 +82,7 @@ def _preprocess_dataset(
 @map_groups(
     af=[Grouper.PROP, "quantiles"],
     hist_q=[Grouper.PROP, "quantiles"],
+    hist_q_raw=[Grouper.PROP, "quantiles"],
     scaling=[Grouper.PROP],
     P0_ref=[Grouper.PROP],
     P0_hist=[Grouper.PROP],
@@ -136,6 +137,9 @@ def dqm_train(
     `jitter_over_thresh_value` and `jitter_over_thresh_upper_bnd` must be both be specified to
     use `jitter_over_thresh`, or both be None (default) to skip it.
     """
+    sim_dim_raw = Grouper.filter_dim(ds.hist, dim)
+    hist_q_raw = nbu.quantile(ds.hist, quantiles, sim_dim_raw)
+
     ds = _preprocess_dataset(
         ds,
         dim,
@@ -163,6 +167,7 @@ def dqm_train(
         data_vars={
             "af": af,
             "hist_q": hist_q,
+            "hist_q_raw": hist_q_raw,
             "scaling": scaling,
             "P0_ref": ds.P0_ref,
             "P0_hist": ds.P0_hist,
@@ -669,6 +674,20 @@ def dqm_adjust(
             group=Grouper(group.name),
             dim=None,
         ).sim
+
+    # mask no bias adjustment, when sim is larger than 10 times the largest quantile in hist(without adapt freq)
+    adaptedsim = ds["sim"].copy()
+    hist_q_aligned = (
+        ds["hist_q_raw"]
+        .isel({"quantiles": -1})
+        .sel(dayofyear=adaptedsim.time.dt.dayofyear.values)
+        .assign_coords(dayofyear=adaptedsim.time.values)
+        .rename({"dayofyear": "time"})
+        .drop_vars("quantiles")
+    )
+    # TODO: make 10 a arg
+    mask = adaptedsim > 10 * hist_q_aligned
+
     scaled_sim = u.apply_correction(
         ds.sim,
         u.broadcast(
@@ -696,6 +715,11 @@ def dqm_adjust(
     ).scen
     scen = detrending.retrend(scen)
 
+    # apply mask
+    scen = scen.where(~mask.compute(), adaptedsim)
+
+    # TODO: output mask
+    # out = xr.Dataset({"scen": scen, "trend": detrending.ds.trend, 'mask':mask})
     out = xr.Dataset({"scen": scen, "trend": detrending.ds.trend})
     return out
 
