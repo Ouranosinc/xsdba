@@ -87,9 +87,11 @@ def _adapt_freq(
     # This is the "dry-day frequency" in the precipitation case
     P0_sim = ecdf(ds.sim, thresh, dim=dim)
     # at max, P0_sim can be the highest quantile of quantiles, no more.
-    P0_sim = np.minimum(P0_sim, quantiles[-1] if quantiles is not None else 1)
+    P0_sim = np.minimum(P0_sim, np.array([quantiles[-1]]) if quantiles is not None else 1)
     P0_hist = P0_sim if P0_hist is None else P0_hist
     P0_ref = ecdf(ref, thresh, dim=dim) if P0_ref is None else P0_ref
+    P0_ref = np.minimum(P0_ref, np.array([quantiles[-1]]) if quantiles is not None else 1)
+
     dP0 = xr.where(P0_hist == 0, np.nan, (P0_hist - P0_ref) / P0_hist)
     if ((dP0 <= 0) | (dP0.isnull())).all():
         pth = np.nan * dP0
@@ -99,6 +101,7 @@ def _adapt_freq(
         # The value in ref with the same rank as the first non-zero value in sim.
         # pth is meaningless when freq. adaptation is not needed
         pth = nbu.vecquantiles(ref, P0_hist, dim).where(dP0 > 0) if pth is None else pth
+        # print(pth)
         # Probabilities and quantiles computed within all dims, but correction along the first one only.
         sim = ds.sim
         # Get the percentile rank of each value in sim.
