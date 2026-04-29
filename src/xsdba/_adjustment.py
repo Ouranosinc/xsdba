@@ -692,7 +692,7 @@ def dqm_adjust(
         ds.sim,
         u.broadcast(
             ds.scaling,
-            ds.sim,
+            adaptedsim,
             group=group,
             interp=interp if group.prop != "dayofyear" else "nearest",
         ),

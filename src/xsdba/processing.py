@@ -55,7 +55,6 @@ def adapt_freq(
     *,
     group: Grouper | str,
     thresh: str = "0 mm d-1",
-    quantiles: np.array | None = None,
 ) -> tuple[xr.DataArray, xr.DataArray, xr.DataArray]:
     r"""
     Adapt frequency of values under thresh of `sim`, in order to match ref.
@@ -101,7 +100,7 @@ def adapt_freq(
     ----------
     :cite:cts:`themesl_empirical-statistical_2012`
     """
-    out = _adapt_freq(xr.Dataset(dict(sim=sim, ref=ref)), group=group, thresh=thresh, quantiles=quantiles)
+    out = _adapt_freq(xr.Dataset(dict(sim=sim, ref=ref)), group=group, thresh=thresh)
 
     # Set some metadata
     copy_all_attrs(out, sim)

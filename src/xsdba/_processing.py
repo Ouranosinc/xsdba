@@ -85,12 +85,8 @@ def _adapt_freq(
     # Compute the probability of finding a value <= thresh
     # This is the "dry-day frequency" in the precipitation case
     P0_sim = ecdf(ds.sim, thresh, dim=dim)
-    # at max, P0_sim can be the highest quantile of quantiles, no more.
-    # P0_sim = np.minimum(P0_sim, np.array([quantiles[-1]]) if quantiles is not None else 1)
-    # P0_sim = np.minimum(P0_sim, quantiles[-1] if quantiles is not None else 1)
     P0_hist = P0_sim if P0_hist is None else P0_hist
     P0_ref = ecdf(ref, thresh, dim=dim) if P0_ref is None else P0_ref
-    # P0_ref = np.minimum(P0_ref, np.array([quantiles[-1]]) if quantiles is not None else 1)
 
     dP0 = xr.where(P0_hist == 0, np.nan, (P0_hist - P0_ref) / P0_hist)
     if ((dP0 <= 0) | (dP0.isnull())).all():

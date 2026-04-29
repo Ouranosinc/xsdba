@@ -547,7 +547,7 @@ class DetrendedQuantileMapping(TrainAdjust):
     n_last_quantile_filter: int, optional
         If not None, values to adjust (after preprossing steps) that are above n_last_quantile_filter * the value
         of the last quantile of hist (before the preprocessing steps) are not adjusted.
-        We keep the input simulation value instead.
+        We keep the input simulation with only the preprocessing steps instead.
 
     Notes
     -----
