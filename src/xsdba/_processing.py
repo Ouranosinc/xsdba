@@ -30,7 +30,6 @@ def _adapt_freq(
     dim: Sequence[str],
     thresh: float = 0,
     kind: str = "+",
-    quantiles: np.array = None,
 ) -> xr.Dataset:
     r"""
     Adapt frequency of values under thresh of `sim`, in order to match ref.
@@ -102,7 +101,6 @@ def _adapt_freq(
         # The value in ref with the same rank as the first non-zero value in sim.
         # pth is meaningless when freq. adaptation is not needed
         pth = nbu.vecquantiles(ref, P0_hist, dim).where(dP0 > 0) if pth is None else pth
-        # print(pth)
         # Probabilities and quantiles computed within all dims, but correction along the first one only.
         sim = ds.sim
         # Get the percentile rank of each value in sim.

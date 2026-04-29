@@ -212,34 +212,35 @@ def test_adapt_freq_no_zeros(use_dask, random):
     assert (dP0.isnull().values).all()
 
 
-@pytest.mark.parametrize("use_dask", [True, False])
-def test_adapt_freq_alwaysdry(use_dask, random):
-    time = pd.date_range("1990-01-01", "2020-12-31", freq="D")
-    group = "time"
-    prvals = random.uniform(0.0, 0.09, size=(time.size, 3))
-    hist = xr.DataArray(
-        prvals,
-        coords={"time": time, "lat": [0, 1, 2]},
-        dims=("time", "lat"),
-        attrs={"units": "mm d-1"},
-    )
+# TODO: get rid
+# @pytest.mark.parametrize("use_dask", [True, False])
+# def test_adapt_freq_alwaysdry(use_dask, random):
+#     time = pd.date_range("1990-01-01", "2020-12-31", freq="D")
+#     group = "time"
+#     prvals = random.uniform(0.0, 0.09, size=(time.size, 3))
+#     hist = xr.DataArray(
+#         prvals,
+#         coords={"time": time, "lat": [0, 1, 2]},
+#         dims=("time", "lat"),
+#         attrs={"units": "mm d-1"},
+#     )
 
-    prvals = random.uniform(0.0, 1.1, size=(time.size, 3))
-    prvals[0] = 20
-    ref = xr.DataArray(
-        prvals,
-        coords={"time": time, "lat": [0, 1, 2]},
-        dims=("time", "lat"),
-        attrs={"units": "mm d-1"},
-    )
+#     prvals = random.uniform(0.0, 1.1, size=(time.size, 3))
+#     prvals[0] = 20
+#     ref = xr.DataArray(
+#         prvals,
+#         coords={"time": time, "lat": [0, 1, 2]},
+#         dims=("time", "lat"),
+#         attrs={"units": "mm d-1"},
+#     )
 
-    _, pth, dP0 = adapt_freq(ref, hist, thresh="1 mm d-1", group=group)
-    # without quantiles pth will be max of ref, which is 20
-    assert float(pth.values[0, 0]) == 20
+#     _, pth, dP0 = adapt_freq(ref, hist, thresh="1 mm d-1", group=group)
+#     # without quantiles pth will be max of ref, which is 20
+#     assert float(pth.values[0, 0]) == 20
 
-    # but with quantiles, it will use the last quantile, not the max
-    _, pth, dP0 = adapt_freq(ref, hist, thresh="1 mm d-1", group=group, quantiles=[0.01, 0.5, 0.99])
-    assert float(pth.values[0, 0]) < 1.1
+#     # but with quantiles, it will use the last quantile, not the max
+#     _, pth, dP0 = adapt_freq(ref, hist, thresh="1 mm d-1", group=group, quantiles=[0.01, 0.5, 0.99])
+#     assert float(pth.values[0, 0]) < 1.1
 
 
 def test_escore():

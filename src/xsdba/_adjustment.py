@@ -28,16 +28,16 @@ from .units import convert_units_to
 from .utils import _fitfunc_1d
 
 
-def _adapt_freq_preprocess(ds, adapt_freq_thresh, group: Grouper | None, dim: str | None, quantiles: np.ndarray | None = None):
+def _adapt_freq_preprocess(ds, adapt_freq_thresh, group: Grouper | None, dim: str | None):
     if adapt_freq_thresh is None:
         return ds
     if (group is None) ^ (dim is None) is False:
         raise ValueError("Either `group` or `dim` must be None.")
     thresh = convert_units_to(adapt_freq_thresh, ds.sim)
     if group:
-        out = _adapt_freq(ds, group=group, thresh=thresh, quantiles=quantiles).rename({"sim_ad": "sim"})
+        out = _adapt_freq(ds, group=group, thresh=thresh).rename({"sim_ad": "sim"})
     else:
-        out = _adapt_freq.func(ds, dim=dim, thresh=thresh, quantiles=quantiles).rename({"sim_ad": "sim"})
+        out = _adapt_freq.func(ds, dim=dim, thresh=thresh).rename({"sim_ad": "sim"})
     ds = ds.assign({v: out[v] for v in out.data_vars})
     # `P0_ref` and `P0_hist` give enough information
     ds = ds.drop_vars("dP0")
@@ -51,7 +51,6 @@ def _preprocess_dataset(
     jitter_under_thresh_value: str | None = None,
     jitter_over_thresh_value: str | None = None,
     jitter_over_thresh_upper_bnd: str | None = None,
-    quantiles: np.ndarray | None = None,
 ):
     dim = dim if isinstance(dim, list) else [dim]
     # uniformize the notation, change back at the end
@@ -67,7 +66,7 @@ def _preprocess_dataset(
         ds["sim"] = jitter_over_thresh(ds.sim, jitter_over_thresh_value, jitter_over_thresh_upper_bnd)
 
     if adapt_freq_thresh:
-        ds = _adapt_freq_preprocess(ds, adapt_freq_thresh, None, dim, quantiles)
+        ds = _adapt_freq_preprocess(ds, adapt_freq_thresh, None, dim)
 
     else:
         dummy = xr.full_like(ds["sim"][{d: 0 for d in dim}], np.nan)
@@ -137,8 +136,9 @@ def dqm_train(
     `jitter_over_thresh_value` and `jitter_over_thresh_upper_bnd` must be both be specified to
     use `jitter_over_thresh`, or both be None (default) to skip it.
     """
-    sim_dim_raw = Grouper.filter_dim(ds.hist, dim)
-    hist_q_raw = nbu.quantile(ds.hist, quantiles, sim_dim_raw)
+    # needed for  n_last_quantile_filter in dqm_adjust,
+    sim_dim = Grouper.filter_dim(ds.hist, dim)
+    hist_q_raw = nbu.quantile(ds.hist, quantiles, sim_dim)
 
     ds = _preprocess_dataset(
         ds,
@@ -147,7 +147,6 @@ def dqm_train(
         jitter_under_thresh_value,
         jitter_over_thresh_value,
         jitter_over_thresh_upper_bnd,
-        quantiles,
     )
 
     # Ensure we only reduce on valid dims, allows for extra dims like "realization" on the sim
@@ -633,6 +632,7 @@ def dqm_adjust(
     extrapolation: str,
     detrend: int | PolyDetrend,
     adapt_freq_thresh: str | None = None,
+    n_last_quantile_filter: int | None = None,
 ) -> xr.Dataset:
     """
     DQM adjustment on one block.
@@ -676,17 +676,17 @@ def dqm_adjust(
         ).sim
 
     # mask no bias adjustment, when sim is larger than 10 times the largest quantile in hist(without adapt freq)
-    adaptedsim = ds["sim"].copy()
-    hist_q_aligned = (
-        ds["hist_q_raw"]
-        .isel({"quantiles": -1})
-        .sel(dayofyear=adaptedsim.time.dt.dayofyear.values)
-        .assign_coords(dayofyear=adaptedsim.time.values)
-        .rename({"dayofyear": "time"})
-        .drop_vars("quantiles")
-    )
-    # TODO: make 10 a arg
-    mask = adaptedsim > 10 * hist_q_aligned
+    if n_last_quantile_filter is not None:
+        adaptedsim = ds["sim"].copy()
+        last_quantile = ds["hist_q_raw"].isel({"quantiles": -1}).drop_vars("quantiles")
+        # make last_quantile dim fit adaptedsim dim
+        last_quantile = u.broadcast(
+            last_quantile,
+            ds.sim,
+            group=group,
+            interp=interp if group.prop != "dayofyear" else "nearest",
+        )
+        mask = adaptedsim > n_last_quantile_filter * last_quantile
 
     scaled_sim = u.apply_correction(
         ds.sim,
@@ -716,10 +716,9 @@ def dqm_adjust(
     scen = detrending.retrend(scen)
 
     # apply mask
-    scen = scen.where(~mask.compute(), adaptedsim)
+    if n_last_quantile_filter is not None:
+        scen = scen.where(~mask.compute(), adaptedsim)
 
-    # TODO: output mask
-    # out = xr.Dataset({"scen": scen, "trend": detrending.ds.trend, 'mask':mask})
     out = xr.Dataset({"scen": scen, "trend": detrending.ds.trend})
     return out
 

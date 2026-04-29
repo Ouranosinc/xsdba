@@ -544,6 +544,10 @@ class DetrendedQuantileMapping(TrainAdjust):
         Defaults to 1 (linear detrending).
     extrapolation : {'constant', 'nan'}
         The type of extrapolation to use. Defaults to "constant".
+    n_last_quantile_filter: int, optional
+        If not None, values to adjust (after preprossing steps) that are above n_last_quantile_filter * the value
+        of the last quantile of hist (before the preprocessing steps) are not adjusted.
+        We keep the input simulation value instead.
 
     Notes
     -----
@@ -588,7 +592,6 @@ class DetrendedQuantileMapping(TrainAdjust):
     ):
         if group.prop not in ["group", "dayofyear"]:
             warn(f"Using DQM with a grouping other than 'dayofyear' is not recommended (received {group.name}).", stacklevel=2)
-
         if np.isscalar(nquantiles):
             quantiles = equally_spaced_nodes(nquantiles).astype(ref.dtype)
         else:
@@ -613,6 +616,10 @@ class DetrendedQuantileMapping(TrainAdjust):
         )
         ds.hist_q.attrs.update(
             standard_name="Model quantiles",
+            long_name="Quantiles of the anomalies of the model on the reference period, after preprocessing steps. ",
+        )
+        ds.hist_q_raw.attrs.update(
+            standard_name="Model quantiles",
             long_name="Quantiles of model on the reference period",
         )
         ds.scaling.attrs.update(
@@ -631,6 +638,7 @@ class DetrendedQuantileMapping(TrainAdjust):
         interp="nearest",
         extrapolation="constant",
         detrend=1,
+        n_last_quantile_filter: int | None = None,
     ):
         scen = dqm_adjust(
             self.ds.assign(sim=sim),
@@ -640,6 +648,7 @@ class DetrendedQuantileMapping(TrainAdjust):
             group=self.group,
             kind=self.kind,
             adapt_freq_thresh=self.adapt_freq_thresh,
+            n_last_quantile_filter=n_last_quantile_filter,
         ).scen
         # Detrending needs units.
         scen.attrs["units"] = sim.units
