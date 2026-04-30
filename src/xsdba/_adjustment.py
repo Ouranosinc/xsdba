@@ -682,7 +682,7 @@ def dqm_adjust(
         # make last_quantile dim fit adaptedsim dim
         last_quantile = u.broadcast(
             last_quantile,
-            ds.sim,
+            adaptedsim,
             group=group,
             interp=interp if group.prop != "dayofyear" else "nearest",
         )
@@ -692,7 +692,7 @@ def dqm_adjust(
         ds.sim,
         u.broadcast(
             ds.scaling,
-            adaptedsim,
+            ds.sim,
             group=group,
             interp=interp if group.prop != "dayofyear" else "nearest",
         ),
