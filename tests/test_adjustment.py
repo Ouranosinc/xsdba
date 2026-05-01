@@ -432,10 +432,8 @@ class TestDQM:
         out_ad = ADJ.adjust(hist_ad)
         np.testing.assert_allclose(out.values, out_ad.values)
 
-    def test_n_last_quantile_filter(
-        self,
-        random,
-    ):
+    @pytest.mark.parametrize("use_dask", [True, False])
+    def test_n_last_quantile_filter(self, random, use_dask):
 
         time = pd.date_range("1990-01-01", "2020-12-31", freq="D")
         prvals = random.uniform(0.001, 20, size=(time.size, 3))
@@ -462,6 +460,10 @@ class TestDQM:
             dims=("time", "lat"),
             attrs={"units": "mm d-1"},
         )
+        if use_dask:
+            ref = ref.chunk({"time": -1})
+            hist = hist.chunk({"time": -1})
+            sim = sim.chunk({"time": -1})
         dqm = DetrendedQuantileMapping.train(
             ref,
             hist,

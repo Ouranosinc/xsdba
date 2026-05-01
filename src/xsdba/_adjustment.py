@@ -717,7 +717,7 @@ def dqm_adjust(
 
     # apply mask
     if n_last_quantile_filter is not None:
-        scen = scen.where(~mask.compute(), adaptedsim)
+        scen = scen.where(~mask, adaptedsim)
 
     out = xr.Dataset({"scen": scen, "trend": detrending.ds.trend})
     return out
