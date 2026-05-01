@@ -81,6 +81,7 @@ def _preprocess_dataset(
 @map_groups(
     af=[Grouper.PROP, "quantiles"],
     hist_q=[Grouper.PROP, "quantiles"],
+    hist_q_raw=[Grouper.PROP, "quantiles"],
     scaling=[Grouper.PROP],
     P0_ref=[Grouper.PROP],
     P0_hist=[Grouper.PROP],
@@ -135,6 +136,10 @@ def dqm_train(
     `jitter_over_thresh_value` and `jitter_over_thresh_upper_bnd` must be both be specified to
     use `jitter_over_thresh`, or both be None (default) to skip it.
     """
+    # needed for  n_last_quantile_filter in dqm_adjust,
+    sim_dim = Grouper.filter_dim(ds.hist, dim)
+    hist_q_raw = nbu.quantile(ds.hist, quantiles, sim_dim)
+
     ds = _preprocess_dataset(
         ds,
         dim,
@@ -161,6 +166,7 @@ def dqm_train(
         data_vars={
             "af": af,
             "hist_q": hist_q,
+            "hist_q_raw": hist_q_raw,
             "scaling": scaling,
             "P0_ref": ds.P0_ref,
             "P0_hist": ds.P0_hist,
@@ -626,6 +632,7 @@ def dqm_adjust(
     extrapolation: str,
     detrend: int | PolyDetrend,
     adapt_freq_thresh: str | None = None,
+    n_last_quantile_filter: int | None = None,
 ) -> xr.Dataset:
     """
     DQM adjustment on one block.
@@ -667,6 +674,20 @@ def dqm_adjust(
             group=Grouper(group.name),
             dim=None,
         ).sim
+
+    # mask no bias adjustment, when sim is larger than 10 times the largest quantile in hist(without adapt freq)
+    if n_last_quantile_filter is not None:
+        adaptedsim = ds["sim"].copy()
+        last_quantile = ds["hist_q_raw"].isel({"quantiles": -1}).drop_vars("quantiles")
+        # make last_quantile dim fit adaptedsim dim
+        last_quantile = u.broadcast(
+            last_quantile,
+            adaptedsim,
+            group=group,
+            interp=interp if group.prop != "dayofyear" else "nearest",
+        )
+        mask = adaptedsim > n_last_quantile_filter * last_quantile
+
     scaled_sim = u.apply_correction(
         ds.sim,
         u.broadcast(
@@ -693,6 +714,10 @@ def dqm_adjust(
         kind=kind,
     ).scen
     scen = detrending.retrend(scen)
+
+    # apply mask
+    if n_last_quantile_filter is not None:
+        scen = scen.where(~mask, adaptedsim)
 
     out = xr.Dataset({"scen": scen, "trend": detrending.ds.trend})
     return out

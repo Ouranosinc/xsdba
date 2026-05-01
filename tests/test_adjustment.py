@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pandas as pd
 import pytest
 import xarray as xr
 import xclim
@@ -430,6 +431,49 @@ class TestDQM:
         ADJ.adapt_freq_thresh = None
         out_ad = ADJ.adjust(hist_ad)
         np.testing.assert_allclose(out.values, out_ad.values)
+
+    @pytest.mark.parametrize("use_dask", [True, False])
+    def test_n_last_quantile_filter(self, random, use_dask):
+
+        time = pd.date_range("1990-01-01", "2020-12-31", freq="D")
+        prvals = random.uniform(0.001, 20, size=(time.size, 3))
+        ref = xr.DataArray(
+            prvals,
+            coords={"time": time, "lat": [0, 1, 2]},
+            dims=("time", "lat"),
+            attrs={"units": "mm d-1"},
+        )
+        prvals = random.uniform(0.001, 10, size=(time.size, 3))
+        hist = xr.DataArray(
+            prvals,
+            coords={"time": time, "lat": [0, 1, 2]},
+            dims=("time", "lat"),
+            attrs={"units": "mm d-1"},
+        )
+        time = pd.date_range("2021-01-01", "2050-12-31", freq="D")
+        group = "time"
+        prvals = random.uniform(0.001, 10, size=(time.size, 3))
+        prvals[0] = 300
+        sim = xr.DataArray(
+            prvals,
+            coords={"time": time, "lat": [0, 1, 2]},
+            dims=("time", "lat"),
+            attrs={"units": "mm d-1"},
+        )
+        if use_dask:
+            ref = ref.chunk({"time": -1})
+            hist = hist.chunk({"time": -1})
+            sim = sim.chunk({"time": -1})
+        dqm = DetrendedQuantileMapping.train(
+            ref,
+            hist,
+            kind="*",
+            group=group,
+        )
+        scen = dqm.adjust(sim)
+        assert scen.isel(time=0, lat=0).values > 300
+        scen = dqm.adjust(sim, n_last_quantile_filter=10)
+        assert scen.isel(time=0, lat=0).values == 300
 
 
 @pytest.mark.slow
