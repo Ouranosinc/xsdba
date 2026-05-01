@@ -6,11 +6,11 @@ Changelog
 `Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
 ------------------------------------------------------------
 
-Contributors: Gabriel Rondeau-Genesse (:user:`RondeauG`), Pascal Bourgault (:user:`aulemahal`).
+Contributors: Gabriel Rondeau-Genesse (:user:`RondeauG`), Pascal Bourgault (:user:`aulemahal`), Juliette Lavoie (:user:`juliettelavoie`).
 
 Changes
 ^^^^^^^
-* No change.
+* Add ``n_last_quantile_filter`` arg  to ``dqm_adjust``. (:pull:`279`, :issue:`278`).
 
 Breaking changes
 ^^^^^^^^^^^^^^^^

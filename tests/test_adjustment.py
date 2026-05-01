@@ -466,7 +466,7 @@ class TestDQM:
             ref,
             hist,
             kind="*",
-            group=group,  # adapt_freq_thresh="3 mm d-1"
+            group=group,
         )
         scen = dqm.adjust(sim)
         assert scen.isel(time=0, lat=0).values > 300
