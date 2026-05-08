@@ -1050,9 +1050,9 @@ def estimate_delta_from_cf(da: xr.DataArray):
     if "Y" in da.cf and (units := da.cf["Y"].attrs.get("units", None)):
         Ycoords = sorted(da.cf["Y"].values)
         if units in ["degrees", "degrees_north"]:
-            return f"{np.abs((Ycoords[1] - Ycoords[0]).values.item() * 111.2)} km"
+            return f"{np.abs((Ycoords[1] - Ycoords[0]) * 111.2)} km"
         else:
-            return f"{np.abs((Ycoords[1] - Ycoords[0]).values.item())} {units}"
+            return f"{np.abs(Ycoords[1] - Ycoords[0])} {units}"
     else:
         raise ValueError("Could not find a `Y` field or its units in the input cf-coordinates `da.cf`.")
 
@@ -1133,11 +1133,7 @@ def spectral_filter(
                 "Computing the approximated value from latitude with the 111km factor for now.",
                 stacklevel=2,
             )
-            if "rlat" in da.dims:
-                lat = da.rlat
-            else:
-                lat = da.lat
-            delta = f"{(lat[1] - lat[0]).values.item() * 111} km"
+            delta = estimate_delta_from_cf(da)
         alpha_low = wavelength_to_normalized_wavenumber(lam_long, delta=delta)
         alpha_high = wavelength_to_normalized_wavenumber(lam_short, delta=delta)
     alpha = _normalized_radial_wavenumber(da, dims)
