@@ -1077,7 +1077,7 @@ def spectral_filter(
         Long wavelength threshold.
     lam_short : str, optional
         Short wavelength threshold.
-    dims : list of str, optional
+    dims : list of str
         Dimensions on which to perform the spectral filter.
     delta : str, Optional
         Nominal resolution of the grid. A string with units, e.g. `delta=="55.5 km"`. This converts `alpha` to `wavelength`.
