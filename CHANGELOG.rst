@@ -9,7 +9,7 @@ Contributors: Gabriel Rondeau-Genesse (:user:`RondeauG`), Pascal Bourgault (:use
 
 Changes
 ^^^^^^^
-* New example in notebook `advanced_example.ipynb` showing how to use spectral utils (``xsdba.processing.spectral_filter`` and ``xsdba.properties.spectral_variance``). (:issue:`247`,:pull:`259`, :pull:`282`).
+* New example in notebook `advanced_example.ipynb` showing how to use spectral utils (``xsdba.processing.spectral_filter`` and ``xsdba.properties.spectral_variance``). (:issue:`247`, :pull:`259`, :pull:`282`).
 
 Breaking changes
 ^^^^^^^^^^^^^^^^
