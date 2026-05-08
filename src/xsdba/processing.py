@@ -1059,12 +1059,12 @@ def estimate_delta_from_cf(da: xr.DataArray):
 
 def spectral_filter(
     da: xr.DataArray,
+    dims: list[str],
     lam_long: str | None,
     lam_short: str | None,
-    dims: list[str],
     delta: str | None,
-    mask_func: Callable = cos2_mask_func,
     alpha_low_high: tuple[float, float] | None = None,
+    mask_func: Callable = cos2_mask_func,
 ):
     """
     Filter coefficients of a Discrete Cosine Fourier transform between given thresholds and invert back to real space.
@@ -1073,22 +1073,22 @@ def spectral_filter(
     ----------
     da : xr.DataArray
         Input physical field.
+    dims : list of str
+        Dimensions on which to perform the spectral filter.
     lam_long : str, optional
         Long wavelength threshold.
     lam_short : str, optional
         Short wavelength threshold.
-    dims : list of str
-        Dimensions on which to perform the spectral filter.
     delta : str, Optional
-        Nominal resolution of the grid. A string with units, e.g. `delta=="55.5 km"`. This converts `alpha` to `wavelength`.
-        If `delta` is not specified, a dimension named `rlat` or `lat` is expected to be in `da` and will be used to
-        deduce an appropriate length scale.
-    mask_func : Callable
-        Function used to create the mask. Default is `cos2_mask_func`, which applies a cosine squared filter
-        to Fourier coefficients in momentum space.
+        Nominal resolution of the grid. A string with units, e.g. `delta=="55.5 km"`. This converts the normalized
+        wavenumber `alpha` to  the unitful quantity `wavelength` through `2 delta / alpha`. This is necessary if cutoff
+        bounds are given as wavelengths (`lam_long` and `lam_short`).
     alpha_low_high : tuple[float,float] | optional
         Low and high frequencies threshold (Long and short wavelength) for the
         radial normalized wavenumber (`alpha`). It should be numbers between 0 and 1.
+    mask_func : Callable
+        Function used to create the mask. Default is `cos2_mask_func`, which applies a cosine squared filter
+        to Fourier coefficients in momentum space.
 
     Returns
     -------
@@ -1097,6 +1097,7 @@ def spectral_filter(
 
     Notes
     -----
+    * Either `lam_long`, `lam_short` and `delta` must be given, or just `alpha_low_high`.
     * If `delta` is specified, the normalized wavenumber `alpha` will be converted to a `wavelength`.
     * If the input field contains any `nan`, the output will be all `nan` values.
 
@@ -1106,7 +1107,8 @@ def spectral_filter(
     """
     # TODO: Remove this in xsdba >0.7
     if dims is None:
-        raise ValueError("Value `None` is not longer supported for `dims`. Please give a list of dimensions.")
+        warnings.warn("Value `None` will no longer be supported for `dims` in xsdba >0.7.Setting `dims = ['lat', 'lon']`", stacklevel=2)
+        dims = ["lat", "lon"]
     if isinstance(dims, str):
         dims = [dims]
 
@@ -1116,11 +1118,24 @@ def spectral_filter(
             out[v] = spectral_filter(da[v], lam_long, lam_short, dims, delta=delta)
         return out.assign_attrs(da.attrs)
 
-    if alpha_low_high is None and None in {lam_long, lam_short, delta}:
-        raise ValueError("`lam_long` or `lam_short` or `delta` must all be provided if `alpha_low_high` is `None`.")
+    if alpha_low_high is None and None in {lam_long, lam_short}:
+        # TODO: Use this line in xsdba >0.7
+        # if alpha_low_high is None and None in {lam_long, lam_short, delta}:
+        raise ValueError("`lam_long` and `lam_short`  must all be provided if `alpha_low_high` is `None`.")
     if alpha_low_high is not None:
         alpha_low, alpha_high = alpha_low_high
     else:
+        if delta is None:
+            warnings.warn(
+                "In `xsdba >0.7`, `delta` will be required to be used with `lam_short` and `lam_long`."
+                "Computing the approximated value from latitude with the 111km factor for now.",
+                stacklevel=2,
+            )
+            if "rlat" in da.dims:
+                lat = da.rlat
+            else:
+                lat = da.lat
+            delta = f"{(lat[1] - lat[0]).values.item() * 111} km"
         alpha_low = wavelength_to_normalized_wavenumber(lam_long, delta=delta)
         alpha_high = wavelength_to_normalized_wavenumber(lam_short, delta=delta)
     alpha = _normalized_radial_wavenumber(da, dims)

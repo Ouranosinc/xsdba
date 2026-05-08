@@ -14,6 +14,8 @@ Changes
 Breaking changes
 ^^^^^^^^^^^^^^^^
 * Default values for `frac` and `power` in ``xsdba.adjustment.ExtremeValues`` have been changed to 0.7, and 3, respectively. (:pull:`262`).
+* The order of the arguments has been reorganized in ``xsdba.processing.spectral_filter`.  (:pull:`259`).
+* `delta` is no longer computed automatically from the `lat` or `rlat` field in ``xsdba.processing.spectral_filter`.  (:pull:`259`).
 
 Fixes
 ^^^^^
