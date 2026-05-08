@@ -1057,6 +1057,8 @@ def estimate_delta_from_cf(da: xr.DataArray):
         raise ValueError("Could not find a `Y` field or its units in the input cf-coordinates `da.cf`.")
 
 
+# TODO: Idea  -> Change the signature to: wavelength_cutoff_bounds = dict(short=, long=, delta=)
+# and wavenumber_cutoff_bounds = dict(low=, high=)
 def spectral_filter(
     da: xr.DataArray,
     dims: list[str],
