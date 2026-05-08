@@ -30,6 +30,10 @@ Internal changes
     * `pre-commit` has been replaced by `prek`.
     * `Makefile` now handles some dependency installation logic.
     * `tox.ini` has been replaced by `tox.toml` with v4.52.0 standards.
+* Documentation adjustments. (:pull:`283`):
+    * Added an acknowledgement statement about Ouranos to the `README.rst` and the rendered documentation.
+    * Added the Ouranos logo with light/dark theme support for `furo`.
+    * Added an `intersphinx` mapping for `xarray` objects.
 
 .. _changes_0.6.1:
 

@@ -1,6 +1,6 @@
-===========================================================
+==========================================================
 xsdba: Statistical Downscaling and Bias Adjustment library
-===========================================================
+==========================================================
 
 +----------------------------+-----------------------------------------------------+
 | Versions                   | |pypi| |conda|                                      |
@@ -51,13 +51,23 @@ How to make the most of `xsdba`: `Basic Usage Examples`_ and `In-Depth Examples`
 .. _xclim: https://xclim.readthedocs.io/
 .. _migration guide: https://xsdba.readthedocs.io/en/stable/xclim_migration_guide.html
 
-Credits
--------
+Acknowledgments
+---------------
+
+`xsdba` development is funded through `Ouranos`_, a not-for-profit collaborative innovation organization fostering resilient adaptation to climate change, based in Québec, Canada.
+
+.. image:: https://raw.githubusercontent.com/Ouranosinc/.github/refs/heads/main/images/logo-ouranos-horizontal-couleur.svg
+        :target: https://www.ouranos.ca/en
+        :align: center
+        :class: ouranos-logo no-theme center
+
+|ouranos-dark| |ouranos-light|
 
 This package was created with Cookiecutter_ and the `Ouranosinc/cookiecutter-pypackage`_ project template.
 
 .. _Cookiecutter: https://github.com/cookiecutter/cookiecutter
-.. _`Ouranosinc/cookiecutter-pypackage`: https://github.com/Ouranosinc/cookiecutter-pypackage
+.. _Ouranos: https://www.ouranos.ca/en
+.. _Ouranosinc/cookiecutter-pypackage: https://github.com/Ouranosinc/cookiecutter-pypackage
 
 .. |build| image:: https://github.com/Ouranosinc/xsdba/actions/workflows/main.yml/badge.svg
         :target: https://github.com/Ouranosinc/xsdba/actions
@@ -129,3 +139,15 @@ This package was created with Cookiecutter_ and the `Ouranosinc/cookiecutter-pyp
         :target: https://github.com/Ouranosinc/xsdba
         :alt:
         :class: xclim-logo-small only-dark-inline
+
+.. Ouranos Logos
+
+.. |ouranos-light| image:: https://raw.githubusercontent.com/Ouranosinc/miranda/main/docs/_static/images/empty.png
+        :target: https://www.ouranos.ca/en
+        :alt:
+        :class: ouranos-logo only-light center
+
+.. |ouranos-dark| image:: https://raw.githubusercontent.com/Ouranosinc/miranda/main/docs/_static/images/empty.png
+        :target: https://www.ouranos.ca/en
+        :alt:
+        :class: ouranos-logo only-dark center

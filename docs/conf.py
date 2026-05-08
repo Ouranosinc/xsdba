@@ -94,6 +94,8 @@ bibtex_reference_style = "author_year"
 intersphinx_mapping = {
     "pandas": ("https://pandas.pydata.org/docs/", None),
     "scipy": ("https://docs.scipy.org/doc/scipy/", None),
+    "xarray": ("https://docs.xarray.dev/en/stable/", None),
+
 }
 
 extlinks = {
@@ -329,3 +331,6 @@ texinfo_documents = [
      'One line description of project.',
      'Miscellaneous'),
 ]
+
+def setup(app):
+    app.add_css_file("style.css")
