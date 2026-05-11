@@ -19,6 +19,7 @@ from xsdba.adjustment import (
     PrincipalComponents,
     QuantileDeltaMapping,
     Scaling,
+    VarianceScaling,
     dOTC,
 )
 from xsdba.base import Grouper, stack_periods
@@ -232,6 +233,50 @@ class TestScaling:
         assert "lon" not in scaling.ds
         p = scaling.adjust(sim)
         np.testing.assert_allclose(p.isel(lon=0).transpose(*ref.dims), ref, rtol=1e-2)
+
+
+class TestVarianceScaling:
+    @pytest.mark.parametrize("kind,units", [(ADDITIVE, "K"), (MULTIPLICATIVE, "kg m-2 s-1")])
+    def test_time(self, kind, units, timelonlatseries, random):
+        n = 10000
+        u = random.random(n)
+
+        simm, simscale = 2, 1
+        xd = norm(loc=simm, scale=simscale)
+        x = xd.ppf(u)
+        if kind == MULTIPLICATIVE:
+            x[x <= 0] = 0.00001
+
+        attrs = {"units": units, "kind": kind}
+
+        hist = sim = timelonlatseries(x, attrs=attrs)
+        if kind == ADDITIVE:
+            hist = convert_units_to(hist, "degC")
+        ref = hist.copy(deep=True)
+        refm, refscale = 3, 2.5
+        if kind == MULTIPLICATIVE:
+            ref = np.log(ref)
+            ref = (ref - ref.mean(dim="time")) * refscale / ref.std(dim="time") + refm
+            ref = np.exp(ref)
+        else:
+            ref = (ref - ref.mean(dim="time")) * refscale / ref.std(dim="time") + refm
+        ref = ref.assign_attrs(attrs)
+        if kind == MULTIPLICATIVE:
+            lr = np.log(ref)
+            refm = lr.mean(dim="time")
+            refscale = lr.std(dim="time")
+            ls = np.log(hist)
+            simm = ls.mean(dim="time")
+            simscale = ls.std(dim="time")
+        vs = VarianceScaling.train(ref, hist, group="time", kind=kind)
+        np.testing.assert_allclose(vs.ds.scaling.values, [refscale / simscale], atol=0.02)
+        np.testing.assert_allclose(vs.ds.offset.values, [refm - simm * refscale / simscale], atol=0.02)
+        p = vs.adjust(sim)
+
+        if kind == MULTIPLICATIVE:
+            p = np.log(p)
+            ref = np.log(ref)
+        np.testing.assert_array_almost_equal(p, ref)
 
 
 @pytest.mark.slow

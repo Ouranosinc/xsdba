@@ -32,6 +32,8 @@ from xsdba._adjustment import (
     qm_adjust,
     scaling_adjust,
     scaling_train,
+    variance_adjust,
+    variance_train,
 )
 from xsdba.base import Grouper, ParametrizableWithDataset, parse_group, uses_dask
 from xsdba.formatting import gen_call_string, update_history
@@ -61,6 +63,7 @@ __all__ = [
     "PrincipalComponents",
     "QuantileDeltaMapping",
     "Scaling",
+    "VarianceScaling",
     "dOTC",
 ]
 
@@ -1008,6 +1011,55 @@ class Scaling(TrainAdjust):
     def _adjust(self, sim, interp="nearest"):
         return scaling_adjust(
             xr.Dataset({"sim": sim, "af": self.ds.af}),
+            group=self.group,
+            interp=interp,
+            kind=self.kind,
+        ).scen
+
+
+class VarianceScaling(TrainAdjust):
+    """
+    Scaling bias-adjustment.
+
+    Simple bias-adjustment method scaling variables by an additive or multiplicative factor so that the mean of `hist`
+    matches the mean of `ref`.
+
+    Parameters
+    ----------
+    Train step:
+
+    group : str or Grouper
+        The grouping information. See :py:class:`xsdba.base.Grouper` for details.
+        Default is "time", meaning a single adjustment group along dimension "time".
+    kind : {'+', '*'}
+        The adjustment kind, either additive or multiplicative. Defaults to "+".
+
+    Adjust step:
+
+    interp : {'nearest', 'linear', 'cubic'}
+        The interpolation method to use then interpolating the adjustment factors. Defaults to "nearest".
+    """
+
+    _allow_diff_calendars = False
+    _allow_diff_training_times = False
+
+    @classmethod
+    def _train(
+        cls,
+        ref: xr.DataArray,
+        hist: xr.DataArray,
+        *,
+        group: str | Grouper = "time",
+        kind: str = ADDITIVE,
+    ):
+        ds = variance_train(xr.Dataset({"ref": ref, "hist": hist}), group=group, kind=kind)
+
+        # ds..attrs.update(long_name="??? adjustment factors")
+        return ds, {"group": group, "kind": kind}
+
+    def _adjust(self, sim, interp="nearest"):
+        return variance_adjust(
+            xr.Dataset({"sim": sim, "scaling": self.ds.scaling, "offset": self.ds.offset}),
             group=self.group,
             interp=interp,
             kind=self.kind,
