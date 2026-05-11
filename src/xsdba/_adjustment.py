@@ -870,6 +870,9 @@ def variance_train(ds: xr.Dataset, *, dim, kind) -> xr.Dataset:
     mhist = ds.hist.mean(sim_dim)
     sref = ds.ref.std(ref_dim)
     shist = ds.hist.std(sim_dim)
+    # X' = (X-<X>)*σy/σx + <Y> = X*σy/σx + (<Y> - <X>*σy/σx)
+    # scaling  = σy/σx
+    # offset  = (<Y> - <X>*σy/σx)
     scaling = (sref / shist).rename("scaling")
     offset = (mref - scaling * mhist).rename("offset")
     return xr.merge([scaling, offset])
