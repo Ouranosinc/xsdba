@@ -1019,10 +1019,11 @@ class Scaling(TrainAdjust):
 
 class VarianceScaling(TrainAdjust):
     """
-    Scaling bias-adjustment.
+    Variance scaling bias-adjustment.
 
-    Simple bias-adjustment method scaling variables by an additive or multiplicative factor so that the mean of `hist`
-    matches the mean of `ref`.
+    Bias-adjustment method scaling the mean and the variance of variables in an additive or multiplicative way. With the
+    additive version, the mean and variance of `hist` match those of `ref`, while in the multiplicative, it is the
+    log-transformed variables that have the same first and second moments.
 
     Parameters
     ----------
@@ -1054,7 +1055,9 @@ class VarianceScaling(TrainAdjust):
     ):
         ds = variance_train(xr.Dataset({"ref": ref, "hist": hist}), group=group, kind=kind)
 
-        # ds..attrs.update(long_name="??? adjustment factors")
+        ds.scaling.attrs.update(long_name="Variance Scaling adjustment factors")
+        ds.offset.attrs.update(long_name="Offset adjustment factors")
+
         return ds, {"group": group, "kind": kind}
 
     def _adjust(self, sim, interp="nearest"):

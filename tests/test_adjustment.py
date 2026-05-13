@@ -262,17 +262,16 @@ class TestVarianceScaling:
             ref = (ref - ref.mean(dim="time")) * refscale / ref.std(dim="time") + refm
         ref = ref.assign_attrs(attrs)
         if kind == MULTIPLICATIVE:
-            lr = np.log(ref)
-            refm = lr.mean(dim="time")
-            refscale = lr.std(dim="time")
-            ls = np.log(hist)
-            simm = ls.mean(dim="time")
-            simscale = ls.std(dim="time")
+            refm = np.log(ref).mean(dim="time")
+            refscale = np.log(ref).std(dim="time")
+            simm = np.log(hist).mean(dim="time")
+            simscale = np.log(hist).std(dim="time")
+
         vs = VarianceScaling.train(ref, hist, group="time", kind=kind)
         np.testing.assert_allclose(vs.ds.scaling.values, [refscale / simscale], atol=0.02)
         np.testing.assert_allclose(vs.ds.offset.values, [refm - simm * refscale / simscale], atol=0.02)
-        p = vs.adjust(sim)
 
+        p = vs.adjust(sim)
         if kind == MULTIPLICATIVE:
             p = np.log(p)
             ref = np.log(ref)

@@ -851,7 +851,7 @@ def scaling_adjust(ds: xr.Dataset, *, group, interp, kind) -> xr.Dataset:
 @map_groups(scaling=[Grouper.PROP], offset=[Grouper.PROP])
 def variance_train(ds: xr.Dataset, *, dim, kind) -> xr.Dataset:
     """
-    Scaling: Train on one group.
+    VarianceScaling: Train on one group.
 
     Parameters
     ----------
@@ -881,7 +881,7 @@ def variance_train(ds: xr.Dataset, *, dim, kind) -> xr.Dataset:
 @map_blocks(reduces=[Grouper.PROP], scen=[])
 def variance_adjust(ds: xr.Dataset, *, group, interp, kind) -> xr.Dataset:
     """
-    Scaling: Adjust on one block.
+    VarianceScaling: Adjust on one block.
 
     Parameters
     ----------
