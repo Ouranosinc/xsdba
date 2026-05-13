@@ -1039,6 +1039,10 @@ class VarianceScaling(TrainAdjust):
 
     interp : {'nearest', 'linear', 'cubic'}
         The interpolation method to use then interpolating the adjustment factors. Defaults to "nearest".
+
+    References
+    ----------
+    :cite:cts:`teutschbein_bias_2012`
     """
 
     _allow_diff_calendars = False

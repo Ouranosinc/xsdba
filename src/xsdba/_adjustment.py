@@ -863,7 +863,7 @@ def variance_train(ds: xr.Dataset, *, dim, kind) -> xr.Dataset:
     ref_dim = Grouper.filter_dim(ds.ref, dim)
     sim_dim = Grouper.filter_dim(ds.hist, dim)
     if kind == "*":
-        # FIXME : Allow lower thresh?
+        # FIXME : Allow input thresh? This would not work well with pr=0
         ds["ref"] = to_additive_space(ds.ref, f"0 {ds.ref.units}", trans="log")
         ds["hist"] = to_additive_space(ds.hist, f"0 {ds.hist.units}", trans="log")
     mref = ds.ref.mean(ref_dim)
