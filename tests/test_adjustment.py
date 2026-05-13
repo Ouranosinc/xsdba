@@ -596,6 +596,32 @@ class TestQDM:
         np.testing.assert_almost_equal(bc_sim.mean(), 41.5, 1)
         np.testing.assert_almost_equal(bc_sim.std(), 16.7, 0)
 
+    @pytest.mark.filterwarnings("ignore:All-nan slice encountered:RuntimeWarning")
+    def test_rank_window_one_year_dayofyear(self):
+        def _daily_series(start, periods, offset=0):
+            time = xr.date_range(start, periods=periods, calendar="noleap", use_cftime=True)
+            steps = np.arange(periods)
+            values = 280 + np.sin(2 * np.pi * (steps % 365) / 365) + 0.01 * steps + offset
+            return xr.DataArray(values, dims="time", coords={"time": time}, attrs={"units": "K"})
+
+        hist = _daily_series("2001-01-01", 2 * 365)
+        ref = hist + 2
+        ref.attrs["units"] = "K"
+        sim = _daily_series("2003-01-01", 365, offset=1)
+        group = Grouper("time.dayofyear", window=31)
+
+        QDM = QuantileDeltaMapping.train(ref, hist, kind="+", group=group, nquantiles=10)
+
+        scen_default = QDM.adjust(sim)
+        assert bool(np.isnan(scen_default).all())
+
+        scen_window = QDM.adjust(sim, rank_window=True)
+        assert bool(np.isfinite(scen_window).all())
+
+        with set_options(extra_output=True):
+            out = QDM.adjust(sim, rank_window=True)
+        assert bool(np.isfinite(out.sim_q).all())
+
 
 @pytest.mark.slow
 class TestQM:

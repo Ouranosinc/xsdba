@@ -707,6 +707,7 @@ def qdm_adjust(
     extrapolation: str,
     kind: str,
     adapt_freq_thresh: str | None = None,
+    rank_window: bool = False,
 ) -> xr.Dataset:
     """
     QDM adjustment on one block.
@@ -731,6 +732,9 @@ def qdm_adjust(
     adapt_freq_thresh : str, optional
         Threshold for frequency adaptation. See :py:class:`xsdba.processing.adapt_freq` for details.
         Default is None, meaning that frequency adaptation is not performed.
+    rank_window : bool
+        Whether to rank simulated values over the full grouping window.
+        If False, ranks are computed within exact groups.
 
     Returns
     -------
@@ -745,7 +749,7 @@ def qdm_adjust(
             dim=None,
         ).sim
 
-    sim_q = group.apply(u.rank, ds.sim, main_only=True, pct=True)
+    sim_q = group.apply(u.rank, ds.sim, main_only=not rank_window, pct=True)
     af = u.interp_on_quantiles(
         sim_q,
         ds.quantiles,
