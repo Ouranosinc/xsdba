@@ -534,6 +534,11 @@ class DetrendedQuantileMapping(TrainAdjust):
     adapt_freq_thresh : str, optional
         Threshold for frequency adaptation. See :py:class:`xsdba.processing.adapt_freq` for details.
         Default is None, meaning that frequency adaptation is not performed.
+    n_last_quantile_filter: int, optional
+        If not None, values to adjust (after preprossing steps) that are above n_last_quantile_filter * the value
+        of the last quantile of hist (before the preprocessing steps, stored in hist_q_raw) are not adjusted.
+        We keep the input simulation with only the preprocessing steps instead.
+        If None, hist_q_raw output will just be a dummy variable.
 
     Adjust step:
 
@@ -544,10 +549,6 @@ class DetrendedQuantileMapping(TrainAdjust):
         Defaults to 1 (linear detrending).
     extrapolation : {'constant', 'nan'}
         The type of extrapolation to use. Defaults to "constant".
-    n_last_quantile_filter: int, optional
-        If not None, values to adjust (after preprossing steps) that are above n_last_quantile_filter * the value
-        of the last quantile of hist (before the preprocessing steps) are not adjusted.
-        We keep the input simulation with only the preprocessing steps instead.
 
     Notes
     -----
@@ -589,6 +590,7 @@ class DetrendedQuantileMapping(TrainAdjust):
         jitter_under_thresh_value: str | None = None,
         jitter_over_thresh_value: str | None = None,
         jitter_over_thresh_upper_bnd: str | None = None,
+        n_last_quantile_filter: int | None = None,
     ):
         if group.prop not in ["group", "dayofyear"]:
             warn(f"Using DQM with a grouping other than 'dayofyear' is not recommended (received {group.name}).", stacklevel=2)
@@ -606,6 +608,7 @@ class DetrendedQuantileMapping(TrainAdjust):
             jitter_under_thresh_value=jitter_under_thresh_value,
             jitter_over_thresh_value=jitter_over_thresh_value,
             jitter_over_thresh_upper_bnd=jitter_over_thresh_upper_bnd,
+            n_last_quantile_filter=n_last_quantile_filter,
         )
         if adapt_freq_thresh is None:
             ds = ds.drop_vars(["P0_ref", "P0_hist", "pth"])
@@ -630,6 +633,7 @@ class DetrendedQuantileMapping(TrainAdjust):
             "group": group,
             "kind": kind,
             "adapt_freq_thresh": adapt_freq_thresh,
+            "n_last_quantile_filter": n_last_quantile_filter,
         }
 
     def _adjust(
@@ -638,7 +642,6 @@ class DetrendedQuantileMapping(TrainAdjust):
         interp="nearest",
         extrapolation="constant",
         detrend=1,
-        n_last_quantile_filter: int | None = None,
     ):
         scen = dqm_adjust(
             self.ds.assign(sim=sim),
@@ -648,7 +651,7 @@ class DetrendedQuantileMapping(TrainAdjust):
             group=self.group,
             kind=self.kind,
             adapt_freq_thresh=self.adapt_freq_thresh,
-            n_last_quantile_filter=n_last_quantile_filter,
+            n_last_quantile_filter=self.n_last_quantile_filter,
         ).scen
         # Detrending needs units.
         scen.attrs["units"] = sim.units

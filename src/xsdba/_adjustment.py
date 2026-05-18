@@ -97,6 +97,7 @@ def dqm_train(
     jitter_under_thresh_value: str | None = None,
     jitter_over_thresh_value: str | None = None,
     jitter_over_thresh_upper_bnd: str | None = None,
+    n_last_quantile_filter: int | None = None,
 ) -> xr.Dataset:
     """
     Train step on one group.
@@ -125,6 +126,11 @@ def dqm_train(
     jitter_over_thresh_upper_bnd : str, optional
         Maximum possible value for the random noise, a quantity with units.
         Default is None, meaning that jitter over thresh is not performed.
+    n_last_quantile_filter: int, optional
+        If not None, values to adjust (after preprossing steps) that are above n_last_quantile_filter * the value
+        of the last quantile of hist (before the preprocessing steps, stored in hist_q_raw) are not adjusted.
+        We keep the input simulation with only the preprocessing steps instead.
+        If None, hist_q_raw output will just be a dummy variable.
 
     Returns
     -------
@@ -136,9 +142,10 @@ def dqm_train(
     `jitter_over_thresh_value` and `jitter_over_thresh_upper_bnd` must be both be specified to
     use `jitter_over_thresh`, or both be None (default) to skip it.
     """
-    # needed for  n_last_quantile_filter in dqm_adjust,
-    sim_dim = Grouper.filter_dim(ds.hist, dim)
-    hist_q_raw = nbu.quantile(ds.hist, quantiles, sim_dim)
+    if n_last_quantile_filter is not None:
+        # needed for  n_last_quantile_filter in dqm_adjust
+        sim_dim = Grouper.filter_dim(ds.hist, dim)
+        hist_q_raw = nbu.quantile(ds.hist, quantiles, sim_dim)
 
     ds = _preprocess_dataset(
         ds,
@@ -157,6 +164,9 @@ def dqm_train(
 
     ref_q = nbu.quantile(refn, quantiles, ref_dim)
     hist_q = nbu.quantile(histn, quantiles, sim_dim)
+    if n_last_quantile_filter is None:
+        # make a dummy variable to keep the same output structure
+        hist_q_raw = xr.full_like(hist_q, np.nan)
 
     af = u.get_correction(hist_q, ref_q, kind)
     mu_ref = ds.ref.mean(ref_dim)
@@ -675,7 +685,7 @@ def dqm_adjust(
             dim=None,
         ).sim
 
-    # mask no bias adjustment, when sim is larger than 10 times the largest quantile in hist(without adapt freq)
+    # mask no bias adjustment, when sim is larger than n times the largest quantile in hist (without adapt freq)
     if n_last_quantile_filter is not None:
         adaptedsim = ds["sim"].copy()
         last_quantile = ds["hist_q_raw"].isel({"quantiles": -1}).drop_vars("quantiles")
