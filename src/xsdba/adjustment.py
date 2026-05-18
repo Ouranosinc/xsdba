@@ -636,7 +636,7 @@ class DetrendedQuantileMapping(TrainAdjust):
         )
         ds.hist_q_raw.attrs.update(
             standard_name="Model quantiles",
-            long_name="Quantiles of model on the reference period",
+            long_name="Quantiles of model on the reference period, befofe the preprocessing steps.",
         )
         ds.scaling.attrs.update(
             standard_name="Scaling factor",
