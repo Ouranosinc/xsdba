@@ -2,24 +2,40 @@
 Changelog
 =========
 
-
 `Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
 ------------------------------------------------------------
+
 
 Contributors: Gabriel Rondeau-Genesse (:user:`RondeauG`), Pascal Bourgault (:user:`aulemahal`), Juliette Lavoie (:user:`juliettelavoie`).
 
 Changes
 ^^^^^^^
-* Add ``max_tail_factor`` arg  to ``dqm_adjust``. (:pull:`279`, :issue:`278`).
+* Add ``max_tail_factor`` arg  to quantile mapping functions. (:pull:`279`, :issue:`278`).
+* New example in notebook `advanced_example.ipynb` showing how to use spectral utils (``xsdba.processing.spectral_filter`` and ``xsdba.properties.spectral_variance``). (:issue:`247`, :pull:`259`, :pull:`282`).
 
 Breaking changes
 ^^^^^^^^^^^^^^^^
 * Default values for `frac` and `power` in ``xsdba.adjustment.ExtremeValues`` have been changed to 0.7, and 3, respectively. (:pull:`262`).
+* The order of the arguments has been reorganized in ``xsdba.processing.spectral_filter``.  (:pull:`259`).
+* `delta` is no longer computed automatically from the `lat` or `rlat` field in ``xsdba.processing.spectral_filter``.  (:pull:`259`).
 
 Fixes
 ^^^^^
 * Fixed property ``return_value`` and ``decorrelation_length`` for dask inputs (:issue:`266`, :pull:`267`).
 
+Internal changes
+^^^^^^^^^^^^^^^^
+* Updated the cookiecutter template to the latest version. (:pull:`276`):
+    * Migrated developement-based `optional-dependencies` to `dependency-groups`.
+    * Sets token-based workflows to run within an `automation` environment.
+    * Updated and synchornized dependencies.
+    * `pre-commit` has been replaced by `prek`.
+    * `Makefile` now handles some dependency installation logic.
+    * `tox.ini` has been replaced by `tox.toml` with v4.52.0 standards.
+* Documentation adjustments. (:pull:`283`):
+    * Added an acknowledgement statement about Ouranos to the `README.rst` and the rendered documentation.
+    * Added the Ouranos logo with light/dark theme support for `furo`.
+    * Added an `intersphinx` mapping for `xarray` objects.
 
 .. _changes_0.6.1:
 
@@ -39,13 +55,6 @@ Fixes
 Internal changes
 ^^^^^^^^^^^^^^^^
 * Updated pre-commit hooks and ignored `ruff` rule ``D420`` due to a bug in its implementation. (:pull:`263`).
-* Updated the cookiecutter template to the latest version. (:pull:`276`):
-    * Migrated developement-based `optional-dependencies` to `dependency-groups`.
-    * Sets token-based workflows to run within an `automation` environment.
-    * Updated and synchornized dependencies.
-    * `pre-commit` has been replaced by `prek`.
-    * `Makefile` now handles some dependency installation logic.
-    * `tox.ini` has been replaced by `tox.toml` with v4.52.0 standards.
 
 .. _changes_0.6.0:
 
