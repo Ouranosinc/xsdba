@@ -97,7 +97,7 @@ def dqm_train(
     jitter_under_thresh_value: str | None = None,
     jitter_over_thresh_value: str | None = None,
     jitter_over_thresh_upper_bnd: str | None = None,
-    n_last_quantile_filter: int | None = None,
+    n_last_quantile_filter: float | None = None,
 ) -> xr.Dataset:
     """
     Train step on one group.
@@ -126,7 +126,7 @@ def dqm_train(
     jitter_over_thresh_upper_bnd : str, optional
         Maximum possible value for the random noise, a quantity with units.
         Default is None, meaning that jitter over thresh is not performed.
-    n_last_quantile_filter: int, optional
+    n_last_quantile_filter: float, optional
         If not None, values to adjust (after preprossing steps) that are above n_last_quantile_filter * the value
         of the last quantile of hist (before the preprocessing steps, stored in hist_q_raw) are not adjusted.
         We keep the input simulation with only the preprocessing steps instead.
