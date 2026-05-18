@@ -6,7 +6,7 @@ Changelog
 ------------------------------------------------------------
 
 
-Contributors: Gabriel Rondeau-Genesse (:user:`RondeauG`), Pascal Bourgault (:user:`aulemahal`), Juliette Lavoie (:user:`juliettelavoie`).
+Contributors: Gabriel Rondeau-Genesse (:user:`RondeauG`), Pascal Bourgault (:user:`aulemahal`), Éric Dupuis (:user:`coxipi`), Juliette Lavoie (:user:`juliettelavoie`).
 
 Changes
 ^^^^^^^
