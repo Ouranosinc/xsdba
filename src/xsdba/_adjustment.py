@@ -97,7 +97,7 @@ def dqm_train(
     jitter_under_thresh_value: str | None = None,
     jitter_over_thresh_value: str | None = None,
     jitter_over_thresh_upper_bnd: str | None = None,
-    n_last_quantile_filter: float | None = None,
+    max_tail_factor: float | None = None,
 ) -> xr.Dataset:
     """
     Train step on one group.
@@ -126,8 +126,8 @@ def dqm_train(
     jitter_over_thresh_upper_bnd : str, optional
         Maximum possible value for the random noise, a quantity with units.
         Default is None, meaning that jitter over thresh is not performed.
-    n_last_quantile_filter: float, optional
-        If not None, values to adjust (after preprossing steps) that are above n_last_quantile_filter * the value
+    max_tail_factor: float, optional
+        If not None, values to adjust (after preprossing steps) that are above max_tail_factor * the value
         of the last quantile of hist (before the preprocessing steps, stored in hist_q_raw) are not adjusted.
         We keep the input simulation with only the preprocessing steps instead.
         If None, hist_q_raw output will just be a dummy variable.
@@ -142,8 +142,8 @@ def dqm_train(
     `jitter_over_thresh_value` and `jitter_over_thresh_upper_bnd` must be both be specified to
     use `jitter_over_thresh`, or both be None (default) to skip it.
     """
-    if n_last_quantile_filter is not None:
-        # needed for  n_last_quantile_filter in dqm_adjust
+    if max_tail_factor is not None:
+        # needed for  max_tail_factor in dqm_adjust
         sim_dim = Grouper.filter_dim(ds.hist, dim)
         hist_q_raw = nbu.quantile(ds.hist, quantiles, sim_dim)
 
@@ -164,7 +164,7 @@ def dqm_train(
 
     ref_q = nbu.quantile(refn, quantiles, ref_dim)
     hist_q = nbu.quantile(histn, quantiles, sim_dim)
-    if n_last_quantile_filter is None:
+    if max_tail_factor is None:
         # make a dummy variable to keep the same output structure
         hist_q_raw = xr.full_like(hist_q, np.nan)
 
@@ -642,7 +642,7 @@ def dqm_adjust(
     extrapolation: str,
     detrend: int | PolyDetrend,
     adapt_freq_thresh: str | None = None,
-    n_last_quantile_filter: int | None = None,
+    max_tail_factor: int | None = None,
 ) -> xr.Dataset:
     """
     DQM adjustment on one block.
@@ -686,7 +686,7 @@ def dqm_adjust(
         ).sim
 
     # mask no bias adjustment, when sim is larger than n times the largest quantile in hist (without adapt freq)
-    if n_last_quantile_filter is not None:
+    if max_tail_factor is not None:
         adaptedsim = ds["sim"].copy()
         last_quantile = ds["hist_q_raw"].isel({"quantiles": -1}).drop_vars("quantiles")
         # make last_quantile dim fit adaptedsim dim
@@ -696,7 +696,7 @@ def dqm_adjust(
             group=group,
             interp=interp if group.prop != "dayofyear" else "nearest",
         )
-        mask = adaptedsim > n_last_quantile_filter * last_quantile
+        mask = adaptedsim > max_tail_factor * last_quantile
 
     scaled_sim = u.apply_correction(
         ds.sim,
@@ -726,7 +726,7 @@ def dqm_adjust(
     scen = detrending.retrend(scen)
 
     # apply mask
-    if n_last_quantile_filter is not None:
+    if max_tail_factor is not None:
         scen = scen.where(~mask, adaptedsim)
 
     out = xr.Dataset({"scen": scen, "trend": detrending.ds.trend})

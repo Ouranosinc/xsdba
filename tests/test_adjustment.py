@@ -433,7 +433,7 @@ class TestDQM:
         np.testing.assert_allclose(out.values, out_ad.values)
 
     @pytest.mark.parametrize("use_dask", [True, False])
-    def test_n_last_quantile_filter(self, random, use_dask):
+    def test_max_tail_factor(self, random, use_dask):
 
         time = pd.date_range("1990-01-01", "2020-12-31", freq="D")
         prvals = random.uniform(0.001, 20, size=(time.size, 3))
@@ -472,7 +472,7 @@ class TestDQM:
         )
         scen = dqm.adjust(sim)
         assert scen.isel(time=0, lat=0).values > 300
-        scen = dqm.adjust(sim, n_last_quantile_filter=10)
+        scen = dqm.adjust(sim, max_tail_factor=10)
         assert scen.isel(time=0, lat=0).values == 300
 
 

@@ -10,7 +10,7 @@ Contributors: Gabriel Rondeau-Genesse (:user:`RondeauG`), Pascal Bourgault (:use
 
 Changes
 ^^^^^^^
-* Add ``n_last_quantile_filter`` arg  to ``dqm_adjust``. (:pull:`279`, :issue:`278`).
+* Add ``max_tail_factor`` arg  to ``dqm_adjust``. (:pull:`279`, :issue:`278`).
 
 Breaking changes
 ^^^^^^^^^^^^^^^^
