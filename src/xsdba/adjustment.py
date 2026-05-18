@@ -671,8 +671,7 @@ class QuantileDeltaMapping(EmpiricalQuantileMapping):
         The type of extrapolation to use. Defaults to "constant".
     rank_window : bool
         Whether to rank simulated values over the full grouping window. Defaults to False, meaning values are ranked
-        within exact groups only. Setting this to True can help when adjusting short scenario slices with windowed
-        groupers, such as one year of daily data grouped with ``Grouper("time.dayofyear", window=31)``.
+        within exact groups only, e.g., a specific day of year.
     quantiles : xr.DataArray
         The quantile of each value of `sim`. The adjustment factor is interpolated using this as the "quantile" axis on `ds.af`.
         This is an extra output that requires activation with `xsdba.set_options(extra_output=True)`.

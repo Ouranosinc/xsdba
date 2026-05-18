@@ -734,7 +734,7 @@ def qdm_adjust(
         Default is None, meaning that frequency adaptation is not performed.
     rank_window : bool
         Whether to rank simulated values over the full grouping window.
-        If False, ranks are computed within exact groups.
+        If False, ranks are computed within exact groups, e.g., a specific day of year.
 
     Returns
     -------
