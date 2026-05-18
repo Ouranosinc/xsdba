@@ -464,6 +464,7 @@ class TestDQM:
             ref = ref.chunk({"time": -1})
             hist = hist.chunk({"time": -1})
             sim = sim.chunk({"time": -1})
+        # no max_tail_factor, the 300 should be adjusted to something higher than 300
         dqm = DetrendedQuantileMapping.train(
             ref,
             hist,
@@ -472,7 +473,15 @@ class TestDQM:
         )
         scen = dqm.adjust(sim)
         assert scen.isel(time=0, lat=0).values > 300
-        scen = dqm.adjust(sim, max_tail_factor=10)
+        # with max_tail_factor=10, the 300 should stay the same
+        dqm = DetrendedQuantileMapping.train(
+            ref,
+            hist,
+            kind="*",
+            group=group,
+            max_tail_factor=10,
+        )
+        scen = dqm.adjust(sim)
         assert scen.isel(time=0, lat=0).values == 300
 
 
@@ -639,6 +648,58 @@ class TestQDM:
         bc_sim = scends.scen
         np.testing.assert_almost_equal(bc_sim.mean(), 41.5, 1)
         np.testing.assert_almost_equal(bc_sim.std(), 16.7, 0)
+
+    @pytest.mark.parametrize("use_dask", [True, False])
+    def test_max_tail_factor(self, random, use_dask):
+
+        time = pd.date_range("1990-01-01", "2020-12-31", freq="D")
+        prvals = random.uniform(0.001, 20, size=(time.size, 3))
+        ref = xr.DataArray(
+            prvals,
+            coords={"time": time, "lat": [0, 1, 2]},
+            dims=("time", "lat"),
+            attrs={"units": "mm d-1"},
+        )
+        prvals = random.uniform(0.001, 10, size=(time.size, 3))
+        hist = xr.DataArray(
+            prvals,
+            coords={"time": time, "lat": [0, 1, 2]},
+            dims=("time", "lat"),
+            attrs={"units": "mm d-1"},
+        )
+        time = pd.date_range("2021-01-01", "2050-12-31", freq="D")
+        group = "time"
+        prvals = random.uniform(0.001, 10, size=(time.size, 3))
+        prvals[0] = 300
+        sim = xr.DataArray(
+            prvals,
+            coords={"time": time, "lat": [0, 1, 2]},
+            dims=("time", "lat"),
+            attrs={"units": "mm d-1"},
+        )
+        if use_dask:
+            ref = ref.chunk({"time": -1})
+            hist = hist.chunk({"time": -1})
+            sim = sim.chunk({"time": -1})
+        # no max_tail_factor, the 300 should be adjusted to something higher than 300
+        qdm = QuantileDeltaMapping.train(
+            ref,
+            hist,
+            kind="*",
+            group=group,
+        )
+        scen = qdm.adjust(sim)
+        assert scen.isel(time=0, lat=0).values > 300
+        # with max_tail_factor=10, the 300 should stay the same
+        qdm = QuantileDeltaMapping.train(
+            ref,
+            hist,
+            kind="*",
+            group=group,
+            max_tail_factor=10,
+        )
+        scen = qdm.adjust(sim)
+        assert scen.isel(time=0, lat=0).values == 300
 
 
 @pytest.mark.slow
@@ -827,6 +888,58 @@ class TestQM:
         hist_jit = jitter_over_thresh(hist, thr, ubnd)
         af_jit_outside = EmpiricalQuantileMapping.train(ref, hist_jit, group="time").ds.af
         np.testing.assert_array_almost_equal(af_jit_inside, af_jit_outside, 2)
+
+    @pytest.mark.parametrize("use_dask", [True, False])
+    def test_max_tail_factor(self, random, use_dask):
+
+        time = pd.date_range("1990-01-01", "2020-12-31", freq="D")
+        prvals = random.uniform(0.001, 20, size=(time.size, 3))
+        ref = xr.DataArray(
+            prvals,
+            coords={"time": time, "lat": [0, 1, 2]},
+            dims=("time", "lat"),
+            attrs={"units": "mm d-1"},
+        )
+        prvals = random.uniform(0.001, 10, size=(time.size, 3))
+        hist = xr.DataArray(
+            prvals,
+            coords={"time": time, "lat": [0, 1, 2]},
+            dims=("time", "lat"),
+            attrs={"units": "mm d-1"},
+        )
+        time = pd.date_range("2021-01-01", "2050-12-31", freq="D")
+        group = "time"
+        prvals = random.uniform(0.001, 10, size=(time.size, 3))
+        prvals[0] = 300
+        sim = xr.DataArray(
+            prvals,
+            coords={"time": time, "lat": [0, 1, 2]},
+            dims=("time", "lat"),
+            attrs={"units": "mm d-1"},
+        )
+        if use_dask:
+            ref = ref.chunk({"time": -1})
+            hist = hist.chunk({"time": -1})
+            sim = sim.chunk({"time": -1})
+        # no max_tail_factor, the 300 should be adjusted to something higher than 300
+        qm = EmpiricalQuantileMapping.train(
+            ref,
+            hist,
+            kind="*",
+            group=group,
+        )
+        scen = qm.adjust(sim)
+        assert scen.isel(time=0, lat=0).values > 300
+        # with max_tail_factor=10, the 300 should stay the same
+        qm = EmpiricalQuantileMapping.train(
+            ref,
+            hist,
+            kind="*",
+            group=group,
+            max_tail_factor=10,
+        )
+        scen = qm.adjust(sim)
+        assert scen.isel(time=0, lat=0).values == 300
 
 
 @pytest.mark.slow
