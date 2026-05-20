@@ -23,6 +23,7 @@ from xsdba.adjustment import (
     dOTC,
 )
 from xsdba.base import Grouper, stack_periods
+from xsdba.detrending import PolyDetrend
 from xsdba.options import set_options
 from xsdba.processing import (
     adapt_freq,
@@ -483,6 +484,53 @@ class TestDQM:
         )
         scen = dqm.adjust(sim)
         assert scen.isel(time=0, lat=0).values == 300
+
+    def test_mult_skip_zeros_detrend(
+        self,
+        random,
+    ):
+
+        time = pd.date_range("1990-01-01", "2020-12-31", freq="D")
+        prvals = random.uniform(0.001, 20, size=(time.size, 3))
+        ref = xr.DataArray(
+            prvals,
+            coords={"time": time, "lat": [0, 1, 2]},
+            dims=("time", "lat"),
+            attrs={"units": "mm d-1"},
+        )
+        prvals = random.uniform(0.001, 10, size=(time.size, 3))
+        hist = xr.DataArray(
+            prvals,
+            coords={"time": time, "lat": [0, 1, 2]},
+            dims=("time", "lat"),
+            attrs={"units": "mm d-1"},
+        )
+        time = pd.date_range("2021-01-01", "2050-12-31", freq="D")
+        group = "time"
+
+        # with sim all zeros, the detrended values will be nans, and the adjusted values will be nans as well
+        prvals = np.zeros((time.size, 3))
+        sim = xr.DataArray(
+            prvals,
+            coords={"time": time, "lat": [0, 1, 2]},
+            dims=("time", "lat"),
+            attrs={"units": "mm d-1"},
+        )
+
+        # no max_tail_factor, the 300 should be adjusted to something higher than 300
+        dqm = DetrendedQuantileMapping.train(
+            ref,
+            hist,
+            kind="*",
+            group=group,
+        )
+        scen = dqm.adjust(sim)
+        assert np.isnan(scen).all()
+
+        # with mult_skip_zeros activated in the dtrend, the adjusted values should be the same as the original values (zeros in this case)
+
+        scen = dqm.adjust(sim, detrend=PolyDetrend(mult_skip_zeros=True))
+        assert (scen == sim).all()
 
 
 @pytest.mark.slow

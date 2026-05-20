@@ -104,3 +104,27 @@ def test_no_detrend(timeseries):
 
     np.testing.assert_array_equal(fit.retrend(x), x)
     np.testing.assert_array_equal(fit.detrend(x), x)
+
+
+def test_mult_skip_zeros(timeseries):
+    x = timeseries(np.zeros(3 * 365))
+
+    # with 0s and kind ='*', the detrended values will be nans.
+    detrending = LoessDetrend(f=0.2, niter=1, d=0, weights="tricube", kind="*")
+    detrending = detrending.fit(x)
+    out = detrending.detrend(x)
+
+    assert np.isnan(out).all()
+
+    # activate mult_skip_zeros, to keep the original values instead
+    detrending = LoessDetrend(f=0.2, niter=1, d=0, weights="tricube", mult_skip_zeros=True, kind="*")
+    detrending = detrending.fit(x)
+    out = detrending.detrend(x)
+
+    assert (out == x).all()
+
+    # warning test
+    with pytest.warns(UserWarning, match="Your kind is +"):
+        detrending = LoessDetrend(f=0.2, niter=1, d=0, weights="tricube", mult_skip_zeros=True, kind="+")
+        detrending = detrending.fit(x)
+        out = detrending.detrend(x)

@@ -4,6 +4,7 @@ Detrending Objects Utilities
 """
 
 from __future__ import annotations
+import warnings
 
 import xarray as xr
 
@@ -34,7 +35,7 @@ class BaseDetrend(ParametrizableWithDataset):
     """
 
     @parse_group
-    def __init__(self, *, group: Grouper | str = "time", kind: str = "+", **kwargs):
+    def __init__(self, *, group: Grouper | str = "time", kind: str = "+", mult_skip_zeros: bool = False, **kwargs):
         """
         Initialize Detrending object.
 
@@ -45,8 +46,10 @@ class BaseDetrend(ParametrizableWithDataset):
             The fit is performed along the group's main dim.
         kind : {'*', '+'}
             The way the trend is removed or added, either additive or multiplicative.
+        mult_skip_zeros : bool
+            If True and kind is "*", zero values in the trend are not used for detrending, and the original value is kept instead.
         """
-        super().__init__(group=group, kind=kind, **kwargs)
+        super().__init__(group=group, kind=kind, mult_skip_zeros=mult_skip_zeros, **kwargs)
 
     @property
     def fitted(self):
@@ -100,7 +103,15 @@ class BaseDetrend(ParametrizableWithDataset):
     def _detrend(self, da, trend):
         """Detrend."""
         # Remove trend from series
-        return apply_correction(da, invert(trend, self.kind), self.kind)
+        out = apply_correction(da, invert(trend, self.kind), self.kind)
+        # 0 trends will create nan values, this option allows to keep the original values instead of detrending with nan.
+        if self.mult_skip_zeros and self.kind != "*":
+            warnings.warn(
+                f"mult_skip_zeros is only used for kind='*'. Your kind is {self.kind}. mult_skip_zeros will be ignored.", UserWarning, stacklevel=2
+            )
+        if self.mult_skip_zeros and self.kind == "*":
+            out = out.where(trend != 0, da)
+        return out
 
     @harmonize_units(["da", "trend"])
     def _retrend(self, da, trend):
@@ -145,7 +156,7 @@ class MeanDetrend(BaseDetrend):
 
 
 @map_groups(trend=[Grouper.DIM])
-def _meandetrend_get_trend(da, *, dim, kind):
+def _meandetrend_get_trend(da, *, dim, kind, mult_skip_zeros):
     """Mean detrend."""
     trend = da.mean(dim).broadcast_like(da)
     return trend.rename("trend").to_dataset()
@@ -167,11 +178,13 @@ class PolyDetrend(BaseDetrend):
     preserve_mean : bool
         Whether to preserve the mean when de/re-trending.
         If True, the trend has its mean removed before it is used.
+    mult_skip_zeros : bool
+        If True and kind is "*", zero values in the trend are not used for detrending, and the original value is kept instead.
     """
 
-    def __init__(self, group="time", kind=ADDITIVE, degree=4, preserve_mean=False):
+    def __init__(self, group="time", kind=ADDITIVE, degree=4, preserve_mean=False, mult_skip_zeros=False):
         """Init."""
-        super().__init__(group=group, kind=kind, degree=degree, preserve_mean=preserve_mean)
+        super().__init__(group=group, kind=kind, degree=degree, preserve_mean=preserve_mean, mult_skip_zeros=mult_skip_zeros)
 
     def _get_trend(self, da):
         """Trend."""
@@ -181,7 +194,7 @@ class PolyDetrend(BaseDetrend):
 
 
 @map_groups(trend=[Grouper.DIM])
-def _polydetrend_get_trend(da, *, dim, degree, preserve_mean, kind):
+def _polydetrend_get_trend(da, *, dim, degree, preserve_mean, kind, mult_skip_zeros):
     """Polydetrend, atomic func on 1 group."""
     if len(dim) > 1:
         da = da.mean(dim[1:])
@@ -223,6 +236,8 @@ class LoessDetrend(BaseDetrend):
     skipna : bool
         If True (default), missing values are not included in the loess trend computation
         and thus are not propagated. The output will have the same missing values as the input.
+    mult_skip_zeros : bool
+        If True and kind is "*", zero values in the trend are not used for detrending, and the original value is kept instead.
 
     Notes
     -----
@@ -241,6 +256,7 @@ class LoessDetrend(BaseDetrend):
         weights="tricube",
         equal_spacing=None,
         skipna=True,
+        mult_skip_zeros: bool = False,
     ):
         """Init."""
         super().__init__(
@@ -252,6 +268,7 @@ class LoessDetrend(BaseDetrend):
             weights=weights,
             equal_spacing=equal_spacing,
             skipna=skipna,
+            mult_skip_zeros=mult_skip_zeros,
         )
 
     def _get_trend(self, da):
@@ -262,7 +279,7 @@ class LoessDetrend(BaseDetrend):
 
 
 @map_groups(trend=[Grouper.DIM])
-def _loessdetrend_get_trend(da, *, dim, f, niter, d, weights, equal_spacing, skipna, kind):
+def _loessdetrend_get_trend(da, *, dim, f, niter, d, weights, equal_spacing, skipna, kind, mult_skip_zeros):
     """Loessdetrend."""
     if len(dim) > 1:
         da = da.mean(dim[1:])
@@ -302,13 +319,15 @@ class RollingMeanDetrend(BaseDetrend):
         result is NaN. See :py:meth:`xarray.DataArray.rolling`.
         Defaults to None, which sets it equal to `win`. Setting both `weights` and this
         is not implemented yet.
+    mult_skip_zeros : bool
+        If True and kind is "*", zero values in the trend are not used for detrending, and the original value is kept instead.
 
     Notes
     -----
     As for the :py:class:`LoessDetrend` detrending, important boundary effects are to be expected.
     """
 
-    def __init__(self, group="time", kind=ADDITIVE, win=30, weights=None, min_periods=None):
+    def __init__(self, group="time", kind=ADDITIVE, win=30, weights=None, min_periods=None, mult_skip_zeros=False):
         """Init."""
         if weights is not None:
             weights = xr.DataArray(weights, dims=("window",))
@@ -325,7 +344,7 @@ class RollingMeanDetrend(BaseDetrend):
 
 
 @map_groups(trend=[Grouper.DIM])
-def _rollingmean_get_trend(da, *, dim, kind, win, weights, min_periods):
+def _rollingmean_get_trend(da, *, dim, kind, win, weights, min_periods, mult_skip_zeros):
     """Rollingmean trend."""
     if len(dim) > 1:
         da = da.mean(dim[1:])
