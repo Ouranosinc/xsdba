@@ -561,7 +561,7 @@ def rank(da: xr.DataArray, dim: str | list[str] = "time", pct: bool = False, ran
         da = da.stack(**{rnk_dim: dims})
     if random_tiebreak:
         # the noise added is small enough to leave the rank structure unchanged, and only avoids equalities
-        min_diff = np.abs(da.diff(rnk_dim)).fillna(0).where(lambda x: x > 0).min(rnk_dim)
+        min_diff = np.abs(da.diff(rnk_dim)).where(lambda x: x > 0).min(rnk_dim)
         noise = min_diff * 0.1 * da.copy(data=np.random.uniform(low=0, high=1, size=da.shape))
         da = da + noise
     rnk = da.rank(rnk_dim, pct=pct)
