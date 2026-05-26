@@ -560,11 +560,14 @@ def rank(da: xr.DataArray, dim: str | list[str] = "time", pct: bool = False, ran
     if len(dims) > 1:
         da = da.stack(**{rnk_dim: dims})
     if random_tiebreak:
-        # the noise added is small enough to leave the rank structure unchanged, and only avoids equalities
-        min_diff = np.abs(da.diff(rnk_dim)).where(lambda x: x > 0).min(rnk_dim)
-        noise = min_diff * 0.1 * da.copy(data=np.random.uniform(low=0, high=1, size=da.shape))
-        da = da + noise
-    rnk = da.rank(rnk_dim, pct=pct)
+        rnk = da.rank(rnk_dim, pct=False)
+        # add noise on the rank to remove ties. Ranks are integers, so values below 0.25 are enough and will not cause
+        # changes in the rank structure outside of ties.
+        rnk = rnk + da.copy(data=np.random.uniform(low=0.1, high=0.25, size=da.shape))
+        # re-rank
+        rnk = rnk.rank(rnk_dim, pct=pct)
+    else:
+        rnk = da.rank(rnk_dim, pct=pct)
 
     if pct:
         mn = rnk.min(rnk_dim)
