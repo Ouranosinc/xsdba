@@ -203,3 +203,15 @@ def test_rank(random):
     exp = arr.argsort().argsort() + 1
 
     np.testing.assert_array_equal(ranks.values, exp)
+
+
+def test_rank_tiebreak(random):
+    arr = [1, 26, 2, 4.0, 6, 2, 2]
+    da = xr.DataArray(arr, dims=("time"))
+    ranks = u.rank(da, dim="time", pct=False)
+    sorted_ranks = np.asarray(sorted(list(ranks.values)))
+    ranks_t = u.rank(da, dim="time", pct=False, random_tiebreak=True)
+    sorted_ranks_t = np.asarray(sorted(list(ranks_t.values)))
+    exp_ranks_with_tiebreaks = np.arange(1, len(arr) + 1)
+    assert not all(sorted_ranks == exp_ranks_with_tiebreaks)
+    assert all(sorted_ranks_t == exp_ranks_with_tiebreaks)
