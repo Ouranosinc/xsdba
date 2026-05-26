@@ -503,12 +503,13 @@ class TestDQM:
         ref, hist, _ = cannon_2015_rvs(15000, random=random)
         hist = hist.copy()
         # remove values below 1 kg m-2 d-1 thresh
-        ref, hist = (convert_units_to(da, "kg m-2 d-1").expand_dims(point=[0, 1]).clip(2, None) for da in [ref, hist])
-        # second site with a 10 extra values below thresh in hist, and 5 zero values in ref
-        itimes = np.arange(0, 1000, 100)
+        ref, hist = (convert_units_to(da, "kg m-2 d-1").expand_dims(point=[0, 1, 2]).clip(2, None) for da in [ref, hist])
+        # second site with a 15 extra values below thresh in hist
+        itimes = np.arange(0, 30, 2)
         hist[{"time": itimes, "point": 1}] = np.arange(len(itimes)) / (len(itimes))  # stay below thresh
-
+        # 5 and 10 zero values in ref
         ref[{"time": range(5)}] = 0
+        ref[{"time": range(10), "point": 2}] = 0
 
         # bare-adapt
         adapted, _, dP0 = adapt_freq(ref, hist, thresh="1 kg m-2 d-1", group=group)
@@ -529,12 +530,23 @@ class TestDQM:
         # even for values where nothing should happen, with add_dims, it's possible there is a weak change, but
         # it's small, a small tolerance is accepted in difference
         atol = 1e-6
-        cond1 = np.abs(adapted.values[1, itimes] - hist.values[1, itimes]) < atol
-        cond2 = np.abs(adj_only_adapt.transpose(*adapted.dims).values[1, itimes] - hist.values[1, itimes]) < atol
-        np.testing.assert_allclose(cond1, cond2)
 
         # on point 0, nothing should change
         np.testing.assert_allclose(hist.values[0, :], adj_only_adapt.transpose(*adapted.dims).values[0, :])
+
+        # point 1
+        cond1 = np.abs(adapted.values[1, itimes] - hist.values[1, itimes]) < atol
+        cond2 = np.abs(adj_only_adapt.transpose(*adapted.dims).values[1, itimes] - hist.values[1, itimes]) < atol
+        np.testing.assert_allclose(cond1, cond2)
+        # first 5 points unchanged
+        np.testing.assert_allclose((adapted.values[1, itimes] - hist.values[1, itimes])[:5], 0)
+
+        # point 2
+        cond1 = np.abs(adapted.values[2, itimes] - hist.values[2, itimes]) < atol
+        cond2 = np.abs(adj_only_adapt.transpose(*adapted.dims).values[2, itimes] - hist.values[2, itimes]) < atol
+        np.testing.assert_allclose(cond1, cond2)
+        # first 10 points unchanged
+        np.testing.assert_allclose((adapted.values[2, itimes] - hist.values[2, itimes])[:10], 0)
 
     def test_adapt_freq_time_explicit(self, cannon_2015_rvs, random):
         ref, hist, _ = cannon_2015_rvs(15000, random=random)
