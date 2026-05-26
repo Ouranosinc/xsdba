@@ -27,7 +27,6 @@ from xsdba.base import Grouper, map_groups, parse_group, uses_dask
 from xsdba.nbutils import _pairwise_haversine_and_bins
 from xsdba.processing import _normalized_radial_wavenumber
 from xsdba.units import (
-    _parse_str,
     convert_units_to,
     infer_sampling_units,
     normalized_wavenumber_to_wavelength,
@@ -1115,7 +1114,7 @@ def _relative_frequency(
     if group.prop != "group":  # change the time resolution if necessary
         cond = cond.groupby(group.name)
         # length of the groupBy groups
-        length = np.array([len(v) for k, v in cond.groups.items()])
+        length = np.array([len(v) for v in cond.groups.values()])
         for _ in range(da.ndim - 1):  # add empty dimension(s) to match input
             length = np.expand_dims(length, axis=-1)
     # count days with the condition and divide by total nb of days
@@ -1295,17 +1294,28 @@ def _return_value(
     """
 
     @map_groups(out=[Grouper.PROP], main_only=True)
-    def frequency_analysis_method(ds, *, dim, method):
+    def frequency_analysis_method(ds, *, dim, method, op, period):
         sub = select_resample_op(ds.x, op=op)
         params = fit(sub, dist="genextreme", method=method)
         out = parametric_quantile(params, q=1 - 1.0 / period)
         return out.isel(quantile=0, drop=True).rename("out").to_dataset()
 
-    out = frequency_analysis_method(da.rename("x").to_dataset(), method=method, group=group).out
+    out = frequency_analysis_method(da.rename("x").to_dataset(), method=method, group=group, op=op, period=period).out
     return out.assign_attrs(units=da.units)
 
 
 return_value = StatisticalProperty(identifier="return_value", aspect="temporal", compute=_return_value)
+
+
+def _bin_correlations(corr, distance, edges):
+    """Bin and mean."""
+    mask_nan = ~np.isnan(corr)
+    if mask_nan.any():
+        binned_corr = stats.binned_statistic(distance[mask_nan], corr[mask_nan], statistic="mean", bins=edges)
+        stat = binned_corr.statistic
+    else:
+        stat = np.nan * stats.binned_statistic([0], [0], statistic="mean", bins=edges).statistic
+    return stat
 
 
 @parse_group
@@ -1349,8 +1359,9 @@ def _spatial_correlogram(
     if dims is None:
         dims = [d for d in da.dims if d != "time"]
 
-    corr = _pairwise_spearman(da, dims)
-    dists, mn, mx = _pairwise_haversine_and_bins(corr.cf["longitude"].values, corr.cf["latitude"].values)
+    with xr.set_options(keep_attrs=True):
+        corr = _pairwise_spearman(da, dims)
+        dists, mn, mx = _pairwise_haversine_and_bins(corr.cf["longitude"].values, corr.cf["latitude"].values)
     dists = xr.DataArray(dists, dims=corr.dims, coords=corr.coords, name="distance")
     if np.isscalar(bins):
         bins = np.linspace(mn * 0.9999, mx * 1.0001, bins + 1)
@@ -1368,24 +1379,22 @@ def _spatial_correlogram(
     )
 
     dists = dists.where(corr.notnull())
-
-    def _bin_corr(corr, distance):
-        """Bin and mean."""
-        return stats.binned_statistic(distance.flatten(), corr.flatten(), statistic="mean", bins=bins).statistic
+    edges = xr.DataArray(bins, dims=("bin_edges",))
 
     # (_spatial, _spatial2) -> (_spatial, distance_bins)
     binned = xr.apply_ufunc(
-        _bin_corr,
+        _bin_correlations,
         corr,
         dists,
-        input_core_dims=[["_spatial", "_spatial2"], ["_spatial", "_spatial2"]],
+        edges,
+        input_core_dims=[["_spatial", "_spatial2"], ["_spatial", "_spatial2"], ["bin_edges"]],
         output_core_dims=[["distance_bins"]],
         dask="parallelized",
         vectorize=True,
         output_dtypes=[float],
         dask_gufunc_kwargs={
             "allow_rechunk": True,
-            "output_sizes": {"distance_bins": bins},
+            "output_sizes": {"distance_bins": edges.bin_edges.size - 1},
         },
     )
     binned = binned.assign_coords(distance_bins=centers).rename(distance_bins="distance").assign_attrs(units="").rename("corr")
@@ -1447,28 +1456,26 @@ def _decorrelation_length(
     if dims is None and group is not None:
         dims = [d for d in da.dims if d != group.dim]
 
-    corr = _pairwise_spearman(da, dims)
-
-    dists, _, _ = _pairwise_haversine_and_bins(corr.cf["longitude"].values, corr.cf["latitude"].values, transpose=True)
+    with xr.set_options(keep_attrs=True):
+        corr = _pairwise_spearman(da, dims)
+        dists, _, _ = _pairwise_haversine_and_bins(corr.cf["longitude"].values, corr.cf["latitude"].values, transpose=True)
 
     dists = xr.DataArray(dists, dims=corr.dims, coords=corr.coords, name="distance")
 
     trans_dists = xr.DataArray(dists.T, dims=corr.dims, coords=corr.coords, name="distance")
 
     if np.isscalar(bins):
-        bin_array = np.linspace(0, radius, bins + 1)
-    elif isinstance(bins, np.ndarray):
-        bin_array = bins
-    else:
+        bins = np.linspace(0, radius, bins + 1)
+    elif not isinstance(bins, np.ndarray):
         raise ValueError("bins must be a scalar or a numpy array.")
 
     if uses_dask(corr):
         dists = dists.chunk()
         trans_dists = trans_dists.chunk()
 
-    w = np.diff(bin_array)
+    w = np.diff(bins)
     centers = xr.DataArray(
-        bin_array[:-1] + w / 2,
+        bins[:-1] + w / 2,
         dims=("distance_bins",),
         attrs={
             "units": "km",
@@ -1481,36 +1488,28 @@ def _decorrelation_length(
     ds = ds.where(ds.distance < radius)
     ds = ds.where(ds.distance2 < radius)
 
-    def _bin_corr(_corr, _distance):
-        """Bin and mean."""
-        mask_nan = ~np.isnan(_corr)
-        if mask_nan.any():
-            binned_corr = stats.binned_statistic(_distance[mask_nan], _corr[mask_nan], statistic="mean", bins=bin_array)
-            stat = binned_corr.statistic
-        else:
-            stat = np.nan * stats.binned_statistic([0], [0], statistic="mean", bins=bin_array).statistic
-        return stat
+    edges = xr.DataArray(bins, dims=("bin_edges",))
 
     # (_spatial, _spatial2) -> (_spatial, distance_bins)
     binned = (
         xr.apply_ufunc(
-            _bin_corr,
+            _bin_correlations,
             ds.corr,
             ds.distance,
-            input_core_dims=[["_spatial2"], ["_spatial2"]],
+            edges,
+            input_core_dims=[["_spatial2"], ["_spatial2"], ["bin_edges"]],
             output_core_dims=[["distance_bins"]],
             dask="parallelized",
             vectorize=True,
             output_dtypes=[float],
             dask_gufunc_kwargs={
                 "allow_rechunk": True,
-                "output_sizes": {"distance_bins": len(bin_array) - 1},
+                "output_sizes": {"distance_bins": edges.bin_edges.size - 1},
             },
         )
         .rename("corr")
         .to_dataset()
     )
-
     binned = binned.assign_coords(distance_bins=centers).rename(distance_bins="distance").assign_attrs(units="")
 
     closest = abs(binned.corr - thresh).idxmin(dim="distance")
@@ -1577,13 +1576,26 @@ def _spectral_variance_alpha(da, dims):
     sizes = [da[d].size for d in dims]
     # \sigma_{m,n} = F_{m,n} / (M*N)
     sigmn = (1 / np.prod(sizes)) * (Fmn**2)
+
     sigmn["alpha"] = _normalized_radial_wavenumber(da, dims)
 
-    # eq.13 and 14 of the reference
-    # alpha should increase in integer steps of 1/min(N_i,N_j)
+    # eq.13 and 14 of the reference. alpha should increase in integer steps of 1/min(N_i,N_j)
     step = 1 / min(sizes)
-    sigmn["alpha"] = (sigmn["alpha"] // step) * step
-    return sigmn.groupby("alpha").sum(keep_attrs=True)
+    with xr.set_options(keep_attrs=True):
+        sigmn["alpha"] = (sigmn["alpha"] // step) * step
+    # sum the variances in each band delimited by radial steps in alpha
+    var = sigmn.groupby("alpha").sum(keep_attrs=True)
+
+    # assign attrs
+    var = var.assign_attrs(da.attrs)
+    var.attrs["long_name"] = "Spectral variance"
+    if long_name := da.attrs.get("long_name", None):
+        var.attrs["long_name"] = var.attrs["long_name"] + f" of {long_name}"
+    if units := da.attrs.get("units", None):
+        var.attrs["units"] = f"{(str2pint(units) ** 2).units:~cf}"
+
+    var.name = "spectral_variance" if var.name is None else f"{var.name}_spectral_variance"
+    return var
 
 
 # TODO: Why can't I make `dims` as positional argument?
@@ -1626,13 +1638,6 @@ def _spectral_variance(
     if delta is not None:
         var["alpha"] = normalized_wavenumber_to_wavelength(var.alpha, delta=delta)
         var = var.rename({"alpha": "wavelength"})
-    var = var.assign_attrs(da.attrs)
-    if "units" in da.attrs:
-        var.attrs["units"] = _parse_str(str(str2pint(da.units) ** 2))[-1]
-    name = "variance"
-    if var.name:
-        name = f"{var.name}_{name}"
-    var = var.to_dataset(name=name)[name]
     return var
 
 

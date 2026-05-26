@@ -47,9 +47,7 @@ def timeseries():
 
 @pytest.fixture
 def ref_hist_sim_tuto():  # noqa: F841
-    """
-    Return ref, hist, sim time series of air temperature.
-    """
+    """Return ref, hist, sim time series of air temperature."""
 
     def _ref_hist_sim_tuto(sim_offset=3, delta=0.1, smth_win=3, trend=True):
         ds = xr.tutorial.open_dataset("air_temperature")
