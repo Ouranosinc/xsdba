@@ -513,7 +513,7 @@ def interp_on_quantiles(
     )
 
 
-def rank(da: xr.DataArray, dim: str | list[str] = "time", pct: bool = False) -> xr.DataArray:
+def rank(da: xr.DataArray, dim: str | list[str] = "time", pct: bool = False, random_tiebreak: bool = False) -> xr.DataArray:
     """
     Rank data along a dimension.
 
@@ -530,10 +530,14 @@ def rank(da: xr.DataArray, dim: str | list[str] = "time", pct: bool = False) -> 
         Source array.
     dim : str | list[str], hashable
         Dimension(s) over which to compute rank.
-    pct : bool, optional
-        If True, compute percentage ranks, otherwise compute integer ranks.
+    pct : bool
+        If `True`, compute percentage ranks, otherwise compute integer ranks.
         Percentage ranks range from 0 to 1, in opposition to xarray's implementation,
         where they range from 1/N to 1.
+    random_tiebreak: bool
+        If `True`, small random values are added to the input dataset to avoid equal values. The scale of the noise
+        added is chosen according to the input data, such that the ranks are only modified to equal values and not
+        between unequal values. Default value is `False`.
 
     Returns
     -------
@@ -555,6 +559,11 @@ def rank(da: xr.DataArray, dim: str | list[str] = "time", pct: bool = False) -> 
     # multi-dimensional ranking through stacking
     if len(dims) > 1:
         da = da.stack(**{rnk_dim: dims})
+    if random_tiebreak:
+        # the noise added is small enough to leave the rank structure unchanged, and only avoids equalities
+        min_diff = np.abs(da.diff(rnk_dim)).fillna(0).where(lambda x: x > 0).min(rnk_dim)
+        noise = min_diff * 0.1 * da.copy(data=np.random.uniform(low=0, high=1, size=da.shape))
+        da = da + noise
     rnk = da.rank(rnk_dim, pct=pct)
 
     if pct:
