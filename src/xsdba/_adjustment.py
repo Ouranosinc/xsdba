@@ -87,7 +87,7 @@ def _preprocess_dataset(
     hist_q=[Grouper.PROP, "quantiles"],
     hist_q_raw=[Grouper.PROP, "quantiles"],
     scaling=[Grouper.PROP],
-    P0_ref=[Grouper.PROP],
+    P0_ref=[Grouper.PROP, Grouper.ADD_DIMS],
     P0_hist=[Grouper.PROP, Grouper.ADD_DIMS],
     pth=[Grouper.PROP, Grouper.ADD_DIMS],
 )
@@ -192,7 +192,7 @@ def dqm_train(
     af=[Grouper.PROP, "quantiles"],
     hist_q=[Grouper.PROP, "quantiles"],
     hist_q_raw=[Grouper.PROP, "quantiles"],
-    P0_ref=[Grouper.PROP],
+    P0_ref=[Grouper.PROP, Grouper.ADD_DIMS],
     P0_hist=[Grouper.PROP, Grouper.ADD_DIMS],
     pth=[Grouper.PROP, Grouper.ADD_DIMS],
 )
