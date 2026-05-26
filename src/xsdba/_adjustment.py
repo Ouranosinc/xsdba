@@ -636,7 +636,7 @@ def qm_adjust(
         ds["sim"] = _adapt_freq_preprocess(
             ds[["sim", "P0_ref", "P0_hist", "pth"]],
             adapt_freq_thresh,
-            group=Grouper(group.name, add_dims=group.add_dims),
+            group=Grouper(group.name),
             dim=None,
         ).sim
 
@@ -725,7 +725,7 @@ def dqm_adjust(
         ds["sim"] = _adapt_freq_preprocess(
             ds[["sim", "P0_ref", "P0_hist", "pth"]],
             adapt_freq_thresh,
-            group=Grouper(group.name, add_dims=group.add_dims),
+            group=Grouper(group.name),
             dim=None,
         ).sim
 
@@ -825,7 +825,7 @@ def qdm_adjust(
         ds["sim"] = _adapt_freq_preprocess(
             ds[["sim", "P0_ref", "P0_hist", "pth"]],
             adapt_freq_thresh,
-            group=Grouper(group.name, add_dims=group.add_dims),
+            group=Grouper(group.name),
             dim=None,
         ).sim
     # mask no bias adjustment, when sim is larger than n times the largest quantile in hist (without adapt freq)
