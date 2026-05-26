@@ -484,7 +484,7 @@ class Grouper(Parametrizable):
         """
         Filter the dimensions to be reduced by removing those in `add_dims`.
 
-        The first dimension is never removed as it is considered the "main" dimension and not having it is an error.
+        The first dimension is never removed as it is considered the "main" dimension and not having it is an error. "window" is also kept if present.
 
         Parameters
         ----------
