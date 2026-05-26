@@ -122,9 +122,7 @@ class TestBase:
         timelonlatseries,
         random,
     ):
-        """
-        Check the error when `add_dims` is passed for a dimension that is not in the input datasets.
-        """
+        """Check the error when `add_dims` is passed for a dimension that is not in the input datasets."""
         kind, units = "+", "K"
         u = random.random(100)
 
