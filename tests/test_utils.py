@@ -210,7 +210,7 @@ def test_rank_tiebreak(random):
     da = xr.DataArray(arr, dims=("time"))
     ranks = u.rank(da, dim="time", pct=False)
     sorted_ranks = np.asarray(sorted(list(ranks.values)))
-    ranks_t = u.rank(da, dim="time", pct=False, random_tiebreak=True)
+    ranks_t = u.rank(da, dim="time", pct=False, use_random_tiebreak=True)
     sorted_ranks_t = np.asarray(sorted(list(ranks_t.values)))
     exp_ranks_with_tiebreaks = np.arange(1, len(arr) + 1)
     assert not all(sorted_ranks == exp_ranks_with_tiebreaks)

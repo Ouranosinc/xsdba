@@ -106,7 +106,7 @@ def _adapt_freq(
         sim = ds.sim
         # Get the percentile rank of each value in sim.
         # rnk = rank(sim, dim=dim, pct=True, random_tiebreak=False)
-        rnk = rank(sim, dim=dim, pct=True, random_tiebreak=True)
+        rnk = rank(sim, dim=dim, pct=True, use_random_tiebreak=True)
         # Frequency-adapted sim
         sim_ad = sim.where(
             (dP0 <= 0) | (dP0.isnull()),  # if True, no adaptation required
