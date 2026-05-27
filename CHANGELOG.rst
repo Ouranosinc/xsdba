@@ -13,6 +13,7 @@ Changes
 * Add ``max_tail_factor`` arg  to quantile mapping functions. (:pull:`279`, :issue:`278`).
 * Add ``mult_skip_zeros`` to detrending classes. (:pull:`279`, :issue:`289`).
 * New example in notebook `advanced_example.ipynb` showing how to use spectral utils (``xsdba.processing.spectral_filter`` and ``xsdba.properties.spectral_variance``). (:issue:`247`, :pull:`259`, :pull:`282`).
+* ``xsdba.utils.rank`` accepts a new argument: `random_tiebreaking`. If set to `True`, equal values are now ranked with distinct ranks. (:issue:`182`, :pull:`183`).
 
 Breaking changes
 ^^^^^^^^^^^^^^^^
@@ -23,6 +24,7 @@ Breaking changes
 Fixes
 ^^^^^
 * Fixed property ``return_value`` and ``decorrelation_length`` for dask inputs (:issue:`266`, :pull:`267`).
+* Fix `adapt_freq` processing in training when ``xsdba.Grouper`` uses `add_dims`. (:issue:`182`, :pull:`183`).
 
 Internal changes
 ^^^^^^^^^^^^^^^^
@@ -84,6 +86,7 @@ Fixes
 * ``xsdba._processing._adapt_freq`` now avoids inserting nans. This was solved using `(dP0 <= 0)| (dP0.isnull())` and not `dP0 < 0` as a condition. (:pull:`239`, :issue:`248`, :pull:`249`).
 * More edge cases and compatibility with `numpy <2.0` were fixed  to ensure ``xsdba.processing.to_additive_space`` does not yield singular values in the log / logit transforms in relation with the machine resolution. (:pull:`194`).
 * ``xsdba.properties.decorrelation_length`` now handles all-nan slices correctly. (:issue:`255`, :pull:`256`).
+
 
 Internal changes
 ^^^^^^^^^^^^^^^^
