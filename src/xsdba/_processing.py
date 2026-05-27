@@ -105,7 +105,6 @@ def _adapt_freq(
         # Probabilities and quantiles computed within all dims, but correction along the first one only.
         sim = ds.sim
         # Get the percentile rank of each value in sim.
-        # rnk = rank(sim, dim=dim, pct=True, random_tiebreak=False)
         rnk = rank(sim, dim=dim, pct=True, use_random_tiebreak=True)
         # Frequency-adapted sim
         sim_ad = sim.where(
