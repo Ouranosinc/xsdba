@@ -6,10 +6,10 @@ This file defines the different steps, to be wrapped into the Adjustment objects
 """
 
 from __future__ import annotations
+import warnings
 from collections.abc import Callable, Sequence
 
 import numpy as np
-import warnings
 import xarray as xr
 
 from . import nbutils as nbu
@@ -859,13 +859,13 @@ def qdm_adjust(
         if group.window > 1:
             print("w>1")
             warnings.warn(
-                'QDM method can now perform the adjustment step by expanding the time dimension '
-                'with the same window as used in the training. This can already be used by setting '
-                '`rank_window = True`. This will be the only possible behaviour in `xsdba>=0.8`.  '
-                'The current behaviour is obtained by setting `rank_window = False` and will be '
-                'deprecated in `xsdba>=0.8`. It will still be possible to use the old behaviour by '
-                'monkeypatching the group argument in the QDM class between the training and '
-                'adjustment, though this behaviour is not recommended.',
+                "QDM method can now perform the adjustment step by expanding the time dimension "
+                "with the same window as used in the training. This can already be used by setting "
+                "`rank_window = True`. This will be the only possible behaviour in `xsdba>=0.8`.  "
+                "The current behaviour is obtained by setting `rank_window = False` and will be "
+                "deprecated in `xsdba>=0.8`. It will still be possible to use the old behaviour by "
+                "monkeypatching the group argument in the QDM class between the training and "
+                "adjustment, though this behaviour is not recommended.",
                 category=DeprecationWarning,
                 stacklevel=2,
             )
