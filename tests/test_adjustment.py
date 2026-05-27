@@ -722,7 +722,7 @@ class TestQDM:
         with set_options(extra_output=True):
             out = QDM.adjust(sim, rank_window=True)
         assert bool(np.isfinite(out.sim_q).all())
-        
+
     @pytest.mark.parametrize("use_dask", [True, False])
     def test_max_tail_factor(self, random, use_dask):
 
