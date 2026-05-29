@@ -101,18 +101,25 @@ def _adapt_freq(
         # Compute : ecdf_ref^-1( ecdf_sim( thresh ) )
         # The value in ref with the same rank as the first non-zero value in sim.
         # pth is meaningless when freq. adaptation is not needed
-        pth = nbu.vecquantiles(ref, P0_hist.broadcast_like(ref[{d: 0 for d in dim}]), dim).where(dP0 > 0) if pth is None else pth
+        # `ref` /`P0_hist` need broadcasting if `add_dims` is only present on one dataset
+        pth = (
+            nbu.vecquantiles(ref.broadcast_like(P0_hist), P0_hist.broadcast_like(ref[{d: 0 for d in dim}]), dim).where(dP0 > 0)
+            if pth is None
+            else pth
+        )
         # Probabilities and quantiles computed within all dims, but correction along the first one only.
         sim = ds.sim
         # Get the percentile rank of each value in sim.
         rnk = rank(sim, dim=dim, pct=True, use_random_tiebreak=True)
         # Frequency-adapted sim
+        no_adaptation_needed = (dP0 <= 0) | (dP0.isnull())
+        too_small_too_big_or_null = (rnk < (P0_ref / P0_hist) * P0_sim) | (rnk > P0_sim) | sim.isnull()
         sim_ad = sim.where(
-            (dP0 <= 0) | (dP0.isnull()),  # if True, no adaptation required
+            no_adaptation_needed,
             sim.where(
-                (rnk < (P0_ref / P0_hist) * P0_sim) | (rnk > P0_sim) | sim.isnull(),  # Preserve current values
+                too_small_too_big_or_null,  # Preserve current values
                 # Generate random numbers ~ U[T0, Pth]
-                (pth.broadcast_like(sim) - thresh) * np.random.random_sample(size=sim.shape).astype(sim.dtype) + thresh,
+                (pth.broadcast_like(sim) - thresh) * np.random.random_sample(size=too_small_too_big_or_null.shape).astype(sim.dtype) + thresh,
             ),
         )
 

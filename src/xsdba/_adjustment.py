@@ -159,7 +159,6 @@ def dqm_train(
         jitter_over_thresh_value,
         jitter_over_thresh_upper_bnd,
     )
-
     # Ensures extra dimensions are only aggregated in datasets that have them
     ref_dim = Grouper.filter_dim(ds.ref, dim)
     refn = u.apply_correction(ds.ref, u.invert(ds.ref.mean(ref_dim), kind), kind)
@@ -721,6 +720,8 @@ def dqm_adjust(
     xr.Dataset
         The adjusted data and the trend.
     """
+    # if group.add_dims not in ds.sim.dims:
+    #     group.pop('add_dims')
     if adapt_freq_thresh:
         ds["sim"] = _adapt_freq_preprocess(
             ds[["sim", "P0_ref", "P0_hist", "pth"]],
@@ -728,7 +729,6 @@ def dqm_adjust(
             group=Grouper(group.name),
             dim=None,
         ).sim
-
     # mask no bias adjustment, when sim is larger than n times the largest quantile in hist (without adapt freq)
     if max_tail_factor is not None:
         adaptedsim = ds["sim"].copy()
@@ -752,6 +752,7 @@ def dqm_adjust(
         ),
         kind,
     ).assign_attrs({"units": ds.sim.units})
+    # import pdb; pdb.set_trace()
 
     if isinstance(detrend, int):
         detrending = PolyDetrend(degree=detrend, kind=kind, group=group)

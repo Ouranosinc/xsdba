@@ -548,6 +548,34 @@ class TestDQM:
         # first 10 points unchanged
         np.testing.assert_allclose((adapted.values[2, itimes] - hist.values[2, itimes])[:10], 0)
 
+    @pytest.mark.parametrize("typp", ["ref", "hist"])
+    def test_add_dims_only_one_dataset(self, cannon_2015_rvs, random, typp):
+        np.random.seed(42)
+        group = "time"
+        ref, hist, _ = cannon_2015_rvs(15000, random=random)
+        # remove values below 1 kg m-2 d-1 thresh
+        ref, hist = (convert_units_to(da, "kg m-2 d-1").clip(2, None) for da in [ref, hist])
+        # second site with a 15 extra values below thresh in hist
+        itimes = np.arange(0, 30, 2)
+        hist[{"time": itimes}] = np.arange(len(itimes)) / (len(itimes))  # stay below thresh
+        # 5 and 10 zero values in ref
+        ref[{"time": range(5)}] = 0
+        if typp == "ref":
+            ref = ref.expand_dims(point=[0, 1, 2])
+        elif typp == "hist":
+            hist = hist.expand_dims(point=[0, 1, 2])
+        dqm = DetrendedQuantileMapping.train(
+            ref,
+            hist,
+            kind="*",
+            group=Grouper(group, add_dims=["point"]),
+            adapt_freq_thresh="1 kg m-2 d-1",
+            jitter_under_thresh_value="0.01 kg m-2 d-1",
+        )
+        adj = dqm.adjust(hist).values
+        # dummy assertion so that I "use" `adj`
+        np.testing.assert_allclose(adj, adj)
+
     def test_adapt_freq_time_explicit(self, cannon_2015_rvs, random):
         ref, hist, _ = cannon_2015_rvs(15000, random=random)
         thr = "1 kg m-2/d"
