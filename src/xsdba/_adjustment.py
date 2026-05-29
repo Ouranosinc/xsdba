@@ -750,7 +750,6 @@ def dqm_adjust(
         ),
         kind,
     ).assign_attrs({"units": ds.sim.units})
-    # import pdb; pdb.set_trace()
 
     if isinstance(detrend, int):
         detrending = PolyDetrend(degree=detrend, kind=kind, group=group)
