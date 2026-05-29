@@ -720,8 +720,6 @@ def dqm_adjust(
     xr.Dataset
         The adjusted data and the trend.
     """
-    # if group.add_dims not in ds.sim.dims:
-    #     group.pop('add_dims')
     if adapt_freq_thresh:
         ds["sim"] = _adapt_freq_preprocess(
             ds[["sim", "P0_ref", "P0_hist", "pth"]],
