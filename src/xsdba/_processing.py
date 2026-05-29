@@ -114,6 +114,8 @@ def _adapt_freq(
         # Frequency-adapted sim
         no_adaptation_needed = (dP0 <= 0) | (dP0.isnull())
         too_small_too_big_or_null = (rnk < (P0_ref / P0_hist) * P0_sim) | (rnk > P0_sim) | sim.isnull()
+        # ensure we have the same order of dims for the .shape call below
+        too_small_too_big_or_null = too_small_too_big_or_null.transpose(*sim.dims, ...)
         sim_ad = sim.where(
             no_adaptation_needed,
             sim.where(
