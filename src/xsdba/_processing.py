@@ -102,7 +102,7 @@ def _adapt_freq(
         # The value in ref with the same rank as the first non-zero value in sim.
         # pth is meaningless when freq. adaptation is not needed
         # `ref` /`P0_hist` need broadcasting if `add_dims` is only present on one dataset
-        if pth is not None:
+        if pth is None:
             P0_hist_b = P0_hist.broadcast_like(ref[{d: 0 for d in dim}])
             ref_b = ref.broadcast_like(P0_hist)
             pth = nbu.vecquantiles(ref_b, P0_hist_b, dim).where(dP0 > 0)
