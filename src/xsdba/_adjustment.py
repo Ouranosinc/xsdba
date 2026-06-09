@@ -770,12 +770,12 @@ def dqm_adjust(
         kind=kind,
     ).scen
     scen = detrending.retrend(scen)
+
     # apply max_tail_factor mask
     if max_tail_factor is not None:
         scen = scen.where(~mask, adaptedsim)
 
     out = xr.Dataset({"scen": scen, "trend": detrending.ds.trend})
-    # import pdb; pdb.set_trace()
     return out
 
 
