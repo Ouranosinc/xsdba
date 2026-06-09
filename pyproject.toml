@@ -151,6 +151,7 @@ commit = true
 commit_args = "--no-verify"
 tag = false
 tag_name = "v{new_version}"
+sign_tags = true
 allow_dirty = true
 parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)(\\-(?P<release>[a-z]+)(\\.(?P<build>\\d+)))?"
 serialize = [
@@ -230,6 +231,9 @@ omit = ["tests/*.py"]
 relative_files = true
 source = ["xsdba"]
 
+[tool.cruft]
+skip = []
+
 [tool.deptry]
 ignore_notebooks = true
 
@@ -246,19 +250,20 @@ include = [
   ".zenodo.json",
   "AUTHORS.rst",
   "CHANGELOG.rst",
+  "CITATION.cff",
+  "CODE_OF_CONDUCT.md",
   "CONTRIBUTING.rst",
   "LICENSE",
   "Makefile",
   "README.rst",
   "environment-dev.yml",
   "environment-docs.yml",
-  "docs/_static/_images/*.gif",
-  "docs/_static/_images/*.jpg",
-  "docs/_static/_images/*.png",
-  "docs/_static/_images/*.rst",
-  "docs/Makefile",
+  "docs/_static/*",
+  "docs/*.rst",
   "docs/conf.py",
   "docs/make.bat",
+  "docs/Makefile",
+  "pyproject.toml",
   "src/xsdba",
   "tests/*.py",
   "tox.toml"
@@ -266,14 +271,15 @@ include = [
 exclude = [
   "*.py[co]",
   "__pycache__",
-  ".coveralls.yml",
   ".editorconfig",
   ".flake8",
+  ".github",
   ".gitignore",
   ".pre-commit-config.yaml",
   ".readthedocs.yml",
   ".yamllint.yaml",
   ".zizmor.yml",
+  "CI/requirements_ci.*",
   "docs/_*",
   "docs/apidoc/modules.rst",
   "docs/apidoc/xsdba*.rst"
