@@ -548,8 +548,8 @@ class TestDQM:
         # first 10 points unchanged
         np.testing.assert_allclose((adapted.values[2, itimes] - hist.values[2, itimes])[:10], 0)
 
-    @pytest.mark.parametrize("typp", ["ref", "hist"])
-    def test_add_dims_only_one_dataset(self, cannon_2015_rvs, random, typp):
+    @pytest.mark.parametrize("typp,uses_dask", [["ref", "true"], ["ref", "false"], ["hist", "true"], ["hist", "false"]])
+    def test_add_dims_only_one_dataset(self, cannon_2015_rvs, random, typp, uses_dask):
         np.random.seed(42)
         group = "time"
         ref, hist, _ = cannon_2015_rvs(15000, random=random)
@@ -564,6 +564,12 @@ class TestDQM:
             ref = ref.expand_dims(point=[0, 1, 2])
         elif typp == "hist":
             hist = hist.expand_dims(point=[0, 1, 2])
+        if uses_dask:
+            ref = ref.chunk({"time": -1})
+            hist = hist.chunk({"time": -1})
+        else:
+            ref = ref.load()
+            hist = hist.load()
         dqm = DetrendedQuantileMapping.train(
             ref,
             hist,

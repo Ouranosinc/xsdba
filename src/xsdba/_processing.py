@@ -92,7 +92,7 @@ def _adapt_freq(
     P0_sim = ecdf(ds.sim, thresh, dim=dim)
     P0_hist = P0_sim if P0_hist is None else P0_hist
     P0_ref = ecdf(ref, thresh, dim=dim) if P0_ref is None else P0_ref
-
+    P0_ref, P0_hist = xr.broadcast(P0_ref, P0_hist)
     dP0 = xr.where(P0_hist == 0, np.nan, (P0_hist - P0_ref) / P0_hist)
     if ((dP0 <= 0) | (dP0.isnull())).all():
         pth = np.nan * dP0
@@ -103,9 +103,8 @@ def _adapt_freq(
         # pth is meaningless when freq. adaptation is not needed
         # `ref` /`P0_hist` need broadcasting if `add_dims` is only present on one dataset
         if pth is None:
-            P0_hist_b = P0_hist.broadcast_like(ref[{d: 0 for d in dim}])
             ref_b = ref.broadcast_like(P0_hist)
-            pth = nbu.vecquantiles(ref_b, P0_hist_b, dim).where(dP0 > 0)
+            pth = nbu.vecquantiles(ref_b, P0_hist, dim).where(dP0 > 0)
         # Probabilities and quantiles computed within all dims, but correction along the first one only.
         sim = ds.sim
         # Get the percentile rank of each value in sim.

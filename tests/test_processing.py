@@ -174,7 +174,7 @@ def test_adapt_freq_add_dims(use_dask, random):
     )
 
     if use_dask:
-        pr = pr.chunk()
+        pr = pr.chunk({"lat": 1})
     group = Grouper("time.month", add_dims=["lat"])
     with xr.set_options(keep_attrs=True):
         prsim = xr.where(pr < 20, pr / 20, pr)
