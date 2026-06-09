@@ -14,7 +14,7 @@ Rules for AI coding agents working in this repository.
 
 ## Setup
 
-> Add your project's setup commands here (npm install, go build, make, etc.)
+The package can be installed in developer mode in Python using the `$ make development` recipe.
 
 ## Testing
 
