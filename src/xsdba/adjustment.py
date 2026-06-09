@@ -656,8 +656,6 @@ class DetrendedQuantileMapping(TrainAdjust):
         extrapolation="constant",
         detrend=1,
     ):
-
-        # import pdb; pdb.set_trace()
         scen = dqm_adjust(
             self.ds.assign(sim=sim),
             interp=interp,
