@@ -13,7 +13,7 @@ Changes
 * Add ``max_tail_factor`` arg  to quantile mapping functions. (:pull:`279`, :issue:`278`).
 * Add ``mult_skip_zeros`` to detrending classes. (:pull:`279`, :issue:`289`).
 * New example in notebook `advanced_example.ipynb` showing how to use spectral utils (``xsdba.processing.spectral_filter`` and ``xsdba.properties.spectral_variance``). (:issue:`247`, :pull:`259`, :pull:`282`).
-* `QuantileDeltaMapping.adjust` now allows using training grouper by setting `rank_window`. (:issue:`287`, :pull:`288`).
+* `QuantileDeltaMapping.adjust` now allows using training grouper by setting `rank_window` to `True`. (:issue:`287`, :pull:`288`).
 * ``xsdba.utils.rank`` accepts a new argument: `random_tiebreaking`. If set to `True`, equal values are now ranked with distinct ranks. (:issue:`182`, :pull:`183`).
 
 Breaking changes

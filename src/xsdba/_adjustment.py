@@ -854,10 +854,8 @@ def qdm_adjust(
         )
         mask = adaptedsim > max_tail_factor * last_quantile
     if rank_window is None:
-        print("none")
         rank_window = False
         if group.window > 1:
-            print("w>1")
             warnings.warn(
                 "QDM method can now perform the adjustment step by expanding the time dimension "
                 "with the same window as used in the training. This can already be used by setting "
