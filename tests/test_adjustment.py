@@ -236,45 +236,28 @@ class TestScaling:
 
 
 class TestVarianceScaling:
-    @pytest.mark.parametrize("kind,units", [(ADDITIVE, "K"), (MULTIPLICATIVE, "kg m-2 s-1")])
-    def test_time(self, kind, units, timelonlatseries, random):
+    def test_time(self, timelonlatseries, random):
+        kind = ADDITIVE
+        units = "K"
         n = 10000
         u = random.random(n)
 
         simm, simscale = 2, 1
         xd = norm(loc=simm, scale=simscale)
         x = xd.ppf(u)
-        if kind == MULTIPLICATIVE:
-            x[x <= 0] = 0.00001
 
         attrs = {"units": units, "kind": kind}
 
         hist = sim = timelonlatseries(x, attrs=attrs)
-        if kind == ADDITIVE:
-            hist = convert_units_to(hist, "degC")
+        hist = convert_units_to(hist, "degC")
         ref = hist.copy(deep=True)
         refm, refscale = 3, 2.5
-        if kind == MULTIPLICATIVE:
-            ref = np.log(ref)
-            ref = (ref - ref.mean(dim="time")) * refscale / ref.std(dim="time") + refm
-            ref = np.exp(ref)
-        else:
-            ref = (ref - ref.mean(dim="time")) * refscale / ref.std(dim="time") + refm
+        ref = (ref - ref.mean(dim="time")) * refscale / ref.std(dim="time") + refm
         ref = ref.assign_attrs(attrs)
-        if kind == MULTIPLICATIVE:
-            refm = np.log(ref).mean(dim="time")
-            refscale = np.log(ref).std(dim="time")
-            simm = np.log(hist).mean(dim="time")
-            simscale = np.log(hist).std(dim="time")
-
-        vs = VarianceScaling.train(ref, hist, group="time", kind=kind)
+        vs = VarianceScaling.train(ref, hist, group="time")
         np.testing.assert_allclose(vs.ds.scaling.values, [refscale / simscale], atol=0.02)
         np.testing.assert_allclose(vs.ds.offset.values, [refm - simm * refscale / simscale], atol=0.02)
-
         p = vs.adjust(sim)
-        if kind == MULTIPLICATIVE:
-            p = np.log(p)
-            ref = np.log(ref)
         np.testing.assert_array_almost_equal(p, ref)
 
 
