@@ -1017,6 +1017,7 @@ class Scaling(TrainAdjust):
         ).scen
 
 
+# TODO: Implement Power Transformation for precipitations? Similar
 class VarianceScaling(TrainAdjust):
     """
     Variance scaling bias-adjustment.
@@ -1032,8 +1033,6 @@ class VarianceScaling(TrainAdjust):
     group : str or Grouper
         The grouping information. See :py:class:`xsdba.base.Grouper` for details.
         Default is "time", meaning a single adjustment group along dimension "time".
-    kind : {'+', '*'}
-        The adjustment kind, either additive or multiplicative. Defaults to "+".
 
     Adjust step:
 
@@ -1055,22 +1054,16 @@ class VarianceScaling(TrainAdjust):
         hist: xr.DataArray,
         *,
         group: str | Grouper = "time",
-        kind: str = ADDITIVE,
     ):
-        ds = variance_train(xr.Dataset({"ref": ref, "hist": hist}), group=group, kind=kind)
+        ds = variance_train(xr.Dataset({"ref": ref, "hist": hist}), group=group)
 
         ds.scaling.attrs.update(long_name="Variance Scaling adjustment factors")
         ds.offset.attrs.update(long_name="Offset adjustment factors")
 
-        return ds, {"group": group, "kind": kind}
+        return ds, {"group": group}
 
     def _adjust(self, sim, interp="nearest"):
-        return variance_adjust(
-            xr.Dataset({"sim": sim, "scaling": self.ds.scaling, "offset": self.ds.offset}),
-            group=self.group,
-            interp=interp,
-            kind=self.kind,
-        ).scen
+        return variance_adjust(xr.Dataset({"sim": sim, "scaling": self.ds.scaling, "offset": self.ds.offset}), group=self.group, interp=interp).scen
 
 
 class PrincipalComponents(TrainAdjust):

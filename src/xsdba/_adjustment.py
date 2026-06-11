@@ -19,12 +19,10 @@ from .detrending import PolyDetrend
 from .options import set_options
 from .processing import (
     escore,
-    from_additive_space,
     jitter_over_thresh,
     jitter_under_thresh,
     reordering,
     standardize,
-    to_additive_space,
 )
 from .units import convert_units_to
 from .utils import _fitfunc_1d
@@ -849,7 +847,7 @@ def scaling_adjust(ds: xr.Dataset, *, group, interp, kind) -> xr.Dataset:
 
 
 @map_groups(scaling=[Grouper.PROP], offset=[Grouper.PROP])
-def variance_train(ds: xr.Dataset, *, dim, kind) -> xr.Dataset:
+def variance_train(ds: xr.Dataset, *, dim) -> xr.Dataset:
     """
     VarianceScaling: Train on one group.
 
@@ -862,10 +860,6 @@ def variance_train(ds: xr.Dataset, *, dim, kind) -> xr.Dataset:
     """
     ref_dim = Grouper.filter_dim(ds.ref, dim)
     sim_dim = Grouper.filter_dim(ds.hist, dim)
-    if kind == "*":
-        # FIXME : Allow input thresh? This would not work well with pr=0
-        ds["ref"] = to_additive_space(ds.ref, f"0 {ds.ref.units}", trans="log")
-        ds["hist"] = to_additive_space(ds.hist, f"0 {ds.hist.units}", trans="log")
     mref = ds.ref.mean(ref_dim)
     mhist = ds.hist.mean(sim_dim)
     sref = ds.ref.std(ref_dim)
@@ -879,7 +873,7 @@ def variance_train(ds: xr.Dataset, *, dim, kind) -> xr.Dataset:
 
 
 @map_blocks(reduces=[Grouper.PROP], scen=[])
-def variance_adjust(ds: xr.Dataset, *, group, interp, kind) -> xr.Dataset:
+def variance_adjust(ds: xr.Dataset, *, group, interp) -> xr.Dataset:
     """
     VarianceScaling: Adjust on one block.
 
@@ -890,14 +884,9 @@ def variance_adjust(ds: xr.Dataset, *, group, interp, kind) -> xr.Dataset:
             af : Adjustment factors.
             sim : Data to adjust.
     """
-    units = ds.sim.units
-    if kind == "*":
-        ds["sim"] = to_additive_space(ds.sim, f"0 {ds.sim.units}", trans="log")
     scaling = u.broadcast(ds.scaling, ds.sim, group=group, interp=interp)
     offset = u.broadcast(ds.offset, ds.sim, group=group, interp=interp)
     scen = (scaling * ds.sim + offset).rename("scen")
-    if kind == "*":
-        scen = from_additive_space(scen, units=units, trans="log", lower_bound=f"0 {units}")
     out = scen.to_dataset()
     return out
 
