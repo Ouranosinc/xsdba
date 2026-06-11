@@ -69,7 +69,11 @@ def _preprocess_dataset(
         ds = _adapt_freq_preprocess(ds, adapt_freq_thresh, None, dim)
 
     else:
-        dummy = xr.full_like(ds["sim"][{d: 0 for d in dim}], np.nan)
+        # pick the dataset with the largest number of dimensions
+        # keep add_dims on the new datasets
+        dim = Grouper.filter_add_dims(dim)
+        ds0 = ds.sim if len(ds.sim.dims) >= len(ds.ref.dims) else ds.ref
+        dummy = xr.full_like(ds0[{d: 0 for d in dim}], np.nan)
         ds = ds.assign(P0_ref=dummy, P0_hist=dummy, pth=dummy)
 
     if rename_hist:
@@ -81,10 +85,11 @@ def _preprocess_dataset(
 @map_groups(
     af=[Grouper.PROP, "quantiles"],
     hist_q=[Grouper.PROP, "quantiles"],
+    hist_q_raw=[Grouper.PROP, "quantiles"],
     scaling=[Grouper.PROP],
-    P0_ref=[Grouper.PROP],
-    P0_hist=[Grouper.PROP],
-    pth=[Grouper.PROP],
+    P0_ref=[Grouper.PROP, Grouper.ADD_DIMS],
+    P0_hist=[Grouper.PROP, Grouper.ADD_DIMS],
+    pth=[Grouper.PROP, Grouper.ADD_DIMS],
 )
 def dqm_train(
     ds: xr.Dataset,
@@ -96,6 +101,7 @@ def dqm_train(
     jitter_under_thresh_value: str | None = None,
     jitter_over_thresh_value: str | None = None,
     jitter_over_thresh_upper_bnd: str | None = None,
+    max_tail_factor: float | None = None,
 ) -> xr.Dataset:
     """
     Train step on one group.
@@ -124,6 +130,11 @@ def dqm_train(
     jitter_over_thresh_upper_bnd : str, optional
         Maximum possible value for the random noise, a quantity with units.
         Default is None, meaning that jitter over thresh is not performed.
+    max_tail_factor: float, optional
+        If not None, values to adjust (after preprossing steps) that are above max_tail_factor * the value
+        of the last quantile of hist (before the preprocessing steps, stored in hist_q_raw) are not adjusted.
+        We keep the input simulation with only the preprocessing steps instead.
+        If None, hist_q_raw output will just be a dummy variable.
 
     Returns
     -------
@@ -135,6 +146,11 @@ def dqm_train(
     `jitter_over_thresh_value` and `jitter_over_thresh_upper_bnd` must be both be specified to
     use `jitter_over_thresh`, or both be None (default) to skip it.
     """
+    sim_dim = Grouper.filter_dim(ds.hist, dim)
+    if max_tail_factor is not None:
+        # needed for  max_tail_factor in dqm_adjust
+        hist_q_raw = nbu.quantile(ds.hist, quantiles, sim_dim)
+
     ds = _preprocess_dataset(
         ds,
         dim,
@@ -144,14 +160,16 @@ def dqm_train(
         jitter_over_thresh_upper_bnd,
     )
 
-    # Ensure we only reduce on valid dims, allows for extra dims like "realization" on the sim
+    # Ensures extra dimensions are only aggregated in datasets that have them
     ref_dim = Grouper.filter_dim(ds.ref, dim)
-    sim_dim = Grouper.filter_dim(ds.hist, dim)
     refn = u.apply_correction(ds.ref, u.invert(ds.ref.mean(ref_dim), kind), kind)
     histn = u.apply_correction(ds.hist, u.invert(ds.hist.mean(sim_dim), kind), kind)
 
     ref_q = nbu.quantile(refn, quantiles, ref_dim)
     hist_q = nbu.quantile(histn, quantiles, sim_dim)
+    if max_tail_factor is None:
+        # make a dummy variable to keep the same output structure
+        hist_q_raw = xr.full_like(hist_q, np.nan)
 
     af = u.get_correction(hist_q, ref_q, kind)
     mu_ref = ds.ref.mean(ref_dim)
@@ -161,6 +179,7 @@ def dqm_train(
         data_vars={
             "af": af,
             "hist_q": hist_q,
+            "hist_q_raw": hist_q_raw,
             "scaling": scaling,
             "P0_ref": ds.P0_ref,
             "P0_hist": ds.P0_hist,
@@ -172,9 +191,10 @@ def dqm_train(
 @map_groups(
     af=[Grouper.PROP, "quantiles"],
     hist_q=[Grouper.PROP, "quantiles"],
-    P0_ref=[Grouper.PROP],
-    P0_hist=[Grouper.PROP],
-    pth=[Grouper.PROP],
+    hist_q_raw=[Grouper.PROP, "quantiles"],
+    P0_ref=[Grouper.PROP, Grouper.ADD_DIMS],
+    P0_hist=[Grouper.PROP, Grouper.ADD_DIMS],
+    pth=[Grouper.PROP, Grouper.ADD_DIMS],
 )
 def eqm_train(
     ds: xr.Dataset,
@@ -186,6 +206,7 @@ def eqm_train(
     jitter_under_thresh_value: str | None = None,
     jitter_over_thresh_value: str | None = None,
     jitter_over_thresh_upper_bnd: str | None = None,
+    max_tail_factor: float | None = None,
 ) -> xr.Dataset:
     """
     EQM: Train step on one group.
@@ -211,6 +232,11 @@ def eqm_train(
     jitter_over_thresh_upper_bnd : str, optional
         Maximum possible value for the random noise, a quantity with units.
         Default is None, meaning that jitter over thresh is not performed.
+    max_tail_factor: float, optional
+        If not None, values to adjust (after preprossing steps) that are above max_tail_factor * the value
+        of the last quantile of hist (before the preprocessing steps, stored in hist_q_raw) are not adjusted.
+        We keep the input simulation with only the preprocessing steps instead.
+        If None, hist_q_raw output will just be a dummy variable.
 
     Returns
     -------
@@ -222,6 +248,11 @@ def eqm_train(
     `jitter_over_thresh_value` and `jitter_over_thresh_upper_bnd` must be both be specified to
     use `jitter_over_thresh`, or both be None (default) to skip it.
     """
+    sim_dim = Grouper.filter_dim(ds.hist, dim)
+    if max_tail_factor is not None:
+        # needed for  max_tail_factor in dqm_adjust
+        hist_q_raw = nbu.quantile(ds.hist, quantiles, sim_dim)
+
     ds = _preprocess_dataset(
         ds,
         dim,
@@ -231,13 +262,14 @@ def eqm_train(
         jitter_over_thresh_upper_bnd,
     )
 
-    # Ensure we only reduce on valid dims, allows for extra dims like "realization" on the sim
+    # Ensures extra dimensions are only aggregated in datasets that have them
     ref_dim = Grouper.filter_dim(ds.ref, dim)
-    sim_dim = Grouper.filter_dim(ds.hist, dim)
     ref_q = nbu.quantile(ds.ref, quantiles, ref_dim)
     hist_q = nbu.quantile(ds.hist, quantiles, sim_dim)
+    if max_tail_factor is None:
+        # make a dummy variable to keep the same output structure
+        hist_q_raw = xr.full_like(hist_q, np.nan)
     af = u.get_correction(hist_q, ref_q, kind)
-
     return xr.Dataset(
         data_vars={
             "af": af,
@@ -245,6 +277,7 @@ def eqm_train(
             "P0_ref": ds.P0_ref,
             "P0_hist": ds.P0_hist,
             "pth": ds.pth,
+            "hist_q_raw": hist_q_raw,
         }
     )
 
@@ -563,6 +596,7 @@ def qm_adjust(
     extrapolation: str,
     kind: str,
     adapt_freq_thresh: str | None = None,
+    max_tail_factor: int | None = None,
 ) -> xr.Dataset:
     """
     QM (DQM and EQM): Adjust step on one block.
@@ -588,6 +622,10 @@ def qm_adjust(
     adapt_freq_thresh : str, optional
         Threshold for frequency adaptation. See :py:class:`xsdba.processing.adapt_freq` for details.
         Default is None, meaning that frequency adaptation is not performed.
+    max_tail_factor: float, optional
+        If not None, values to adjust (after preprossing steps) that are above max_tail_factor * the value
+        of the last quantile of hist (before the preprocessing steps) are not adjusted.
+        We keep the input simulation with only the preprocessing steps instead.
 
     Returns
     -------
@@ -602,6 +640,19 @@ def qm_adjust(
             dim=None,
         ).sim
 
+    # mask no bias adjustment, when sim is larger than n times the largest quantile in hist (without adapt freq)
+    if max_tail_factor is not None:
+        adaptedsim = ds["sim"].copy()
+        last_quantile = ds["hist_q_raw"].isel({"quantiles": -1}).drop_vars("quantiles")
+        # make last_quantile dim fit adaptedsim dim
+        last_quantile = u.broadcast(
+            last_quantile,
+            adaptedsim,
+            group=group,
+            interp=interp if group.prop != "dayofyear" else "nearest",
+        )
+        mask = adaptedsim > max_tail_factor * last_quantile
+
     af = u.interp_on_quantiles(
         ds.sim,
         ds.hist_q,
@@ -612,6 +663,11 @@ def qm_adjust(
     )
 
     scen: xr.DataArray = u.apply_correction(ds.sim, af, kind).rename("scen")
+
+    # apply  max_tail_factor mask
+    if max_tail_factor is not None:
+        scen = scen.where(~mask, adaptedsim)
+
     out = scen.to_dataset()
     return out
 
@@ -626,6 +682,7 @@ def dqm_adjust(
     extrapolation: str,
     detrend: int | PolyDetrend,
     adapt_freq_thresh: str | None = None,
+    max_tail_factor: int | None = None,
 ) -> xr.Dataset:
     """
     DQM adjustment on one block.
@@ -654,6 +711,10 @@ def dqm_adjust(
     adapt_freq_thresh : str, optional
         Threshold for frequency adaptation. See :py:class:`xsdba.processing.adapt_freq` for details.
         Default is None, meaning that frequency adaptation is not performed.
+    max_tail_factor: float, optional
+        If not None, values to adjust (after preprossing steps) that are above max_tail_factor * the value
+        of the last quantile of hist (before the preprocessing steps) are not adjusted.
+        We keep the input simulation with only the preprocessing steps instead.
 
     Returns
     -------
@@ -667,6 +728,20 @@ def dqm_adjust(
             group=Grouper(group.name),
             dim=None,
         ).sim
+
+    # mask no bias adjustment, when sim is larger than n times the largest quantile in hist (without adapt freq)
+    if max_tail_factor is not None:
+        adaptedsim = ds["sim"].copy()
+        last_quantile = ds["hist_q_raw"].isel({"quantiles": -1}).drop_vars("quantiles")
+        # make last_quantile dim fit adaptedsim dim
+        last_quantile = u.broadcast(
+            last_quantile,
+            adaptedsim,
+            group=group,
+            interp=interp if group.prop != "dayofyear" else "nearest",
+        )
+        mask = adaptedsim > max_tail_factor * last_quantile
+
     scaled_sim = u.apply_correction(
         ds.sim,
         u.broadcast(
@@ -694,6 +769,10 @@ def dqm_adjust(
     ).scen
     scen = detrending.retrend(scen)
 
+    # apply max_tail_factor mask
+    if max_tail_factor is not None:
+        scen = scen.where(~mask, adaptedsim)
+
     out = xr.Dataset({"scen": scen, "trend": detrending.ds.trend})
     return out
 
@@ -707,6 +786,7 @@ def qdm_adjust(
     extrapolation: str,
     kind: str,
     adapt_freq_thresh: str | None = None,
+    max_tail_factor: int | None = None,
 ) -> xr.Dataset:
     """
     QDM adjustment on one block.
@@ -731,6 +811,10 @@ def qdm_adjust(
     adapt_freq_thresh : str, optional
         Threshold for frequency adaptation. See :py:class:`xsdba.processing.adapt_freq` for details.
         Default is None, meaning that frequency adaptation is not performed.
+    max_tail_factor: float, optional
+        If not None, values to adjust (after preprossing steps) that are above max_tail_factor * the value
+        of the last quantile of hist (before the preprocessing steps) are not adjusted.
+        We keep the input simulation with only the preprocessing steps instead.
 
     Returns
     -------
@@ -744,6 +828,18 @@ def qdm_adjust(
             group=Grouper(group.name),
             dim=None,
         ).sim
+    # mask no bias adjustment, when sim is larger than n times the largest quantile in hist (without adapt freq)
+    if max_tail_factor is not None:
+        adaptedsim = ds["sim"].copy()
+        last_quantile = ds["hist_q_raw"].isel({"quantiles": -1}).drop_vars("quantiles")
+        # make last_quantile dim fit adaptedsim dim
+        last_quantile = u.broadcast(
+            last_quantile,
+            adaptedsim,
+            group=group,
+            interp=interp if group.prop != "dayofyear" else "nearest",
+        )
+        mask = adaptedsim > max_tail_factor * last_quantile
 
     sim_q = group.apply(u.rank, ds.sim, main_only=True, pct=True)
     af = u.interp_on_quantiles(
@@ -755,6 +851,10 @@ def qdm_adjust(
         extrapolation=extrapolation,
     )
     scen = u.apply_correction(ds.sim, af, kind)
+    # apply max_tail_factor mask
+    if max_tail_factor is not None:
+        scen = scen.where(~mask, adaptedsim)
+
     return xr.Dataset({"scen": scen, "sim_q": sim_q})
 
 

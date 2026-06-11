@@ -433,6 +433,11 @@ class EmpiricalQuantileMapping(TrainAdjust):
     adapt_freq_thresh : str, optional
         Threshold for frequency adaptation. See :py:class:`xsdba.processing.adapt_freq` for details.
         Default is None, meaning that frequency adaptation is not performed.
+    max_tail_factor: float, optional
+        If not None, values to adjust (after preprossing steps) that are above max_tail_factor * the value
+        of the last quantile of hist (before the preprocessing steps, stored in hist_q_raw) are not adjusted.
+        We keep the input simulation with only the preprocessing steps instead.
+        If None, hist_q_raw output will just be a dummy variable.
 
     Adjust step:
 
@@ -473,6 +478,7 @@ class EmpiricalQuantileMapping(TrainAdjust):
         jitter_under_thresh_value: str | None = None,
         jitter_over_thresh_value: str | None = None,
         jitter_over_thresh_upper_bnd: str | None = None,
+        max_tail_factor: float | None = None,
     ) -> tuple[xr.Dataset, dict[str, Any]]:
         if np.isscalar(nquantiles):
             quantiles = equally_spaced_nodes(nquantiles).astype(ref.dtype)
@@ -488,6 +494,7 @@ class EmpiricalQuantileMapping(TrainAdjust):
             jitter_under_thresh_value=jitter_under_thresh_value,
             jitter_over_thresh_value=jitter_over_thresh_value,
             jitter_over_thresh_upper_bnd=jitter_over_thresh_upper_bnd,
+            max_tail_factor=max_tail_factor,
         )
 
         ds.af.attrs.update(
@@ -496,7 +503,11 @@ class EmpiricalQuantileMapping(TrainAdjust):
         )
         ds.hist_q.attrs.update(
             standard_name="Model quantiles",
-            long_name="Quantiles of model on the reference period",
+            long_name="Quantiles of model on the reference period, after preprocess",
+        )
+        ds.hist_q_raw.attrs.update(
+            standard_name="Model quantiles",
+            long_name="Quantiles of model on the reference period, before preprocess",
         )
         if adapt_freq_thresh is None:
             ds = ds.drop_vars(["P0_ref", "P0_hist", "pth"])
@@ -505,6 +516,7 @@ class EmpiricalQuantileMapping(TrainAdjust):
             "group": group,
             "kind": kind,
             "adapt_freq_thresh": adapt_freq_thresh,
+            "max_tail_factor": max_tail_factor,
         }
 
     def _adjust(self, sim, interp="nearest", extrapolation="constant"):
@@ -515,6 +527,7 @@ class EmpiricalQuantileMapping(TrainAdjust):
             extrapolation=extrapolation,
             kind=self.kind,
             adapt_freq_thresh=self.adapt_freq_thresh,
+            max_tail_factor=self.max_tail_factor,
         ).scen
 
 
@@ -537,6 +550,11 @@ class DetrendedQuantileMapping(TrainAdjust):
     adapt_freq_thresh : str, optional
         Threshold for frequency adaptation. See :py:class:`xsdba.processing.adapt_freq` for details.
         Default is None, meaning that frequency adaptation is not performed.
+    max_tail_factor: float, optional
+        If not None, values to adjust (after preprossing steps) that are above max_tail_factor * the value
+        of the last quantile of hist (before the preprocessing steps, stored in hist_q_raw) are not adjusted.
+        We keep the input simulation with only the preprocessing steps instead.
+        If None, hist_q_raw output will just be a dummy variable.
 
     Adjust step:
 
@@ -588,10 +606,10 @@ class DetrendedQuantileMapping(TrainAdjust):
         jitter_under_thresh_value: str | None = None,
         jitter_over_thresh_value: str | None = None,
         jitter_over_thresh_upper_bnd: str | None = None,
+        max_tail_factor: float | None = None,
     ):
         if group.prop not in ["group", "dayofyear"]:
             warn(f"Using DQM with a grouping other than 'dayofyear' is not recommended (received {group.name}).", stacklevel=2)
-
         if np.isscalar(nquantiles):
             quantiles = equally_spaced_nodes(nquantiles).astype(ref.dtype)
         else:
@@ -606,6 +624,7 @@ class DetrendedQuantileMapping(TrainAdjust):
             jitter_under_thresh_value=jitter_under_thresh_value,
             jitter_over_thresh_value=jitter_over_thresh_value,
             jitter_over_thresh_upper_bnd=jitter_over_thresh_upper_bnd,
+            max_tail_factor=max_tail_factor,
         )
         if adapt_freq_thresh is None:
             ds = ds.drop_vars(["P0_ref", "P0_hist", "pth"])
@@ -616,7 +635,11 @@ class DetrendedQuantileMapping(TrainAdjust):
         )
         ds.hist_q.attrs.update(
             standard_name="Model quantiles",
-            long_name="Quantiles of model on the reference period",
+            long_name="Quantiles of the anomalies of the model on the reference period, after preprocessing steps. ",
+        )
+        ds.hist_q_raw.attrs.update(
+            standard_name="Model quantiles",
+            long_name="Quantiles of model on the reference period, befofe the preprocessing steps.",
         )
         ds.scaling.attrs.update(
             standard_name="Scaling factor",
@@ -626,6 +649,7 @@ class DetrendedQuantileMapping(TrainAdjust):
             "group": group,
             "kind": kind,
             "adapt_freq_thresh": adapt_freq_thresh,
+            "max_tail_factor": max_tail_factor,
         }
 
     def _adjust(
@@ -643,6 +667,7 @@ class DetrendedQuantileMapping(TrainAdjust):
             group=self.group,
             kind=self.kind,
             adapt_freq_thresh=self.adapt_freq_thresh,
+            max_tail_factor=self.max_tail_factor,
         ).scen
         # Detrending needs units.
         scen.attrs["units"] = sim.units
@@ -665,6 +690,11 @@ class QuantileDeltaMapping(EmpiricalQuantileMapping):
     group : str or Grouper
         The grouping information. See :py:class:`xsdba.base.Grouper` for details.
         Default is "time", meaning a single adjustment group along dimension "time".
+    max_tail_factor: float, optional
+        If not None, values to adjust (after preprossing steps) that are above max_tail_factor * the value
+        of the last quantile of hist (before the preprocessing steps, stored in hist_q_raw) are not adjusted.
+        We keep the input simulation with only the preprocessing steps instead.
+        If None, hist_q_raw output will just be a dummy variable.
 
     Adjust step:
 
@@ -701,6 +731,7 @@ class QuantileDeltaMapping(EmpiricalQuantileMapping):
             extrapolation=extrapolation,
             kind=self.kind,
             adapt_freq_thresh=self.adapt_freq_thresh,
+            max_tail_factor=self.max_tail_factor,
         )
         if OPTIONS[EXTRA_OUTPUT]:
             out.sim_q.attrs.update(long_name="Group-wise quantiles of `sim`.")
@@ -1863,8 +1894,12 @@ class MBCn(TrainAdjust):
             base_kws["nquantiles"] = equally_spaced_nodes(base_kws["nquantiles"])
         if isinstance(base_kws["group"], str):
             base_kws["group"] = Grouper(base_kws["group"], 1)
+
         if base_kws["group"].name == "time.month":
             raise NotImplementedError("Received `group==time.month` in `base_kws`. Monthly grouping is not currently supported in the MBCn class.")
+        if base_kws["group"].add_dims != []:
+            raise NotImplementedError("`add_dims` option was passed to Grouper. This is not currently supported in the MBCn class.")
+
         # stack variables and prepare rotations
         if rot_matrices is not None:
             if pts_dim != rot_matrices.attrs["crd_dim"]:
