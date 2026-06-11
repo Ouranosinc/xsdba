@@ -1,15 +1,17 @@
 Welcome to xsdba's documentation!
 =================================
 
-`xsdba` is a Python library for statistical downscaling and bias adjustment. Leveraging `xarray`` and `dask`,
-users can easily bias-adjust large datasets.
++**xsdba**: Statistical correction and bias adjustment tools for xarray.
+
+`xsdba` is a Python library for statistical downscaling and bias adjustment.
+Leveraging `xarray`` and `dask`, users can easily bias-adjust large datasets.
 
 Need help?
 ^^^^^^^^^^
 
 * Ouranos employees can ask questions on the Ouranos private StackOverflow where you can tag subjects and people. (https://stackoverflow.com/c/ouranos/questions).
-* Potential bugs in xsdba can be reported as an issue here: https://github.com/Ouranosinc/xsdba/issues .
-* To be aware of changes in xsdba, you can "watch" the GitHub repository. You can customize the watch function to notify you of new releases. (https://github.com/Ouranosinc/xsdba)
+* If you encounter any errors or problems with `xsdba`, please let us know! Open an issue at the `GitHub main repository <https://github.com/Ouranosinc/xsdba>`_.
+* To be aware of changes in `xsdba`, feel free to “watch” the GitHub repository. You can customize the watch function to notify you of new releases or more.
 
 Acknowledgements
 ^^^^^^^^^^^^^^^^
@@ -35,8 +37,8 @@ Indexes
 * :ref:`genindex`
 * :ref:`modindex`
 
-Contents
-========
+Navigation
+==========
 
 .. toctree::
    :hidden:
