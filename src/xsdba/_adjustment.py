@@ -6,6 +6,7 @@ This file defines the different steps, to be wrapped into the Adjustment objects
 """
 
 from __future__ import annotations
+import warnings
 from collections.abc import Callable, Sequence
 
 import numpy as np
@@ -786,6 +787,7 @@ def qdm_adjust(
     extrapolation: str,
     kind: str,
     adapt_freq_thresh: str | None = None,
+    rank_window: bool | None = None,
     max_tail_factor: int | None = None,
 ) -> xr.Dataset:
     """
@@ -811,6 +813,11 @@ def qdm_adjust(
     adapt_freq_thresh : str, optional
         Threshold for frequency adaptation. See :py:class:`xsdba.processing.adapt_freq` for details.
         Default is None, meaning that frequency adaptation is not performed.
+    rank_window : bool, optional
+        Whether to rank simulated values over the full grouping window.
+        Effectively, the default is `False` which preserves legacy behavior.
+        If `False`, ranks are computed within exact groups, e.g., a specific day of year.
+        In `xsdba>=0.8`, this option will be deprecated in favour of honoring the grouping window (equivalent to `True`).
     max_tail_factor: float, optional
         If not None, values to adjust (after preprossing steps) that are above max_tail_factor * the value
         of the last quantile of hist (before the preprocessing steps) are not adjusted.
@@ -820,6 +827,12 @@ def qdm_adjust(
     -------
     xr.Dataset
         The adjusted data.
+
+    Warns
+    -----
+    DeprecationWarning
+        If rank_window is None and group size is larger than one, a warning indicates that in `xsdba>=0.8`
+        the current behavior will change.
     """
     if adapt_freq_thresh:
         ds["sim"] = _adapt_freq_preprocess(
@@ -840,8 +853,21 @@ def qdm_adjust(
             interp=interp if group.prop != "dayofyear" else "nearest",
         )
         mask = adaptedsim > max_tail_factor * last_quantile
-
-    sim_q = group.apply(u.rank, ds.sim, main_only=True, pct=True)
+    if rank_window is None:
+        rank_window = False
+        if group.window > 1:
+            warnings.warn(
+                "QDM method can now perform the adjustment step by expanding the time dimension "
+                "with the same window as used in the training. This can already be used by setting "
+                "`rank_window = True`. This will be the only possible behaviour in `xsdba>=0.8`.  "
+                "The current behaviour is obtained by setting `rank_window = False` and will be "
+                "deprecated in `xsdba>=0.8`. It will still be possible to use the old behaviour by "
+                "monkeypatching the group argument in the QDM class between the training and "
+                "adjustment, though this behaviour is not recommended.",
+                category=DeprecationWarning,
+                stacklevel=2,
+            )
+    sim_q = group.apply(u.rank, ds.sim, main_only=not rank_window, pct=True)
     af = u.interp_on_quantiles(
         sim_q,
         ds.quantiles,
