@@ -24,7 +24,7 @@ Breaking changes
 Fixes
 ^^^^^
 * Fixed property ``return_value`` and ``decorrelation_length`` for dask inputs (:issue:`266`, :pull:`267`).
-* Fix `adapt_freq` processing in training when ``xsdba.Grouper`` uses `add_dims`. (:issue:`182`, :pull:`183`).
+* Fix `adapt_freq` processing in training when ``xsdba.Grouper`` uses `add_dims`. (:issue:`182`, :pull:`183`, :pull:`291`).
 
 Internal changes
 ^^^^^^^^^^^^^^^^

@@ -160,9 +160,10 @@ def dqm_train(
         jitter_over_thresh_value,
         jitter_over_thresh_upper_bnd,
     )
-
     # Ensures extra dimensions are only aggregated in datasets that have them
     ref_dim = Grouper.filter_dim(ds.ref, dim)
+    # ds.hist might have been broadcasted in preprocess, so `sim_dim` must be re-computed
+    sim_dim = Grouper.filter_dim(ds.hist, dim)
     refn = u.apply_correction(ds.ref, u.invert(ds.ref.mean(ref_dim), kind), kind)
     histn = u.apply_correction(ds.hist, u.invert(ds.hist.mean(sim_dim), kind), kind)
 
@@ -265,6 +266,8 @@ def eqm_train(
 
     # Ensures extra dimensions are only aggregated in datasets that have them
     ref_dim = Grouper.filter_dim(ds.ref, dim)
+    # ds.hist might have been broadcasted in preprocess, so `sim_dim` must be re-computed
+    sim_dim = Grouper.filter_dim(ds.hist, dim)
     ref_q = nbu.quantile(ds.ref, quantiles, ref_dim)
     hist_q = nbu.quantile(ds.hist, quantiles, sim_dim)
     if max_tail_factor is None:
@@ -729,7 +732,6 @@ def dqm_adjust(
             group=Grouper(group.name),
             dim=None,
         ).sim
-
     # mask no bias adjustment, when sim is larger than n times the largest quantile in hist (without adapt freq)
     if max_tail_factor is not None:
         adaptedsim = ds["sim"].copy()
