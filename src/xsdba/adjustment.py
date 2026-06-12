@@ -699,6 +699,10 @@ class QuantileDeltaMapping(EmpiricalQuantileMapping):
         The interpolation method to use when interpolating the adjustment factors. Defaults to "nearest".
     extrapolation : {'constant', 'nan'}
         The type of extrapolation to use. Defaults to "constant".
+    rank_window : bool
+        Whether to rank simulated values over the full grouping window.
+        Effectively, the default is `False`, meaning values are ranked within exact groups only, e.g., a specific day of year.
+        In `xsdba>=0.8`, this option will be deprecated in favour of honoring the grouping window (equivalent to `True`).
     quantiles : xr.DataArray
         The quantile of each value of `sim`. The adjustment factor is interpolated using this as the "quantile" axis on `ds.af`.
         This is an extra output that requires activation with `xsdba.set_options(extra_output=True)`.
@@ -720,7 +724,7 @@ class QuantileDeltaMapping(EmpiricalQuantileMapping):
     :cite:cts:`cannon_bias_2015`
     """
 
-    def _adjust(self, sim, interp="nearest", extrapolation="constant"):
+    def _adjust(self, sim, interp="nearest", extrapolation="constant", rank_window=None):
         out = qdm_adjust(
             self.ds.assign(sim=sim),
             group=self.group,
@@ -728,6 +732,7 @@ class QuantileDeltaMapping(EmpiricalQuantileMapping):
             extrapolation=extrapolation,
             kind=self.kind,
             adapt_freq_thresh=self.adapt_freq_thresh,
+            rank_window=rank_window,
             max_tail_factor=self.max_tail_factor,
         )
         if OPTIONS[EXTRA_OUTPUT]:
