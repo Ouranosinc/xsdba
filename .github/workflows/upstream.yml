@@ -39,21 +39,21 @@ jobs:
         shell: bash -l {0}
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@20cf305ff2072d973412fa9b1e3a4f227bda3c76 # v2.14.0
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           disable-sudo: true
           egress-policy: audit
       - name: Start Measurement
-        uses: green-coding-solutions/eco-ci-energy-estimation@9fcdc7c7225cc2cbeead14d114a61a461bd37e66 # v5.2
+        uses: green-coding-solutions/eco-ci-energy-estimation@782dd4a31bc426a6ae26a7b08d89af454b10ffc0 # v5.3.0
         with:
           task: start-measurement
           branch: ${{ github.head_ref || github.ref_name }}
       - name: Checkout Repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
       - name: Setup Conda (Micromamba) with Python${{ matrix.python-version }}
-        uses: mamba-org/setup-micromamba@add3a49764cedee8ee24e82dfde87f5bc2914462 # v2.0.7
+        uses: mamba-org/setup-micromamba@d7c9bd84e824b79d2af72a2d4196c7f4300d3476 # v3.0.0
         with:
           cache-downloads: true
           cache-environment: true
@@ -73,13 +73,13 @@ jobs:
           micromamba list
           python -m pip check || true
       - name: Setup Python Measurement
-        uses: green-coding-solutions/eco-ci-energy-estimation@9fcdc7c7225cc2cbeead14d114a61a461bd37e66 # v5.2
+        uses: green-coding-solutions/eco-ci-energy-estimation@782dd4a31bc426a6ae26a7b08d89af454b10ffc0 # v5.3.0
         with:
           task: get-measurement
           label: 'Environment Setup (Upstream, Python${{ matrix.python-version }})'
         continue-on-error: true
       - name: Test Data Caching
-        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ${{ matrix.testdata-cache }}
@@ -100,13 +100,13 @@ jobs:
           issue-title: "⚠️ Nightly upstream-dev CI failed for Python${{ matrix.python-version }} ⚠️"
           log-path: output-${{ matrix.python-version }}-log.jsonl
       - name: Tests measurement
-        uses: green-coding-solutions/eco-ci-energy-estimation@9fcdc7c7225cc2cbeead14d114a61a461bd37e66 # v5.2
+        uses: green-coding-solutions/eco-ci-energy-estimation@782dd4a31bc426a6ae26a7b08d89af454b10ffc0 # v5.3.0
         with:
           task: get-measurement
           label: 'Testing and Reporting (Upstream, Python${{ matrix.python-version }})'
         continue-on-error: true
       - name: Show Energy Results
-        uses: green-coding-solutions/eco-ci-energy-estimation@9fcdc7c7225cc2cbeead14d114a61a461bd37e66 # v5.2
+        uses: green-coding-solutions/eco-ci-energy-estimation@782dd4a31bc426a6ae26a7b08d89af454b10ffc0 # v5.3.0
         with:
           task: display-results
         continue-on-error: true
