@@ -575,6 +575,40 @@ class TestDQM:
         # first 10 points unchanged
         np.testing.assert_allclose((adapted.values[2, itimes] - hist.values[2, itimes])[:10], 0)
 
+    @pytest.mark.parametrize("typp,uses_dask", [["ref", "true"], ["ref", "false"], ["hist", "true"], ["hist", "false"]])
+    def test_add_dims_only_one_dataset(self, cannon_2015_rvs, random, typp, uses_dask):
+        np.random.seed(42)
+        group = "time"
+        ref, hist, _ = cannon_2015_rvs(15000, random=random)
+        # remove values below 1 kg m-2 d-1 thresh
+        ref, hist = (convert_units_to(da, "kg m-2 d-1").clip(2, None) for da in [ref, hist])
+        # second site with a 15 extra values below thresh in hist
+        itimes = np.arange(0, 30, 2)
+        hist[{"time": itimes}] = np.arange(len(itimes)) / (len(itimes))  # stay below thresh
+        # 5 and 10 zero values in ref
+        ref[{"time": range(5)}] = 0
+        if typp == "ref":
+            ref = ref.expand_dims(point=[0, 1, 2])
+        elif typp == "hist":
+            hist = hist.expand_dims(point=[0, 1, 2])
+        if uses_dask:
+            ref = ref.chunk({"time": -1})
+            hist = hist.chunk({"time": -1})
+        else:
+            ref = ref.load()
+            hist = hist.load()
+        dqm = DetrendedQuantileMapping.train(
+            ref,
+            hist,
+            kind="*",
+            group=Grouper(group, add_dims=["point"]),
+            adapt_freq_thresh="1 kg m-2 d-1",
+            jitter_under_thresh_value="0.01 kg m-2 d-1",
+        )
+        adj = dqm.adjust(hist).values
+        # dummy assertion so that I "use" `adj`
+        np.testing.assert_allclose(adj, adj)
+
     def test_adapt_freq_time_explicit(self, cannon_2015_rvs, random):
         ref, hist, _ = cannon_2015_rvs(15000, random=random)
         thr = "1 kg m-2/d"
@@ -850,6 +884,36 @@ class TestQDM:
         bc_sim = scends.scen
         np.testing.assert_almost_equal(bc_sim.mean(), 41.5, 1)
         np.testing.assert_almost_equal(bc_sim.std(), 16.7, 0)
+
+    @pytest.mark.filterwarnings("ignore:All-nan slice encountered:RuntimeWarning")
+    def test_qdm_adjust_rank_window(self):
+        def _daily_series(start, periods, offset=0):
+            time = xr.date_range(start, periods=periods, calendar="noleap", use_cftime=True)
+            steps = np.arange(periods)
+            values = 280 + np.sin(2 * np.pi * (steps % 365) / 365) + 0.01 * steps + offset
+            return xr.DataArray(values, dims="time", coords={"time": time}, attrs={"units": "K"})
+
+        hist = _daily_series("2001-01-01", 2 * 365)
+        ref = hist + 2
+        ref.attrs["units"] = "K"
+        sim = _daily_series("2003-01-01", 365, offset=1)
+        group = Grouper("time.dayofyear", window=31)
+
+        QDM = QuantileDeltaMapping.train(ref, hist, kind="+", group=group, nquantiles=10)
+
+        with pytest.warns(
+            DeprecationWarning,
+            match="same window as used in the training.*will be deprecated in",
+        ):
+            scen_default = QDM.adjust(sim)
+        assert bool(np.isnan(scen_default).all())
+
+        scen_window = QDM.adjust(sim, rank_window=True)
+        assert bool(np.isfinite(scen_window).all())
+
+        with set_options(extra_output=True):
+            out = QDM.adjust(sim, rank_window=True)
+        assert bool(np.isfinite(out.sim_q).all())
 
     @pytest.mark.parametrize("use_dask", [True, False])
     def test_max_tail_factor(self, random, use_dask):

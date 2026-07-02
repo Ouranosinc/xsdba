@@ -2,8 +2,24 @@
 Changelog
 =========
 
-`Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
-------------------------------------------------------------
+..
+    `Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
+    ------------------------------------------------------------
+
+    Contributors:
+
+    Changes
+    ^^^^^^^
+    * No change.
+
+    Fixes
+    ^^^^^
+    * No change.
+
+.. _changes_0.7.0:
+
+`v0.7.0 <https://github.com/Ouranosinc/xsdba/tree/0.7.0>`_ (2026-06-16)
+-----------------------------------------------------------------------
 
 Contributors: Gabriel Rondeau-Genesse (:user:`RondeauG`), Pascal Bourgault (:user:`aulemahal`), Éric Dupuis (:user:`coxipi`), Juliette Lavoie (:user:`juliettelavoie`), Trevor James Smith (:user:`Zeitsperre`).
 
@@ -12,19 +28,20 @@ Changes
 * Add ``max_tail_factor`` arg  to quantile mapping functions. (:pull:`279`, :issue:`278`).
 * Add ``mult_skip_zeros`` to detrending classes. (:pull:`279`, :issue:`289`).
 * New example in notebook `advanced_example.ipynb` showing how to use spectral utils (``xsdba.processing.spectral_filter`` and ``xsdba.properties.spectral_variance``). (:issue:`247`, :pull:`259`, :pull:`282`).
+* `QuantileDeltaMapping.adjust` now allows using training grouper by setting `rank_window` to `True`. (:issue:`287`, :pull:`288`).
 * ``xsdba.utils.rank`` accepts a new argument: `random_tiebreaking`. If set to `True`, equal values are now ranked with distinct ranks. (:issue:`182`, :pull:`183`).
 * New `VarianceScaling` adjustment method. (:pull:`285`).
 
 Breaking changes
 ^^^^^^^^^^^^^^^^
-* Default values for `frac` and `power` in ``xsdba.adjustment.ExtremeValues`` have been changed to 0.7, and 3, respectively. (:pull:`262`).
+* Default values for `frac` and `power` in ``xsdba.adjustment.ExtremeValues`` have been changed to '0.7' and '3', respectively. (:pull:`262`).
 * The order of the arguments has been reorganized in ``xsdba.processing.spectral_filter``.  (:pull:`259`).
 * `delta` is no longer computed automatically from the `lat` or `rlat` field in ``xsdba.processing.spectral_filter``.  (:pull:`259`).
 
 Fixes
 ^^^^^
-* Fixed property ``return_value`` and ``decorrelation_length`` for dask inputs (:issue:`266`, :pull:`267`).
-* Fix `adapt_freq` processing in training when ``xsdba.Grouper`` uses `add_dims`. (:issue:`182`, :pull:`183`).
+* Fixed property ``return_value`` and ``decorrelation_length`` for `dask` inputs. (:issue:`266`, :pull:`267`).
+* Fix `adapt_freq` processing in training when ``xsdba.Grouper`` uses `add_dims`. (:issue:`182`, :pull:`183`, :pull:`291`).
 
 Internal changes
 ^^^^^^^^^^^^^^^^
