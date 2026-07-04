@@ -20,6 +20,7 @@ from xsdba.adjustment import (
     PrincipalComponents,
     QuantileDeltaMapping,
     Scaling,
+    VarianceScaling,
     dOTC,
 )
 from xsdba.base import Grouper, stack_periods
@@ -273,6 +274,32 @@ class TestScaling:
         assert "lon" not in scaling.ds
         p = scaling.adjust(sim)
         np.testing.assert_allclose(p.isel(lon=0).transpose(*ref.dims), ref, rtol=1e-2)
+
+
+class TestVarianceScaling:
+    def test_time(self, timelonlatseries, random):
+        kind = ADDITIVE
+        units = "K"
+        n = 10000
+        u = random.random(n)
+
+        simm, simscale = 2, 1
+        xd = norm(loc=simm, scale=simscale)
+        x = xd.ppf(u)
+
+        attrs = {"units": units, "kind": kind}
+
+        hist = sim = timelonlatseries(x, attrs=attrs)
+        hist = convert_units_to(hist, "degC")
+        ref = hist.copy(deep=True)
+        refm, refscale = 3, 2.5
+        ref = (ref - ref.mean(dim="time")) * refscale / ref.std(dim="time") + refm
+        ref = ref.assign_attrs(attrs)
+        vs = VarianceScaling.train(ref, hist, group="time")
+        np.testing.assert_allclose(vs.ds.scaling.values, [refscale / simscale], atol=0.02)
+        np.testing.assert_allclose(vs.ds.offset.values, [refm - simm * refscale / simscale], atol=0.02)
+        p = vs.adjust(sim)
+        np.testing.assert_array_almost_equal(p, ref)
 
 
 @pytest.mark.slow
