@@ -41,7 +41,7 @@ class BaseDetrend(ParametrizableWithDataset):
 
         Parameters
         ----------
-        group : Union[str, Grouper]
+        group : str or Grouper
             The grouping information. See :py:class:`xsdba.base.Grouper` for details.
             The fit is performed along the group's main dim.
         kind : {'*', '+'}
@@ -52,8 +52,8 @@ class BaseDetrend(ParametrizableWithDataset):
         super().__init__(group=group, kind=kind, mult_skip_zeros=mult_skip_zeros, **kwargs)
 
     @property
-    def fitted(self):
-        """Return whether instance is fitted."""
+    def fitted(self) -> bool:
+        """Whether the instance is fitted."""
         return hasattr(self, "ds")
 
     def fit(self, da: xr.DataArray):
@@ -168,7 +168,7 @@ class PolyDetrend(BaseDetrend):
 
     Attributes
     ----------
-    group : Union[str, Grouper]
+    group : str or Grouper
         The grouping information. See :py:class:`xsdba.base.Grouper` for details.
         The fit is performed along the group's main dim.
     kind : {'*', '+'}
