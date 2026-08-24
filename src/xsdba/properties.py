@@ -1300,7 +1300,7 @@ def _return_value(
         sub = statistics(ds.x, statistic=statistic, freq="YS")
         params = fit(sub, dist="genextreme", method=method)
         out = parametric_quantile(params, q=1 - 1.0 / period)
-        return out.isel(quantile=0, drop=True).rename("out").to_dataset()
+        return out.isel(quantile=0).drop("quantile").rename("out").to_dataset()
 
     out = frequency_analysis_method(da.rename("x").to_dataset(), method=method, group=group, statistic=statistic, period=period).out
     return out.assign_attrs(units=da.units)
