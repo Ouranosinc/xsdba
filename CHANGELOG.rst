@@ -2,19 +2,19 @@
 Changelog
 =========
 
-..
-    `Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
-    ------------------------------------------------------------
 
-    Contributors:
+`Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
+------------------------------------------------------------
 
-    Changes
-    ^^^^^^^
-    * No change.
+Contributors: Éric Dupuis (:user:`coxipi`)
 
-    Fixes
-    ^^^^^
-    * No change.
+Changes
+^^^^^^^
+* Make ``xsdba.properties`` compatible with `xclim-v1`.
+
+Breaking changes
+^^^^^^^^^^^^^^^^
+* Many arguments name in ``xsdba.properties`` have been changed to reflect the nomenclature in `xclim-v1`. This includes changes where `op` is either renamed as `statistic` or `condition`, depending on the context.
 
 .. _changes_0.7.0:
 

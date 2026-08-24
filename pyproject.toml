@@ -125,7 +125,7 @@ dependencies = [
 extras = [
   "fastnanquantile >=0.0.2",
   "POT >=0.9.4",
-  "xclim >=0.56.0"
+  "pip install xclim@git+https://github.com/Ouranosinc/xclim"
 ]
 sbck = [
   # The sbck dependency requires the "eigen3"/"libeigen3-dev" package to be installed on the system.
