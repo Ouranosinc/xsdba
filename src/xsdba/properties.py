@@ -15,13 +15,13 @@ from collections.abc import Sequence
 
 import numpy as np
 import xarray as xr
-import xclim.indices.run_length as rl
+import xclim.compute.run_length as rl
 from scipy import stats
 from scipy.fft import dctn
 from statsmodels.tsa import stattools
+from xclim.compute.generic import compare, statistics
+from xclim.compute.stats import fit, parametric_quantile
 from xclim.core.indicator import Indicator, base_registry
-from xclim.indices.generic import compare, select_resample_op
-from xclim.indices.stats import fit, parametric_quantile
 
 from xsdba.base import Grouper, map_groups, parse_group, uses_dask
 from xsdba.nbutils import _pairwise_haversine_and_bins
@@ -298,7 +298,7 @@ def _spell_length_distribution(
     da: xr.DataArray,
     *,
     method: str = "amount",
-    op: str = ">=",
+    condition: str = ">=",
     thresh: str = "1 mm d-1",
     window: int = 1,
     stat: str = "mean",
@@ -320,9 +320,9 @@ def _spell_length_distribution(
         Method to choose the threshold.
         'amount': The threshold is directly the quantity in {thresh}. It needs to have the same units as {da}.
         'quantile': The threshold is calculated as the quantile {thresh} of the distribution.
-    op : {">", "<", ">=", "<="}
+    condition : {">", "<", ">=", "<="}
         Operation to verify the condition for a spell.
-        The condition for a spell is variable {op} threshold.
+        The condition for a spell is variable {condition} threshold.
     thresh : str or float
         Threshold on which to evaluate the condition to have a spell.
         String with units if the method is "amount".
@@ -345,7 +345,7 @@ def _spell_length_distribution(
     Returns
     -------
     xr.DataArray, [units of the sampling frequency]
-        {stat} of spell length distribution when the variable is {op} the {method} {thresh} for {window} consecutive day(s).
+        {stat} of spell length distribution when the variable is {condition} the {method} {thresh} for {window} consecutive day(s).
     """
     group = group if isinstance(group, Grouper) else Grouper(group)
 
@@ -357,7 +357,7 @@ def _spell_length_distribution(
         method,
         thresh,
         window,
-        op,
+        condition,
         freq,
         resample_before_rl,
         stat,
@@ -371,12 +371,12 @@ def _spell_length_distribution(
         if method == "quantile":
             thresh = da.quantile(thresh, dim=dim).drop_vars("quantile")
 
-        cond = compare(da, op, thresh)
+        cond = compare(da, condition, thresh)
         out = rl.resample_and_rl(
             cond,
             resample_before_rl,
             rl.rle_statistics,
-            reducer=stat_resample,
+            statistic=stat_resample,
             window=window,
             dim=dim,
             freq=freq,
@@ -397,7 +397,7 @@ def _spell_length_distribution(
         method=method,
         thresh=thresh,
         window=window,
-        op=op,
+        condition=condition,
         freq=group.freq,
         resample_before_rl=resample_before_rl,
         stat=stat,
@@ -423,7 +423,7 @@ def _threshold_count(
     da: xr.DataArray,
     *,
     method: str = "amount",
-    op: str = ">=",
+    condition: str = ">=",
     thresh: str = "1 mm d-1",
     stat: str = "mean",
     stat_resample: str | None = None,
@@ -442,9 +442,9 @@ def _threshold_count(
         Method to choose the threshold.
         'amount': The threshold is directly the quantity in {thresh}. It needs to have the same units as {da}.
         'quantile': The threshold is calculated as the quantile {thresh} of the distribution.
-    op : {">", "<", ">=", "<="}
+    condition : {">", "<", ">=", "<="}
         Operation to verify the condition for a spell.
-        The condition for a spell is variable {op} threshold.
+        The condition for a spell is variable {condition} threshold.
     thresh : str or float
         Threshold on which to evaluate the condition to have a spell.
         String with units if the method is "amount".
@@ -461,7 +461,7 @@ def _threshold_count(
     Returns
     -------
     xr.DataArray, [dimensionless]
-        {stat} number of days when the variable is {op} the {method} {thresh}.
+        {stat} number of days when the variable is {condition} the {method} {thresh}.
 
     Notes
     -----
@@ -470,7 +470,7 @@ def _threshold_count(
     return _spell_length_distribution(
         da,
         method=method,
-        op=op,
+        condition=condition,
         thresh=thresh,
         stat=stat,
         stat_resample=stat_resample,
@@ -833,8 +833,8 @@ def _bivariate_spell_length_distribution(
     *,
     method1: str = "amount",
     method2: str = "amount",
-    op1: str = ">=",
-    op2: str = ">=",
+    condition1: str = ">=",
+    condition2: str = ">=",
     thresh1: str = "1 mm d-1",
     thresh2: str = "1 mm d-1",
     window: int = 1,
@@ -863,12 +863,12 @@ def _bivariate_spell_length_distribution(
         Method to choose the threshold.
         'amount': The threshold is directly the quantity in {thresh}. It needs to have the same units as {da}.
         'quantile': The threshold is calculated as the quantile {thresh} of the distribution.
-    op1 : {">", "<", ">=", "<="}
+    condition1 : {">", "<", ">=", "<="}
         Operation to verify the condition for a spell.
-        The condition for a spell is variable {op1} threshold.
-    op2 : {">", "<", ">=", "<="}
+        The condition for a spell is variable {condition1} threshold.
+    condition2 : {">", "<", ">=", "<="}
         Operation to verify the condition for a spell.
-        The condition for a spell is variable {op2} threshold.
+        The condition for a spell is variable {condition2} threshold.
     thresh1 : str or float
         Threshold on which to evaluate the condition to have a spell.
         String with units if the method is "amount".
@@ -894,13 +894,13 @@ def _bivariate_spell_length_distribution(
     Returns
     -------
     xr.DataArray, [units of the sampling frequency]
-        {stat} of spell length distribution when the first variable is {op1} the {method1} {thresh1}
-        and the second variable is {op2} the {method2} {thresh2} for {window} consecutive day(s).
+        {stat} of spell length distribution when the first variable is {condition1} the {method1} {thresh1}
+        and the second variable is {condition2} the {method2} {thresh2} for {window} consecutive day(s).
     """
     group = group if isinstance(group, Grouper) else Grouper(group)
-    allowed_ops = [">", "<", ">=", "<="]
-    if op1 not in allowed_ops or op2 not in allowed_ops:
-        raise ValueError(f"`op1` and `op2` must be in {allowed_ops}, but {op1} and {op2} were given.")
+    allowed_conditions = [">", "<", ">=", "<="]
+    if condition1 not in allowed_conditions or condition2 not in allowed_conditions:
+        raise ValueError(f"`condition1` and `condition2` must be in {allowed_conditions}, but {condition1} and {condition2} were given.")
 
     @map_groups(out=[Grouper.PROP], main_only=True)
     def _bivariate_spell_stats(
@@ -921,18 +921,18 @@ def _bivariate_spell_length_distribution(
 
         conds = []
         masks = []
-        for da, thresh, op, method in zip([ds.da1, ds.da2], threshs, ops, methods, strict=False):
+        for da, thresh, condition, method in zip([ds.da1, ds.da2], threshs, ops, methods, strict=False):
             masks.append(~(da.isel({dim: 0}).isnull()).drop_vars(dim))  # mask of the ocean with NaNs
             if method == "quantile":
                 thresh = da.quantile(thresh, dim=dim).drop_vars("quantile")
-            conds.append(compare(da, op, thresh))
+            conds.append(compare(da, condition, thresh))
         mask = masks[0] & masks[1]
         cond = conds[0] & conds[1]
         out = rl.resample_and_rl(
             cond,
             resample_before_rl,
             rl.rle_statistics,
-            reducer=stat_resample,
+            statistic=stat_resample,
             window=window,
             dim=dim,
             freq=freq,
@@ -955,7 +955,7 @@ def _bivariate_spell_length_distribution(
         group=group,
         threshs=threshs,
         methods=methods,
-        ops=[op1, op2],
+        ops=[condition1, condition2],
         window=window,
         freq=group.freq,
         resample_before_rl=resample_before_rl,
@@ -984,8 +984,8 @@ def _bivariate_threshold_count(
     *,
     method1: str = "amount",
     method2: str = "amount",
-    op1: str = ">=",
-    op2: str = ">=",
+    condition1: str = ">=",
+    condition2: str = ">=",
     thresh1: str = "1 mm d-1",
     thresh2: str = "1 mm d-1",
     stat: str = "mean",
@@ -1012,12 +1012,12 @@ def _bivariate_threshold_count(
         Method to choose the threshold.
         'amount': The threshold is directly the quantity in {thresh}. It needs to have the same units as {da}.
         'quantile': The threshold is calculated as the quantile {thresh} of the distribution.
-    op1 : {">", "<", ">=", "<="}
+    condition1 : {">", "<", ">=", "<="}
         Operation to verify the condition for a spell.
-        The condition for a spell is variable {op} threshold.
-    op2 : {">", "<", ">=", "<="}
+        The condition for a spell is variable {condition} threshold.
+    condition2 : {">", "<", ">=", "<="}
         Operation to verify the condition for a spell.
-        The condition for a spell is variable {op} threshold.
+        The condition for a spell is variable {condition} threshold.
     thresh1 : str or float
         Threshold on which to evaluate the condition to have a spell.
         String with units if the method is "amount".
@@ -1039,8 +1039,8 @@ def _bivariate_threshold_count(
     Returns
     -------
     xr.DataArray, [dimensionless]
-        {stat} number of days when the first variable is {op1} the {method1} {thresh1}
-        and the second variable is {op2} the {method2} {thresh2} for {window} consecutive day(s).
+        {stat} number of days when the first variable is {condition1} the {method1} {thresh1}
+        and the second variable is {condition2} the {method2} {thresh2} for {window} consecutive day(s).
 
     Notes
     -----
@@ -1051,8 +1051,8 @@ def _bivariate_threshold_count(
         da2,
         method1=method1,
         method2=method2,
-        op1=op1,
-        op2=op2,
+        condition1=condition1,
+        condition2=condition2,
         thresh1=thresh1,
         thresh2=thresh2,
         window=1,
@@ -1073,7 +1073,7 @@ bivariate_threshold_count = StatisticalProperty(
 def _relative_frequency(
     da: xr.DataArray,
     *,
-    op: str = ">=",
+    condition: str = ">=",
     thresh: str = "1 mm d-1",
     group: str | Grouper = "time",
 ) -> xr.DataArray:
@@ -1088,9 +1088,9 @@ def _relative_frequency(
     ----------
     da : xr.DataArray
         Variable on which to calculate the diagnostic.
-    op : {">", "<", ">=", "<="}
+    condition : {">", "<", ">=", "<="}
         Operation to verify the condition.
-        The condition is variable {op} threshold.
+        The condition is variable {condition} threshold.
     thresh : str
         Threshold on which to evaluate the condition.
     group : {'time', 'time.season', 'time.month'}
@@ -1100,17 +1100,17 @@ def _relative_frequency(
     Returns
     -------
     xr.DataArray, [dimensionless]
-        Relative frequency of values {op} {thresh}.
+        Relative frequency of values {condition} {thresh}.
     """
     # mask of the ocean with NaNs
     mask = ~(da.isel({group.dim: 0}).isnull()).drop_vars(group.dim)
-    allowed_ops = [">", "<", ">=", "<="]
-    if op not in allowed_ops:
-        raise ValueError(f"`op` must be in {allowed_ops}, but {op} was given.")
+    allowed_conditions = [">", "<", ">=", "<="]
+    if condition not in allowed_conditions:
+        raise ValueError(f"`op` must be in {allowed_conditions}, but {condition} was given.")
 
     t = convert_units_to(thresh, da)
     length = da.sizes[group.dim]
-    cond = compare(da, op, t)
+    cond = compare(da, condition, t)
     if group.prop != "group":  # change the time resolution if necessary
         cond = cond.groupby(group.name)
         # length of the groupBy groups
@@ -1127,12 +1127,13 @@ def _relative_frequency(
 relative_frequency = StatisticalProperty(identifier="relative_frequency", aspect="temporal", compute=_relative_frequency)
 
 
+# TODO: add a test
 @parse_group
 def _transition_probability(
     da: xr.DataArray,
     *,
-    initial_op: str = ">=",
-    final_op: str = ">=",
+    initial_condition: str = ">=",
+    final_condition: str = ">=",
     thresh: str = "1 mm d-1",
     group: str | Grouper = "time",
 ) -> xr.DataArray:
@@ -1148,12 +1149,12 @@ def _transition_probability(
     ----------
     da : xr.DataArray
         Variable on which to calculate the diagnostic.
-    initial_op : {">", "gt", "<", "lt", ">=", "ge", "<=", "le", "==", "eq", "!=", "ne"}
+    initial_condition : {">", "gt", "<", "lt", ">=", "ge", "<=", "le", "==", "eq", "!=", "ne"}
         Operation to verify the condition for the initial state.
-        The condition is variable {op} threshold.
-    final_op : {">", "gt", "<", "lt", ">=", "ge", "<=", "le", "==", "eq", "!=", "ne"}
+        The condition is variable {initial_condition} threshold.
+    final_condition : {">", "gt", "<", "lt", ">=", "ge", "<=", "le", "==", "eq", "!=", "ne"}
         Operation to verify the condition for the final state.
-        The condition is variable {op} threshold.
+        The condition is variable {final_condition} threshold.
     thresh : str
         Threshold on which to evaluate the condition.
     group : {"time", "time.season", "time.month"}
@@ -1172,7 +1173,7 @@ def _transition_probability(
     tomorrow = da.shift(time=-1).isel(time=slice(0, -1))
 
     t = convert_units_to(thresh, da)
-    cond = compare(today, initial_op, t) * compare(tomorrow, final_op, t)
+    cond = compare(today, initial_condition, t) * compare(tomorrow, final_condition, t)
     out = group.apply("mean", cond)
     out = out.where(mask, np.nan)
     out.attrs["units"] = ""
@@ -1260,7 +1261,7 @@ def _return_value(
     da: xr.DataArray,
     *,
     period: int = 20,
-    op: str = "max",
+    statistic: str = "max",
     method: str = "ML",
     group: str | Grouper = "time",
 ) -> xr.DataArray:
@@ -1278,7 +1279,7 @@ def _return_value(
         Variable on which to calculate the diagnostic.
     period : int
         Return period. Number of years over which to check if the value is exceeded (or not for op='min').
-    op : {'max','min'}
+    statistic : {'max','min'}
         Whether we are looking for a probability of exceedance ('max', right side of the distribution)
         or a probability of non-exceedance (min, left side of the distribution).
     method : {"ML", "PWM"}
@@ -1290,17 +1291,17 @@ def _return_value(
     Returns
     -------
     xr.DataArray, [same as input]
-        {period}-{group.prop_name} {op} return level of the variable.
+        {period}-{group.prop_name} {condition} return level of the variable.
     """
 
     @map_groups(out=[Grouper.PROP], main_only=True)
-    def frequency_analysis_method(ds, *, dim, method, op, period):
-        sub = select_resample_op(ds.x, op=op)
+    def frequency_analysis_method(ds, *, dim, method, statistic, period):
+        sub = statistics(ds.x, statistic=statistic, freq="YS")
         params = fit(sub, dist="genextreme", method=method)
         out = parametric_quantile(params, q=1 - 1.0 / period)
         return out.isel(quantile=0, drop=True).rename("out").to_dataset()
 
-    out = frequency_analysis_method(da.rename("x").to_dataset(), method=method, group=group, op=op, period=period).out
+    out = frequency_analysis_method(da.rename("x").to_dataset(), method=method, group=group, statistic=statistic, period=period).out
     return out.assign_attrs(units=da.units)
 
 
