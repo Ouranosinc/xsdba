@@ -12,6 +12,7 @@ This module depends on `xclim`. Run `pip install xsdba['extras']` to install it.
 
 from __future__ import annotations
 from collections.abc import Sequence
+from typing import Literal
 
 import numpy as np
 import xarray as xr
@@ -297,12 +298,12 @@ quantile = StatisticalProperty(identifier="quantile", aspect="marginal", compute
 def _spell_length_distribution(
     da: xr.DataArray,
     *,
-    method: str = "amount",
-    condition: str = ">=",
+    method: Literal["amount", "quantile"] = "amount",
+    condition: Literal[">", "<", ">=", "<="] = ">=",
     thresh: str = "1 mm d-1",
     window: int = 1,
-    stat: str = "mean",
-    stat_resample: str | None = None,
+    statistic: Literal["mean", "sum", "max", "min"] = "mean",
+    window_statistic: Literal["mean", "sum", "max", "min"] | None = None,
     group: str | Grouper = "time",
     resample_before_rl: bool = True,
 ) -> xr.DataArray:
@@ -330,9 +331,9 @@ def _spell_length_distribution(
     window : int
         Number of consecutive days respecting the constraint in order to begin a spell.
         Default is 1, which is equivalent to `_threshold_count`.
-    stat : {'mean', 'sum', 'max','min'}
+    statistic : {'mean', 'sum', 'max','min'}
         Statistics to apply to the remaining time dimension after resampling (e.g. Jan 1980-2010)
-    stat_resample : {'mean', 'sum', 'max','min'}, optional
+    window_statistic : {'mean', 'sum', 'max','min'}, optional
         Statistics to apply to the resampled input at the {group} (e.g. 1-31 Jan 1980).
         If `None`, the same method as `stat` will be used.
     group : {'time', 'time.season', 'time.month'}
@@ -345,7 +346,7 @@ def _spell_length_distribution(
     Returns
     -------
     xr.DataArray, [units of the sampling frequency]
-        {stat} of spell length distribution when the variable is {condition} the {method} {thresh} for {window} consecutive day(s).
+        {statistic} of spell length distribution when the variable is {condition} the {method} {thresh} for {window} consecutive day(s).
     """
     group = group if isinstance(group, Grouper) else Grouper(group)
 
@@ -360,8 +361,8 @@ def _spell_length_distribution(
         condition,
         freq,
         resample_before_rl,
-        stat,
-        stat_resample,
+        statistic,
+        window_statistic,
     ):
         # PB: This prevents an import error in the distributed dask scheduler, but I don't know why.
         import xarray.core.resample_cftime  # noqa: F401, pylint: disable=unused-import
@@ -376,12 +377,12 @@ def _spell_length_distribution(
             cond,
             resample_before_rl,
             rl.rle_statistics,
-            statistic=stat_resample,
+            statistic=window_statistic,
             window=window,
             dim=dim,
             freq=freq,
         )
-        out = getattr(out, stat)(dim=dim)
+        out = getattr(out, statistic)(dim=dim)
         out = out.where(mask)
         return out.rename("out").to_dataset()
 
@@ -400,8 +401,8 @@ def _spell_length_distribution(
         condition=condition,
         freq=group.freq,
         resample_before_rl=resample_before_rl,
-        stat=stat,
-        stat_resample=stat_resample or stat,
+        statistic=statistic,
+        window_statistic=window_statistic or statistic,
     ).out
     # in xclim this was managed by to_agg_units
     # will hard-code this part for now
@@ -422,11 +423,11 @@ spell_length_distribution = StatisticalProperty(
 def _threshold_count(
     da: xr.DataArray,
     *,
-    method: str = "amount",
-    condition: str = ">=",
+    method: Literal["amount", "quantile"] = "amount",
+    condition: Literal[">", "<", ">=", "<="] = ">=",
     thresh: str = "1 mm d-1",
-    stat: str = "mean",
-    stat_resample: str | None = None,
+    statistic: Literal["mean", "sum", "max", "min"] = "mean",
+    window_statistic: Literal["mean", "sum", "max", "min"] | None = None,
     group: str | Grouper = "time",
 ) -> xr.DataArray:
     r"""
@@ -449,9 +450,9 @@ def _threshold_count(
         Threshold on which to evaluate the condition to have a spell.
         String with units if the method is "amount".
         Float of the quantile if the method is "quantile".
-    stat : {'mean', 'sum', 'max','min'}
+    statistic : {'mean', 'sum', 'max','min'}
         Statistics to apply to the remaining time dimension after resampling (e.g. Jan 1980-2010)
-    stat_resample : {'mean', 'sum', 'max','min'}, optional
+    window_statistic : {'mean', 'sum', 'max','min'}, optional
         Statistics to apply to the resampled input at the {group} (e.g. 1-31 Jan 1980). If `None`, the same method as `stat` will be used.
     group : {'time', 'time.season', 'time.month'}
         Grouping of the output.
@@ -461,7 +462,7 @@ def _threshold_count(
     Returns
     -------
     xr.DataArray, [dimensionless]
-        {stat} number of days when the variable is {condition} the {method} {thresh}.
+        {statistic} number of days when the variable is {condition} the {method} {thresh}.
 
     Notes
     -----
@@ -472,8 +473,8 @@ def _threshold_count(
         method=method,
         condition=condition,
         thresh=thresh,
-        stat=stat,
-        stat_resample=stat_resample,
+        stat=statistic,
+        window_statistic=window_statistic,
         group=group,
         window=1,
     )
@@ -550,7 +551,7 @@ acf = StatisticalProperty(
 def _annual_cycle(
     da: xr.DataArray,
     *,
-    stat: str = "absamp",
+    statistic: str = "absamp",
     window: int = 31,
     group: str | Grouper = "time",
 ) -> xr.DataArray:
@@ -564,7 +565,7 @@ def _annual_cycle(
     ----------
     da : xr.DataArray
         Variable on which to calculate the diagnostic.
-    stat : {'absamp','relamp', 'phase', 'min', 'max', 'asymmetry'}
+    statistic : {'absamp','relamp', 'phase', 'min', 'max', 'asymmetry'}
         - 'absamp' is the peak-to-peak amplitude. (max - min). In the same units as the input.
         - 'relamp' is a relative percentage. 100 * (max - min) / mean (Recommended for precipitation). Dimensionless.
         - 'phase' is the day of year of the maximum.
@@ -577,7 +578,7 @@ def _annual_cycle(
     Returns
     -------
     xr.DataArray, [same units as input or dimensionless or time]
-        {stat} of the annual cycle.
+        {statistic} of the annual cycle.
     """
     group = group if isinstance(group, Grouper) else Grouper(group)
     u = da.units
@@ -592,7 +593,7 @@ def _annual_cycle(
             .mean()
             .isel(dayofyear=slice(window // 2, -(window // 2)))
         )
-    match stat:
+    match statistic:
         case "absamp":
             out = ac.max("dayofyear") - ac.min("dayofyear")
             out.attrs.update(pint2cfattrs(units2pint(u), is_difference=True))
@@ -612,7 +613,7 @@ def _annual_cycle(
             out = (ac.idxmax("dayofyear") - ac.idxmin("dayofyear")) % 365 / 365
             out.attrs["units"] = "yr"
         case _:
-            raise NotImplementedError(f"{stat} is not a valid annual cycle statistic.")
+            raise NotImplementedError(f"{statistic} is not a valid annual cycle statistic.")
     return out
 
 
@@ -680,7 +681,7 @@ annual_cycle_maximum = StatisticalProperty(
 def _annual_statistic(
     da: xr.DataArray,
     *,
-    stat: str = "absamp",
+    statistic: str = "absamp",
     window: int = 31,
     group: str | Grouper = "time",
 ):
@@ -694,7 +695,7 @@ def _annual_statistic(
     ----------
     da : xr.DataArray
         Data.
-    stat : {'absamp', 'relamp', 'phase'}
+    statistic : {'absamp', 'relamp', 'phase'}
         The statistic to return.
     window : int
         Size of the window for the moving average filtering. Deactivate this feature by passing window = 1.
@@ -702,7 +703,7 @@ def _annual_statistic(
     Returns
     -------
     xr.DataArray, [same units as input or dimensionless]
-        Average annual {stat}.
+        Average annual {statistic}.
     """
     u = da.units
 
@@ -711,7 +712,7 @@ def _annual_statistic(
 
     yrs = da.resample(time="YS")
 
-    match stat:
+    match statistic:
         case "absamp":
             out = yrs.max() - yrs.min()
             out.attrs.update(pint2cfattrs(units2pint(u), is_difference=True))
@@ -722,7 +723,7 @@ def _annual_statistic(
             out = yrs.map(xr.DataArray.idxmax).dt.dayofyear
             out.attrs.update(units="", is_dayofyear=np.int32(1))
         case _:
-            raise NotImplementedError(f"{stat} is not a valid annual cycle statistic.")
+            raise NotImplementedError(f"{statistic} is not a valid annual cycle statistic.")
 
     return out.mean("time", keep_attrs=True)
 
@@ -838,8 +839,8 @@ def _bivariate_spell_length_distribution(
     thresh1: str = "1 mm d-1",
     thresh2: str = "1 mm d-1",
     window: int = 1,
-    stat: str = "mean",
-    stat_resample: str | None = None,
+    statistic: Literal["mean", "sum", "max", "min"] = "mean",
+    window_statistic: Literal["mean", "sum", "max", "min"] | None = None,
     group: str | Grouper = "time",
     resample_before_rl: bool = True,
 ) -> xr.DataArray:
@@ -880,9 +881,9 @@ def _bivariate_spell_length_distribution(
     window : int
         Number of consecutive days respecting the constraint in order to begin a spell.
         Default is 1, which is equivalent to `_bivariate_threshold_count`.
-    stat : {'mean', 'sum', 'max','min'}
+    statistic : {'mean', 'sum', 'max','min'}
         Statistics to apply to the remaining time dimension after resampling (e.g. Jan 1980-2010)
-    stat_resample : {'mean', 'sum', 'max','min'}, optional
+    window_statistic : {'mean', 'sum', 'max','min'}, optional
         Statistics to apply to the resampled input at the {group} (e.g. 1-31 Jan 1980). If `None`, the same method as `stat` will be used.
     group : {'time', 'time.season', 'time.month'}
         Grouping of the output.
@@ -894,7 +895,7 @@ def _bivariate_spell_length_distribution(
     Returns
     -------
     xr.DataArray, [units of the sampling frequency]
-        {stat} of spell length distribution when the first variable is {condition1} the {method1} {thresh1}
+        {statistic} of spell length distribution when the first variable is {condition1} the {method1} {thresh1}
         and the second variable is {condition2} the {method2} {thresh2} for {window} consecutive day(s).
     """
     group = group if isinstance(group, Grouper) else Grouper(group)
@@ -913,8 +914,8 @@ def _bivariate_spell_length_distribution(
         freq,
         window,
         resample_before_rl,
-        stat,
-        stat_resample,
+        statistic,
+        window_statistic,
     ):
         # PB: This prevents an import error in the distributed dask scheduler, but I don't know why.
         import xarray.core.resample_cftime  # noqa: F401, pylint: disable=unused-import
@@ -932,12 +933,12 @@ def _bivariate_spell_length_distribution(
             cond,
             resample_before_rl,
             rl.rle_statistics,
-            statistic=stat_resample,
+            statistic=window_statistic,
             window=window,
             dim=dim,
             freq=freq,
         )
-        out = getattr(out, stat)(dim=dim)
+        out = getattr(out, statistic)(dim=dim)
         out = out.where(mask)
         return out.rename("out").to_dataset()
 
@@ -959,8 +960,8 @@ def _bivariate_spell_length_distribution(
         window=window,
         freq=group.freq,
         resample_before_rl=resample_before_rl,
-        stat=stat,
-        stat_resample=stat_resample or stat,
+        stat=statistic,
+        window_statistic=window_statistic or statistic,
     ).out
     # in xclim this was managed by to_agg_units
     # will hard-code this part for now
@@ -988,8 +989,8 @@ def _bivariate_threshold_count(
     condition2: str = ">=",
     thresh1: str = "1 mm d-1",
     thresh2: str = "1 mm d-1",
-    stat: str = "mean",
-    stat_resample: str | None = None,
+    statistic: Literal["mean", "sum", "max", "min"] = "mean",
+    window_statistic: Literal["mean", "sum", "max", "min"] | None = None,
     group: str | Grouper = "time",
 ) -> xr.DataArray:
     """
@@ -1026,9 +1027,9 @@ def _bivariate_threshold_count(
         Threshold on which to evaluate the condition to have a spell.
         String with units if the method is "amount".
         Float of the quantile if the method is "quantile".
-    stat : {'mean', 'sum', 'max','min'}
+    statistic : {'mean', 'sum', 'max','min'}
         Statistics to apply to the remaining time dimension after resampling (e.g. Jan 1980-2010)
-    stat_resample : {'mean', 'sum', 'max','min'}, optional
+    window_statistic : {'mean', 'sum', 'max','min'}, optional
         Statistics to apply to the resampled input at the {group} (e.g. 1-31 Jan 1980).
         If `None`, the same method as `stat` will be used.
     group : {'time', 'time.season', 'time.month'}
@@ -1039,7 +1040,7 @@ def _bivariate_threshold_count(
     Returns
     -------
     xr.DataArray, [dimensionless]
-        {stat} number of days when the first variable is {condition1} the {method1} {thresh1}
+        {statistic} number of days when the first variable is {condition1} the {method1} {thresh1}
         and the second variable is {condition2} the {method2} {thresh2} for {window} consecutive day(s).
 
     Notes
@@ -1056,8 +1057,8 @@ def _bivariate_threshold_count(
         thresh1=thresh1,
         thresh2=thresh2,
         window=1,
-        stat=stat,
-        stat_resample=stat_resample,
+        stat=statistic,
+        window_statistic=window_statistic,
         group=group,
     )
 
@@ -1073,7 +1074,7 @@ bivariate_threshold_count = StatisticalProperty(
 def _relative_frequency(
     da: xr.DataArray,
     *,
-    condition: str = ">=",
+    condition: Literal[">", "<", ">=", "<="] = ">=",
     thresh: str = "1 mm d-1",
     group: str | Grouper = "time",
 ) -> xr.DataArray:
@@ -1132,8 +1133,8 @@ relative_frequency = StatisticalProperty(identifier="relative_frequency", aspect
 def _transition_probability(
     da: xr.DataArray,
     *,
-    initial_condition: str = ">=",
-    final_condition: str = ">=",
+    initial_condition: Literal[">", "<", ">=", "<=", "==", "!="] = ">=",
+    final_condition: Literal[">", "<", ">=", "<=", "==", "!="] = ">=",
     thresh: str = "1 mm d-1",
     group: str | Grouper = "time",
 ) -> xr.DataArray:
@@ -1262,7 +1263,7 @@ def _return_value(
     *,
     period: int = 20,
     statistic: str = "max",
-    method: str = "ML",
+    method: Literal["ML", "PWM"] = "ML",
     group: str | Grouper = "time",
 ) -> xr.DataArray:
     r"""
