@@ -20,7 +20,7 @@ import xclim.compute.run_length as rl
 from scipy import stats
 from scipy.fft import dctn
 from statsmodels.tsa import stattools
-from xclim.compute.generic import compare, statistics
+from xclim.compute.generic import compare, percentile, statistics, thresholded_percentile
 from xclim.compute.stats import fit, parametric_quantile
 from xclim.core.indicator import Indicator, base_registry
 
@@ -288,11 +288,51 @@ def _quantile(da: xr.DataArray, *, q: float = 0.98, group: str | Grouper = "time
     u = da.units
     if group.prop != "group":
         da = da.groupby(group.name)
-    out = da.quantile(q, dim=group.dim, keep_attrs=True).drop_vars("quantile")
+    map_kwargs = {"percentile": 100 * q, "freq": None}
+    out = da.map(percentile, **map_kwargs)
     return out.assign_attrs(units=u)
 
 
 quantile = StatisticalProperty(identifier="quantile", aspect="marginal", compute=_quantile)
+
+
+@parse_group
+def _thresholded_quantile(
+    da: xr.DataArray, thresh: str, condition: Literal[">", "<", ">=", "<="], *, q: float = 0.98, group: str | Grouper = "time"
+) -> xr.DataArray:
+    """
+    Quantile.
+
+    Returns the quantile q of the distribution of the thresholded variable over all years at the time resolution.
+
+    Parameters
+    ----------
+    da : xr.DataArray
+        Variable on which to calculate the diagnostic.
+    thresh : str
+        Threshold.
+    condition: {">", "<", ">=", "<="}
+        Logical comparison operator. Comparison is done as ``da {condition} thresh``.
+    q : float
+        Quantile to be calculated. Should be between 0 and 1.
+    group : {'time', 'time.season', 'time.month'}
+        Grouping of the output.
+        e.g. If 'time.month', the quantile is computed separately for each month.
+
+    Returns
+    -------
+    xr.DataArray, [same as input]
+        Quantile {q} of the thresholded variable.
+    """
+    u = da.units
+    if group.prop != "group":
+        da = da.groupby(group.name)
+    map_kwargs = {"condition": condition, "thresh": thresh, "percentile": 100 * q, "freq": None, "constrain": [">", "<", ">=", "<="]}
+    out = da.map(thresholded_percentile, **map_kwargs)
+    return out.assign_attrs(units=u)
+
+
+thresholded_quantile = StatisticalProperty(identifier="thresholded_quantile", aspect="marginal", compute=_thresholded_quantile)
 
 
 def _spell_length_distribution(
