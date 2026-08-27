@@ -21,8 +21,7 @@ dependencies:
 # Extras
 - fastnanquantile >=0.0.2
 - pot >=0.9.4
-- pip:
-  - "xclim @ git+https://github.com/Ouranosinc/xclim.git@skip_resample"
+- xclim >=0.56.0
 # SBCK
 - eigen ==3.4.0
 - pybind11 >=2.12.0

@@ -34,14 +34,14 @@ allowlist_externals = ["make"]
 [env_run_base]
 description = "Run tests with pytest under {basepython}"
 setenv = {PYTEST_ADDOPTS = "--color=yes --numprocesses=logical --durations=10 --cov=xsdba --cov-report=lcov", PYTHONPATH = "{toxinidir}"}
-passenv = ["COVERALLS_*", "EIGEN3", "GITHUB_*", "NUMPY", "XCLIM_MAIN"]
+passenv = ["COVERALLS_*", "EIGEN3", "GITHUB_*", "NUMPY", "XCLIM_*"]
 download = true
 dependency_groups = ["test"]
 extras = ["extras"]
 deps = [
   {replace = "if", condition = "env.EIGEN3  == 'true'", then = ["sbck>=1.4.2"], extend = true},
   {replace = "if", condition = "env.NUMPY == 'true'", then = ["numpy>=1.26.0,<2.0"], extend = true},
-  {replace = "if", condition = "env.XCLIM_MAIN == 'true'", then = ["xclim @ git+https://github.com/Ouranosinc/xclim.git@main"], extend = true}
+  {replace = "if", condition = "env.XCLIM_SKIP_RESAMPLE == 'true'", then = ["xclim @ git+https://github.com/Ouranosinc/xclim.git@skip_resample"], extend = true}
 ]
 install_command = ["python", "-m", "pip", "install", "--no-user", "{opts}", "{packages}"]
 commands_pre = [["pip", "list"], ["pip", "check"]]
