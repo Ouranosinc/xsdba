@@ -11,7 +11,7 @@ This module depends on `xclim`. Run `pip install xsdba['extras']` to install it.
 """
 
 from __future__ import annotations
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import Literal
 
 import numpy as np
@@ -22,6 +22,7 @@ from scipy.fft import dctn
 from statsmodels.tsa import stattools
 from xclim.compute.generic import compare, percentile, statistics, thresholded_percentile
 from xclim.compute.stats import fit, parametric_quantile
+from xclim.core import DataType
 from xclim.core.indicator import Indicator, base_registry
 
 from xsdba.base import Grouper, map_groups, parse_group, uses_dask
@@ -37,6 +38,18 @@ from xsdba.units import (
     units2pint,
 )
 from xsdba.utils import _pairwise_spearman, copy_all_attrs
+
+
+def _group_map(
+    obj: DataType,
+    group: Grouper,
+    func: Callable | str,
+    map_kwargs: dict | None = None,
+) -> DataType:
+    if group.prop != "group":
+        return obj.groupby(group.name).map(func, **map_kwargs)
+    else:
+        return func(obj, **map_kwargs)
 
 
 class StatisticalProperty(Indicator):
@@ -286,10 +299,7 @@ def _quantile(da: xr.DataArray, *, q: float = 0.98, group: str | Grouper = "time
         Quantile {q} of the variable.
     """
     u = da.units
-    if group.prop != "group":
-        da = da.groupby(group.name)
-    map_kwargs = {"percentile": 100 * q, "freq": None}
-    out = da.map(percentile, **map_kwargs)
+    out = _group_map(da, group, percentile, map_kwargs={"per": 100 * q, "freq": None})
     return out.assign_attrs(units=u)
 
 
@@ -325,10 +335,8 @@ def _thresholded_quantile(
         Quantile {q} of the thresholded variable.
     """
     u = da.units
-    if group.prop != "group":
-        da = da.groupby(group.name)
-    map_kwargs = {"condition": condition, "thresh": thresh, "percentile": 100 * q, "freq": None, "constrain": [">", "<", ">=", "<="]}
-    out = da.map(thresholded_percentile, **map_kwargs)
+    map_kwargs = {"condition": condition, "thresh": thresh, "per": 100 * q, "freq": None, "constrain": [">", "<", ">=", "<="]}
+    out = _group_map(da, group, thresholded_percentile, map_kwargs)
     return out.assign_attrs(units=u)
 
 

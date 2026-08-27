@@ -111,17 +111,32 @@ class TestProperties:
             sim = sim.load()
 
         out_year = properties.quantile(sim, q=0.2)
-        np.testing.assert_array_almost_equal(out_year.values, [2.8109431013945154e-07])
+        filtered_sim = sim.where(sim >= 1 / 86400)
+        expected = filtered_sim.quantile(dim="time", q=0.2)
+        np.testing.assert_array_almost_equal(out_year.values, expected.values)
 
         out_season = properties.quantile(sim, group="time.season", q=0.2)
+        expected = filtered_sim.groupby("time.season").quantile(dim="time", q=0.2)
+        np.testing.assert_array_almost_equal(out_season.values, expected.values)
+        assert out_season.long_name.startswith("Quantile 0.2")
+
+    def test_thresholded_quantile(self, gosset, use_dask):
+        sim = (
+            xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf", chunks={})
+            .sel(time=slice("1950", "1980"), location="Vancouver")
+            .pr
+        )
+        if not use_dask:
+            sim = sim.load()
+
+        out_year = properties.thresholded_quantile(sim, thresh="1 kg m-2 d-1", condition=">=", q=0.2)
+        # all zeros were cutoff, so it's way bigger than the previous test, as expected
+        np.testing.assert_array_almost_equal(out_year.values, [2.067832e-05])
+
+        out_season = properties.thresholded_quantile(sim, thresh="1 kg m-2 d-1", condition=">=", group="time.season", q=0.2)
         np.testing.assert_array_almost_equal(
             out_season.values,
-            [
-                1.5171653330980917e-06,
-                9.822543773907455e-08,
-                1.8135805248675763e-07,
-                4.135342521749408e-07,
-            ],
+            [2.346586e-05, 1.900519e-05, 2.156181e-05, 1.866310e-05],
         )
         assert out_season.long_name.startswith("Quantile 0.2")
 
