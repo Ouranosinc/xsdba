@@ -67,12 +67,14 @@ jobs:
     strategy:
       matrix:
         os: [ 'ubuntu-latest' ]
-        python-version: [ "3.10", "3.11", "3.12", "3.13", "3.14" ]
+        python-version: [ "3.11", "3.12", "3.13", "3.14" ]
         eigen3: [ false ]
+        xclim_skip_resample: [ true ]
         include:
           - os: 'ubuntu-latest'
             python-version: "3.12"
             eigen3: true
+            xclim_skip_resample: [ true ]
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@20cf305ff2072d973412fa9b1e3a4f227bda3c76 # v2.14.0
@@ -106,6 +108,7 @@ jobs:
           python -m tox
         env:
           EIGEN3: ${{ matrix.eigen3 }}
+          XCLIM_SKIP_RESAMPLE: ${{ matrix.xclim_skip_resample }}
       - name: Report Coverage
         uses: coverallsapp/github-action@648a8eb78e6d50909eff900e4ec85cab4524a45b # v2.3.6
         with:
@@ -119,7 +122,9 @@ jobs:
     strategy:
       matrix:
         os: [ 'ubuntu-latest' ]
-        python-version: [ "3.10", "3.11", "3.12", "3.13", "3.14" ]
+        python-version: [ "3.11", "3.12", "3.13", "3.14" ]
+    env:
+      XCLIM_SKIP_RESAMPLE: true
     defaults:
       run:
         shell: bash -l {0}
@@ -147,6 +152,10 @@ jobs:
         run: |
           mamba install -y -c conda-forge eigen3
           python -m pip install --require-hashes -r CI/requirements_sbck.txt
+      - name: Install xclim (skip_resample)
+        if: ${{ env.XCLIM_SKIP_RESAMPLE }}
+        run: |
+          python -m pip install "xclim @ git+https://github.com/Ouranosinc/xclim.git@skip_resample"
       - name: Install xsdba
         run: |
           python -m pip install --no-deps .
