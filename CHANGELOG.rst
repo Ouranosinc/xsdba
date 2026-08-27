@@ -6,10 +6,11 @@ Changelog
 `Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
 ------------------------------------------------------------
 
-Contributors: Éric Dupuis (:user:`coxipi`)
+Contributors: Éric Dupuis (:user:`coxipi`).
 
 Changes
 ^^^^^^^
+* New property: ``xsdba.properties.thresholded_quantile``. (:pull:`304`).
 * Make ``xsdba.properties`` compatible with `xclim-v1`.
 
 Breaking changes
