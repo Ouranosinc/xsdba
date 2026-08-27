@@ -21,6 +21,9 @@ DayOfYearStr = NewType("DayOfYearStr", str)
 #: Type annotation for thresholds and other not-exactly-a-variable quantities
 Quantified = TypeVar("Quantified", xr.DataArray, str, Quantity)
 
+# Type hint for xarray DataArray and Dataset
+DataType = TypeVar("DataType", xr.DataArray, xr.Dataset)
+
 
 # XC
 class InputKind(IntEnum):
