@@ -110,12 +110,11 @@ class TestProperties:
             sim = sim.load()
 
         out_year = properties.quantile(sim, q=0.2)
-        filtered_sim = sim.where(sim >= 1 / 86400)
-        expected = filtered_sim.quantile(dim="time", q=0.2)
+        expected = sim.quantile(dim="time", q=0.2)
         np.testing.assert_array_almost_equal(out_year.values, expected.values)
 
         out_season = properties.quantile(sim, group="time.season", q=0.2)
-        expected = filtered_sim.groupby("time.season").quantile(dim="time", q=0.2)
+        expected = sim.groupby("time.season").quantile(dim="time", q=0.2)
         np.testing.assert_array_almost_equal(out_season.values, expected.values)
         assert out_season.long_name.startswith("Quantile 0.2")
 
@@ -129,14 +128,13 @@ class TestProperties:
             sim = sim.load()
 
         out_year = properties.thresholded_quantile(sim, thresh="1 kg m-2 d-1", condition=">=", q=0.2)
-        # all zeros were cutoff, so it's way bigger than the previous test, as expected
-        np.testing.assert_array_almost_equal(out_year.values, [2.067832e-05])
+        filtered_sim = sim.where(sim >= 1 / 86400)
+        expected = filtered_sim.quantile(dim="time", q=0.2)
+        np.testing.assert_array_almost_equal(out_year.values, expected.values)
 
         out_season = properties.thresholded_quantile(sim, thresh="1 kg m-2 d-1", condition=">=", group="time.season", q=0.2)
-        np.testing.assert_array_almost_equal(
-            out_season.values,
-            [2.346586e-05, 1.900519e-05, 2.156181e-05, 1.866310e-05],
-        )
+        expected = filtered_sim.groupby("time.season").quantile(dim="time", q=0.2)
+        np.testing.assert_array_almost_equal(out_season.values, expected.values)
         assert out_season.long_name.startswith("Quantile 0.2")
 
     def test_spell_length_distribution(self, gosset, use_dask):
@@ -148,14 +146,14 @@ class TestProperties:
 
         # test pr, with amount method
         sim = ds.pr
-        kws = {"op": "<", "group": "time.month", "thresh": "1.157e-05 kg/m/m/s"}
-        outd = {stat: properties.spell_length_distribution(da=sim, **kws, stat=stat).sel(month=1).values for stat in ["mean", "max", "min"]}
+        kws = {"condition": "<", "group": "time.month", "thresh": "1.157e-05 kg/m/m/s"}
+        outd = {stat: properties.spell_length_distribution(da=sim, **kws, statistic=stat).sel(month=1).values for stat in ["mean", "max", "min"]}
         np.testing.assert_array_almost_equal([outd[k] for k in ["mean", "max", "min"]], [2.44127, 10, 1])
 
         # test tasmax, with quantile method
         simt = ds.tasmax
-        kws = {"thresh": 0.9, "op": ">=", "method": "quantile", "group": "time.month"}
-        outd = {stat: properties.spell_length_distribution(da=simt, **kws, stat=stat).sel(month=6) for stat in ["mean", "max", "min"]}
+        kws = {"thresh": 0.9, "condition": ">=", "method": "quantile", "group": "time.month"}
+        outd = {stat: properties.spell_length_distribution(da=simt, **kws, statistic=stat).sel(month=6) for stat in ["mean", "max", "min"]}
         np.testing.assert_array_almost_equal([outd[k].values for k in ["mean", "max", "min"]], [3.0, 6, 1])
 
         # test varia
@@ -178,9 +176,9 @@ class TestProperties:
         if use_dask:
             tas = tas.chunk(time=-1)
 
-        kws_sum = dict(thresh="30 degC", op=">=", stat="sum", stat_resample="sum", group="time")
+        kws_sum = dict(thresh="30 degC", condition=">=", statistic="sum", resample_statistic="sum", group="time")
         out_sum = properties.spell_length_distribution(tas, **kws_sum).values
-        kws_mixed = dict(thresh="30 degC", op=">=", stat="mean", stat_resample="sum", group="time")
+        kws_mixed = dict(thresh="30 degC", condition=">=", statistic="mean", resample_statistic="sum", group="time")
         out_mixed = properties.spell_length_distribution(tas, **kws_mixed).values
 
         assert out_sum == 365
@@ -208,13 +206,13 @@ class TestProperties:
         kws = {
             "thresh1": "0 degC",
             "thresh2": "0 degC",
-            "op1": ">",
-            "op2": "<=",
+            "condition1": ">",
+            "condition2": "<=",
             "group": "time.month",
             "window": window,
         }
         outd = {
-            stat: properties.bivariate_spell_length_distribution(da1=tx, da2=tn, **kws, stat=stat).sel(month=1).values
+            stat: properties.bivariate_spell_length_distribution(da1=tx, da2=tn, **kws, statistic=stat).sel(month=1).values
             for stat in ["mean", "max", "min"]
         }
         np.testing.assert_array_almost_equal([outd[k] for k in ["mean", "max", "min"]], expected_amount)
@@ -223,15 +221,15 @@ class TestProperties:
         kws = {
             "thresh1": 0.9,
             "thresh2": 0.9,
-            "op1": ">",
-            "op2": ">",
+            "condition1": ">",
+            "condition2": ">",
             "method1": "quantile",
             "method2": "quantile",
             "group": "time.month",
             "window": window,
         }
         outd = {
-            stat: properties.bivariate_spell_length_distribution(da1=tx, da2=tn, **kws, stat=stat).sel(month=6).values
+            stat: properties.bivariate_spell_length_distribution(da1=tx, da2=tn, **kws, statistic=stat).sel(month=6).values
             for stat in ["mean", "max", "min"]
         }
         np.testing.assert_array_almost_equal([outd[k] for k in ["mean", "max", "min"]], expected_quantile)
@@ -386,8 +384,8 @@ class TestProperties:
         if not use_dask:
             sim = sim.load()
 
-        test = properties.relative_frequency(sim, thresh="2.8925e-04 kg/m^2/s", op=">=")
-        testjan = properties.relative_frequency(sim, thresh="2.8925e-04 kg/m^2/s", op=">=", group="time.month").sel(month=1).values
+        test = properties.relative_frequency(sim, thresh="2.8925e-04 kg/m^2/s", condition=">=")
+        testjan = properties.relative_frequency(sim, thresh="2.8925e-04 kg/m^2/s", condition=">=", group="time.month").sel(month=1).values
         np.testing.assert_array_almost_equal([test.values, testjan], [0.0045662100456621, 0.010752688172043012])
         assert test.long_name == "Relative frequency of values >= 2.8925e-04 kg/m^2/s."
         assert test.units == ""
@@ -401,7 +399,7 @@ class TestProperties:
         if not use_dask:
             sim = sim.load()
 
-        test = properties.transition_probability(da=sim, initial_op="<", final_op=">=", thresh="1.157e-05 kg/m^2/s")
+        test = properties.transition_probability(da=sim, initial_condition="<", final_condition=">=", thresh="1.157e-05 kg/m^2/s")
 
         np.testing.assert_array_almost_equal([test.values], [0.14076782449725778])
         assert test.long_name == "Transition probability of values < 1.157e-05 kg/m^2/s to values >= 1.157e-05 kg/m^2/s."
@@ -470,7 +468,7 @@ class TestProperties:
 
         out_y = properties.return_value(simt)
 
-        out_djf = properties.return_value(simt, op="min", group="time.season").sel(season="DJF").values
+        out_djf = properties.return_value(simt, statistic="min", group="time.season").sel(season="DJF").values
 
         np.testing.assert_array_almost_equal([out_y.values, out_djf], [313.154, 278.072], 3)
         assert out_y.long_name.startswith("20-year maximal return level")

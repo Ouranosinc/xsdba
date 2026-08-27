@@ -162,7 +162,7 @@ def _statistics(da: xr.DataArray, statistic: str, *, group: str | Grouper = "tim
 #     condition: Condition,
 #     thresh: Quantified,
 #     window: int,
-#     window_statistic: str,
+#     resample_statistic: str,
 #     statistic: str,
 #     *,
 #     window_center: bool = True,
@@ -173,7 +173,7 @@ def _statistics(da: xr.DataArray, statistic: str, *, group: str | Grouper = "tim
 #     'condition': condition ,
 #     'thresh': thresh ,
 #     'window': window,
-#     'window_statistic':window_statistic,
+#     'resample_statistic':resample_statistic,
 #     'statistic': statistic,
 #     'window_center': window_center ,
 #     'constrain': constrain,
@@ -197,6 +197,7 @@ var = StatisticalProperty(
     cell_methods="time: var",
     compute=_statistics,
     parameters={"statistic": "var"},
+    measure="xsdba.measures.RATIO",
 )
 
 std = StatisticalProperty(
@@ -324,7 +325,7 @@ def _spell_length_distribution(
     thresh: str = "1 mm d-1",
     window: int = 1,
     statistic: Literal["mean", "sum", "max", "min"] = "mean",
-    window_statistic: Literal["mean", "sum", "max", "min"] | None = None,
+    resample_statistic: Literal["mean", "sum", "max", "min"] | None = None,
     group: str | Grouper = "time",
     resample_before_rl: bool = True,
 ) -> xr.DataArray:
@@ -354,7 +355,7 @@ def _spell_length_distribution(
         Default is 1, which is equivalent to `_threshold_count`.
     statistic : {'mean', 'sum', 'max','min'}
         Statistics to apply to the remaining time dimension after resampling (e.g. Jan 1980-2010)
-    window_statistic : {'mean', 'sum', 'max','min'}, optional
+    resample_statistic : {'mean', 'sum', 'max','min'}, optional
         Statistics to apply to the resampled input at the {group} (e.g. 1-31 Jan 1980).
         If `None`, the same method as `stat` will be used.
     group : {'time', 'time.season', 'time.month'}
@@ -383,7 +384,7 @@ def _spell_length_distribution(
         freq,
         resample_before_rl,
         statistic,
-        window_statistic,
+        resample_statistic,
     ):
         # PB: This prevents an import error in the distributed dask scheduler, but I don't know why.
         import xarray.core.resample_cftime  # noqa: F401, pylint: disable=unused-import
@@ -398,7 +399,7 @@ def _spell_length_distribution(
             cond,
             resample_before_rl,
             rl.rle_statistics,
-            statistic=window_statistic,
+            statistic=resample_statistic,
             window=window,
             dim=dim,
             freq=freq,
@@ -423,7 +424,7 @@ def _spell_length_distribution(
         freq=group.freq,
         resample_before_rl=resample_before_rl,
         statistic=statistic,
-        window_statistic=window_statistic or statistic,
+        resample_statistic=resample_statistic or statistic,
     ).out
     # in xclim this was managed by to_agg_units
     # will hard-code this part for now
@@ -448,7 +449,7 @@ def _threshold_count(
     condition: Literal[">", "<", ">=", "<="] = ">=",
     thresh: str = "1 mm d-1",
     statistic: Literal["mean", "sum", "max", "min"] = "mean",
-    window_statistic: Literal["mean", "sum", "max", "min"] | None = None,
+    resample_statistic: Literal["mean", "sum", "max", "min"] | None = None,
     group: str | Grouper = "time",
 ) -> xr.DataArray:
     r"""
@@ -473,7 +474,7 @@ def _threshold_count(
         Float of the quantile if the method is "quantile".
     statistic : {'mean', 'sum', 'max','min'}
         Statistics to apply to the remaining time dimension after resampling (e.g. Jan 1980-2010)
-    window_statistic : {'mean', 'sum', 'max','min'}, optional
+    resample_statistic : {'mean', 'sum', 'max','min'}, optional
         Statistics to apply to the resampled input at the {group} (e.g. 1-31 Jan 1980). If `None`, the same method as `stat` will be used.
     group : {'time', 'time.season', 'time.month'}
         Grouping of the output.
@@ -495,7 +496,7 @@ def _threshold_count(
         condition=condition,
         thresh=thresh,
         stat=statistic,
-        window_statistic=window_statistic,
+        resample_statistic=resample_statistic,
         group=group,
         window=1,
     )
@@ -861,7 +862,7 @@ def _bivariate_spell_length_distribution(
     thresh2: str = "1 mm d-1",
     window: int = 1,
     statistic: Literal["mean", "sum", "max", "min"] = "mean",
-    window_statistic: Literal["mean", "sum", "max", "min"] | None = None,
+    resample_statistic: Literal["mean", "sum", "max", "min"] | None = None,
     group: str | Grouper = "time",
     resample_before_rl: bool = True,
 ) -> xr.DataArray:
@@ -904,7 +905,7 @@ def _bivariate_spell_length_distribution(
         Default is 1, which is equivalent to `_bivariate_threshold_count`.
     statistic : {'mean', 'sum', 'max','min'}
         Statistics to apply to the remaining time dimension after resampling (e.g. Jan 1980-2010)
-    window_statistic : {'mean', 'sum', 'max','min'}, optional
+    resample_statistic : {'mean', 'sum', 'max', 'min'}, optional
         Statistics to apply to the resampled input at the {group} (e.g. 1-31 Jan 1980). If `None`, the same method as `stat` will be used.
     group : {'time', 'time.season', 'time.month'}
         Grouping of the output.
@@ -936,7 +937,7 @@ def _bivariate_spell_length_distribution(
         window,
         resample_before_rl,
         statistic,
-        window_statistic,
+        resample_statistic,
     ):
         # PB: This prevents an import error in the distributed dask scheduler, but I don't know why.
         import xarray.core.resample_cftime  # noqa: F401, pylint: disable=unused-import
@@ -954,7 +955,7 @@ def _bivariate_spell_length_distribution(
             cond,
             resample_before_rl,
             rl.rle_statistics,
-            statistic=window_statistic,
+            statistic=resample_statistic,
             window=window,
             dim=dim,
             freq=freq,
@@ -981,8 +982,8 @@ def _bivariate_spell_length_distribution(
         window=window,
         freq=group.freq,
         resample_before_rl=resample_before_rl,
-        stat=statistic,
-        window_statistic=window_statistic or statistic,
+        statistic=statistic,
+        resample_statistic=resample_statistic or statistic,
     ).out
     # in xclim this was managed by to_agg_units
     # will hard-code this part for now
@@ -1011,7 +1012,7 @@ def _bivariate_threshold_count(
     thresh1: str = "1 mm d-1",
     thresh2: str = "1 mm d-1",
     statistic: Literal["mean", "sum", "max", "min"] = "mean",
-    window_statistic: Literal["mean", "sum", "max", "min"] | None = None,
+    resample_statistic: Literal["mean", "sum", "max", "min"] | None = None,
     group: str | Grouper = "time",
 ) -> xr.DataArray:
     """
@@ -1050,7 +1051,7 @@ def _bivariate_threshold_count(
         Float of the quantile if the method is "quantile".
     statistic : {'mean', 'sum', 'max','min'}
         Statistics to apply to the remaining time dimension after resampling (e.g. Jan 1980-2010)
-    window_statistic : {'mean', 'sum', 'max','min'}, optional
+    resample_statistic : {'mean', 'sum', 'max','min'}, optional
         Statistics to apply to the resampled input at the {group} (e.g. 1-31 Jan 1980).
         If `None`, the same method as `stat` will be used.
     group : {'time', 'time.season', 'time.month'}
@@ -1079,7 +1080,7 @@ def _bivariate_threshold_count(
         thresh2=thresh2,
         window=1,
         stat=statistic,
-        window_statistic=window_statistic,
+        resample_statistic=resample_statistic,
         group=group,
     )
 
@@ -1186,7 +1187,7 @@ def _transition_probability(
     Returns
     -------
     xr.DataArray, [dimensionless]
-        Transition probability of values {initial_op} {thresh} to values {final_op} {thresh}.
+        Transition probability of values {initial_condition} {thresh} to values {final_condition} {thresh}.
     """
     # mask of the ocean with NaNs
     mask = ~(da.isel({group.dim: 0}).isnull()).drop_vars(group.dim)
@@ -1313,7 +1314,7 @@ def _return_value(
     Returns
     -------
     xr.DataArray, [same as input]
-        {period}-{group.prop_name} {condition} return level of the variable.
+        {period}-{group.prop_name} {statistic} return level of the variable.
     """
 
     @map_groups(out=[Grouper.PROP], main_only=True)
