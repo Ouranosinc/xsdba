@@ -34,18 +34,38 @@ from xsdba.units import (
     normalized_wavenumber_to_wavelength,
     pint2cfattrs,
     str2pint,
-    units,
     units2pint,
 )
 from xsdba.utils import _pairwise_spearman, copy_all_attrs
 
 
-def _group_map(
+def group_map(
     obj: DataType,
     group: Grouper,
     func: Callable | str,
     map_kwargs: dict | None = None,
 ) -> DataType:
+    r"""
+    Wrap xarray's group(...).map().
+
+    Ensures that `group='time'` is treated differently.
+
+    Parameters
+    ----------
+    obj : DataArray or Dataset
+        The xarray object to group and transform.
+    group : {Grouper('time'), Grouper('time.season'), Grouper('time.month')}
+        Grouping of the output.
+    func : callable
+        Function to map on each resampled group.
+    map_kwargs : dict, optional
+        Arguments to pass to `map`.
+
+    Returns
+    -------
+    xr.DataArray or xr.Dataset
+        Grouped and transformed object.
+    """
     if group.prop != "group":
         return obj.groupby(group.name).map(func, **map_kwargs)
     else:
@@ -128,112 +148,68 @@ base_registry["StatisticalProperty"] = StatisticalProperty
 
 
 @parse_group
-def _mean(da: xr.DataArray, *, group: str | Grouper = "time") -> xr.DataArray:
-    """
-    Mean.
+def _statistics(da: xr.DataArray, statistic: str, *, group: str | Grouper = "time") -> xr.DataArray:
+    return group_map(da, group, statistics, map_kwargs={"statistic": statistic, "freq": None})
 
-    Mean over all years at the time resolution.
 
-    Parameters
-    ----------
-    da : xr.DataArray
-        Variable on which to calculate the diagnostic.
-    group : {'time', 'time.season', 'time.month'}
-        Grouping of the output.
-        e.g. If 'time.month', the temporal average is performed separately for each month.
+# @parse_group
+# def _thresholded_statistics(da: xr.DataArray, statistic: str, thresh: Quantified, condition: str, *, constrain: Sequence[str] | None = None ,group: str | Grouper = "time") -> xr.DataArray:
+#     return group_map(da, group, thresholded_statistics, map_kwargs = {'statistic':statistic, 'freq':None, 'thresh': thresh, 'condition':condition, 'constrain':constrain})
 
-    Returns
-    -------
-    xr.DataArray, [same as input]
-      Mean of the variable.
-    """
-    u = da.units
-    if group.prop != "group":
-        da = da.groupby(group.name)
-    out = da.mean(dim=group.dim)
-    return out.assign_attrs(units=u)
+# @parse_group
+# def _thresholded_running_statistics(
+#     da: xr.DataArray,
+#     condition: Condition,
+#     thresh: Quantified,
+#     window: int,
+#     window_statistic: str,
+#     statistic: str,
+#     *,
+#     window_center: bool = True,
+#     constrain: Sequence[Condition] | None = None,
+#     group: str | Grouper = "time")-> xr.DataArray:
+#     return group_map(da, group, thresholded_running_statistics, map_kwargs =
+#     {
+#     'condition': condition ,
+#     'thresh': thresh ,
+#     'window': window,
+#     'window_statistic':window_statistic,
+#     'statistic': statistic,
+#     'window_center': window_center ,
+#     'constrain': constrain,
+#     'freq': None
+#     })
 
 
 mean = StatisticalProperty(
     identifier="mean",
+    long_name="Mean of the variable.",
     aspect="marginal",
     cell_methods="time: mean",
-    compute=_mean,
+    compute=_statistics,
+    parameters={"statistic": "mean"},
 )
-
-
-@parse_group
-def _var(da: xr.DataArray, *, group: str | Grouper = "time") -> xr.DataArray:
-    """
-    Variance.
-
-    Variance of the variable over all years at the time resolution.
-
-    Parameters
-    ----------
-    da : xr.DataArray
-        Variable on which to calculate the diagnostic.
-    group : {'time', 'time.season', 'time.month'}
-        Grouping of the output.
-        e.g. If 'time.month', the variance is performed separately for each month.
-
-    Returns
-    -------
-    xr.DataArray, [square of the input units]
-        Variance of the variable.
-    """
-    u = da.units
-    if group.prop != "group":
-        da = da.groupby(group.name)
-    out = da.var(dim=group.dim)
-    out.attrs["units"] = f"{(units(u) ** 2).units:cf}"
-    return out
-
 
 var = StatisticalProperty(
     identifier="var",
+    long_name="Variance of the variable.",
     aspect="marginal",
     cell_methods="time: var",
-    compute=_var,
-    measure="xsdba.measures.RATIO",
+    compute=_statistics,
+    parameters={"statistic": "var"},
 )
-
-
-@parse_group
-def _std(da: xr.DataArray, *, group: str | Grouper = "time") -> xr.DataArray:
-    """
-    Standard Deviation.
-
-    Standard deviation of the variable over all years at the time resolution.
-
-    Parameters
-    ----------
-    da : xr.DataArray
-        Variable on which to calculate the diagnostic.
-    group : {'time', 'time.season', 'time.month'}
-        Grouping of the output.
-        e.g. If 'time.month', the standard deviation is performed separately for each month.
-
-    Returns
-    -------
-    xr.DataArray,
-        Standard deviation of the variable.
-    """
-    u = da.units
-    if group.prop != "group":
-        da = da.groupby(group.name)
-    out = da.std(dim=group.dim)
-    out.attrs["units"] = u
-    return out
-
 
 std = StatisticalProperty(
     identifier="std",
+    long_name="Standard deviation of the variable.",
     aspect="marginal",
     cell_methods="time: std",
-    compute=_std,
+    compute=_statistics,
+    parameters={"statistic": "std"},
     measure="xsdba.measures.RATIO",
 )
+
+# TODO: Add thresholded_stattistics
 
 
 @parse_group
@@ -298,9 +274,7 @@ def _quantile(da: xr.DataArray, *, q: float = 0.98, group: str | Grouper = "time
     xr.DataArray, [same as input]
         Quantile {q} of the variable.
     """
-    u = da.units
-    out = _group_map(da, group, percentile, map_kwargs={"per": 100 * q, "freq": None})
-    return out.assign_attrs(units=u)
+    return group_map(da, group, percentile, map_kwargs={"per": 100 * q, "freq": None})
 
 
 quantile = StatisticalProperty(identifier="quantile", aspect="marginal", compute=_quantile)
@@ -334,15 +308,14 @@ def _thresholded_quantile(
     xr.DataArray, [same as input]
         Quantile {q} of the thresholded variable.
     """
-    u = da.units
     map_kwargs = {"condition": condition, "thresh": thresh, "per": 100 * q, "freq": None, "constrain": [">", "<", ">=", "<="]}
-    out = _group_map(da, group, thresholded_percentile, map_kwargs)
-    return out.assign_attrs(units=u)
+    return group_map(da, group, thresholded_percentile, map_kwargs)
 
 
 thresholded_quantile = StatisticalProperty(identifier="thresholded_quantile", aspect="marginal", compute=_thresholded_quantile)
 
 
+# TODO: Can this use running_statistics?
 def _spell_length_distribution(
     da: xr.DataArray,
     *,
