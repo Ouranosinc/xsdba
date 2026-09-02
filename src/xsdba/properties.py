@@ -11,31 +11,65 @@ This module depends on `xclim`. Run `pip install xsdba['extras']` to install it.
 """
 
 from __future__ import annotations
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
+from typing import Literal
 
 import numpy as np
 import xarray as xr
-import xclim.indices.run_length as rl
+import xclim.compute.run_length as rl
 from scipy import stats
 from scipy.fft import dctn
 from statsmodels.tsa import stattools
+from xclim.compute.generic import compare, percentile, statistics, thresholded_percentile
+from xclim.compute.stats import fit, parametric_quantile
 from xclim.core.indicator import Indicator, base_registry
-from xclim.indices.generic import compare, select_resample_op
-from xclim.indices.stats import fit, parametric_quantile
 
 from xsdba.base import Grouper, map_groups, parse_group, uses_dask
 from xsdba.nbutils import _pairwise_haversine_and_bins
 from xsdba.processing import _normalized_radial_wavenumber
+from xsdba.typing import DataType
 from xsdba.units import (
     convert_units_to,
     infer_sampling_units,
     normalized_wavenumber_to_wavelength,
     pint2cfattrs,
     str2pint,
-    units,
     units2pint,
 )
 from xsdba.utils import _pairwise_spearman, copy_all_attrs
+
+
+def group_map(
+    obj: DataType,
+    group: Grouper,
+    func: Callable | str,
+    map_kwargs: dict | None = None,
+) -> DataType:
+    r"""
+    Wrap xarray's group(...).map().
+
+    Ensures that `group='time'` is treated differently.
+
+    Parameters
+    ----------
+    obj : DataArray or Dataset
+        The xarray object to group and transform.
+    group : {Grouper('time'), Grouper('time.season'), Grouper('time.month')}
+        Grouping of the output.
+    func : callable
+        Function to map on each resampled group.
+    map_kwargs : dict, optional
+        Arguments to pass to `map`.
+
+    Returns
+    -------
+    xr.DataArray or xr.Dataset
+        Grouped and transformed object.
+    """
+    if group.prop != "group":
+        return obj.groupby(group.name).map(func, **map_kwargs)
+    else:
+        return func(obj, **map_kwargs)
 
 
 class StatisticalProperty(Indicator):
@@ -114,112 +148,69 @@ base_registry["StatisticalProperty"] = StatisticalProperty
 
 
 @parse_group
-def _mean(da: xr.DataArray, *, group: str | Grouper = "time") -> xr.DataArray:
-    """
-    Mean.
+def _statistics(da: xr.DataArray, statistic: str, *, group: str | Grouper = "time") -> xr.DataArray:
+    return group_map(da, group, statistics, map_kwargs={"statistic": statistic, "freq": None})
 
-    Mean over all years at the time resolution.
 
-    Parameters
-    ----------
-    da : xr.DataArray
-        Variable on which to calculate the diagnostic.
-    group : {'time', 'time.season', 'time.month'}
-        Grouping of the output.
-        e.g. If 'time.month', the temporal average is performed separately for each month.
+# @parse_group
+# def _thresholded_statistics(da: xr.DataArray, statistic: str, thresh: Quantified, condition: str, *, constrain: Sequence[str] | None = None ,group: str | Grouper = "time") -> xr.DataArray:
+#     return group_map(da, group, thresholded_statistics, map_kwargs = {'statistic':statistic, 'freq':None, 'thresh': thresh, 'condition':condition, 'constrain':constrain})
 
-    Returns
-    -------
-    xr.DataArray, [same as input]
-      Mean of the variable.
-    """
-    u = da.units
-    if group.prop != "group":
-        da = da.groupby(group.name)
-    out = da.mean(dim=group.dim)
-    return out.assign_attrs(units=u)
+# @parse_group
+# def _thresholded_running_statistics(
+#     da: xr.DataArray,
+#     condition: Condition,
+#     thresh: Quantified,
+#     window: int,
+#     resample_statistic: str,
+#     statistic: str,
+#     *,
+#     window_center: bool = True,
+#     constrain: Sequence[Condition] | None = None,
+#     group: str | Grouper = "time")-> xr.DataArray:
+#     return group_map(da, group, thresholded_running_statistics, map_kwargs =
+#     {
+#     'condition': condition ,
+#     'thresh': thresh ,
+#     'window': window,
+#     'resample_statistic':resample_statistic,
+#     'statistic': statistic,
+#     'window_center': window_center ,
+#     'constrain': constrain,
+#     'freq': None
+#     })
 
 
 mean = StatisticalProperty(
     identifier="mean",
+    long_name="Mean of the variable.",
     aspect="marginal",
     cell_methods="time: mean",
-    compute=_mean,
+    compute=_statistics,
+    parameters={"statistic": "mean"},
 )
-
-
-@parse_group
-def _var(da: xr.DataArray, *, group: str | Grouper = "time") -> xr.DataArray:
-    """
-    Variance.
-
-    Variance of the variable over all years at the time resolution.
-
-    Parameters
-    ----------
-    da : xr.DataArray
-        Variable on which to calculate the diagnostic.
-    group : {'time', 'time.season', 'time.month'}
-        Grouping of the output.
-        e.g. If 'time.month', the variance is performed separately for each month.
-
-    Returns
-    -------
-    xr.DataArray, [square of the input units]
-        Variance of the variable.
-    """
-    u = da.units
-    if group.prop != "group":
-        da = da.groupby(group.name)
-    out = da.var(dim=group.dim)
-    out.attrs["units"] = f"{(units(u) ** 2).units:cf}"
-    return out
-
 
 var = StatisticalProperty(
     identifier="var",
+    long_name="Variance of the variable.",
     aspect="marginal",
     cell_methods="time: var",
-    compute=_var,
+    compute=_statistics,
+    parameters={"statistic": "var"},
     measure="xsdba.measures.RATIO",
 )
-
-
-@parse_group
-def _std(da: xr.DataArray, *, group: str | Grouper = "time") -> xr.DataArray:
-    """
-    Standard Deviation.
-
-    Standard deviation of the variable over all years at the time resolution.
-
-    Parameters
-    ----------
-    da : xr.DataArray
-        Variable on which to calculate the diagnostic.
-    group : {'time', 'time.season', 'time.month'}
-        Grouping of the output.
-        e.g. If 'time.month', the standard deviation is performed separately for each month.
-
-    Returns
-    -------
-    xr.DataArray,
-        Standard deviation of the variable.
-    """
-    u = da.units
-    if group.prop != "group":
-        da = da.groupby(group.name)
-    out = da.std(dim=group.dim)
-    out.attrs["units"] = u
-    return out
-
 
 std = StatisticalProperty(
     identifier="std",
+    long_name="Standard deviation of the variable.",
     aspect="marginal",
     cell_methods="time: std",
-    compute=_std,
+    compute=_statistics,
+    parameters={"statistic": "std"},
     measure="xsdba.measures.RATIO",
 )
+
+# TODO: Add thresholded_stattistics
 
 
 @parse_group
@@ -284,25 +275,57 @@ def _quantile(da: xr.DataArray, *, q: float = 0.98, group: str | Grouper = "time
     xr.DataArray, [same as input]
         Quantile {q} of the variable.
     """
-    u = da.units
-    if group.prop != "group":
-        da = da.groupby(group.name)
-    out = da.quantile(q, dim=group.dim, keep_attrs=True).drop_vars("quantile")
-    return out.assign_attrs(units=u)
+    return group_map(da, group, percentile, map_kwargs={"per": 100 * q, "freq": None})
 
 
 quantile = StatisticalProperty(identifier="quantile", aspect="marginal", compute=_quantile)
 
 
+@parse_group
+def _thresholded_quantile(
+    da: xr.DataArray, thresh: str, condition: Literal[">", "<", ">=", "<="], *, q: float = 0.98, group: str | Grouper = "time"
+) -> xr.DataArray:
+    """
+    Quantile.
+
+    Returns the quantile q of the distribution of the thresholded variable over all years at the time resolution.
+
+    Parameters
+    ----------
+    da : xr.DataArray
+        Variable on which to calculate the diagnostic.
+    thresh : str
+        Threshold.
+    condition: {">", "<", ">=", "<="}
+        Logical comparison operator. Comparison is done as ``da {condition} thresh``.
+    q : float
+        Quantile to be calculated. Should be between 0 and 1.
+    group : {'time', 'time.season', 'time.month'}
+        Grouping of the output.
+        e.g. If 'time.month', the quantile is computed separately for each month.
+
+    Returns
+    -------
+    xr.DataArray, [same as input]
+        Quantile {q} of the thresholded variable.
+    """
+    map_kwargs = {"condition": condition, "thresh": thresh, "per": 100 * q, "freq": None, "constrain": [">", "<", ">=", "<="]}
+    return group_map(da, group, thresholded_percentile, map_kwargs)
+
+
+thresholded_quantile = StatisticalProperty(identifier="thresholded_quantile", aspect="marginal", compute=_thresholded_quantile)
+
+
+# TODO: Can this use running_statistics?
 def _spell_length_distribution(
     da: xr.DataArray,
     *,
-    method: str = "amount",
-    op: str = ">=",
+    method: Literal["amount", "quantile"] = "amount",
+    condition: Literal[">", "<", ">=", "<="] = ">=",
     thresh: str = "1 mm d-1",
     window: int = 1,
-    stat: str = "mean",
-    stat_resample: str | None = None,
+    statistic: Literal["mean", "sum", "max", "min"] = "mean",
+    resample_statistic: Literal["mean", "sum", "max", "min"] | None = None,
     group: str | Grouper = "time",
     resample_before_rl: bool = True,
 ) -> xr.DataArray:
@@ -320,9 +343,9 @@ def _spell_length_distribution(
         Method to choose the threshold.
         'amount': The threshold is directly the quantity in {thresh}. It needs to have the same units as {da}.
         'quantile': The threshold is calculated as the quantile {thresh} of the distribution.
-    op : {">", "<", ">=", "<="}
+    condition : {">", "<", ">=", "<="}
         Operation to verify the condition for a spell.
-        The condition for a spell is variable {op} threshold.
+        The condition for a spell is variable {condition} threshold.
     thresh : str or float
         Threshold on which to evaluate the condition to have a spell.
         String with units if the method is "amount".
@@ -330,9 +353,9 @@ def _spell_length_distribution(
     window : int
         Number of consecutive days respecting the constraint in order to begin a spell.
         Default is 1, which is equivalent to `_threshold_count`.
-    stat : {'mean', 'sum', 'max','min'}
+    statistic : {'mean', 'sum', 'max','min'}
         Statistics to apply to the remaining time dimension after resampling (e.g. Jan 1980-2010)
-    stat_resample : {'mean', 'sum', 'max','min'}, optional
+    resample_statistic : {'mean', 'sum', 'max','min'}, optional
         Statistics to apply to the resampled input at the {group} (e.g. 1-31 Jan 1980).
         If `None`, the same method as `stat` will be used.
     group : {'time', 'time.season', 'time.month'}
@@ -345,7 +368,7 @@ def _spell_length_distribution(
     Returns
     -------
     xr.DataArray, [units of the sampling frequency]
-        {stat} of spell length distribution when the variable is {op} the {method} {thresh} for {window} consecutive day(s).
+        {statistic} of spell length distribution when the variable is {condition} the {method} {thresh} for {window} consecutive day(s).
     """
     group = group if isinstance(group, Grouper) else Grouper(group)
 
@@ -357,11 +380,11 @@ def _spell_length_distribution(
         method,
         thresh,
         window,
-        op,
+        condition,
         freq,
         resample_before_rl,
-        stat,
-        stat_resample,
+        statistic,
+        resample_statistic,
     ):
         # PB: This prevents an import error in the distributed dask scheduler, but I don't know why.
         import xarray.core.resample_cftime  # noqa: F401, pylint: disable=unused-import
@@ -371,17 +394,17 @@ def _spell_length_distribution(
         if method == "quantile":
             thresh = da.quantile(thresh, dim=dim).drop_vars("quantile")
 
-        cond = compare(da, op, thresh)
+        cond = compare(da, condition, thresh)
         out = rl.resample_and_rl(
             cond,
             resample_before_rl,
             rl.rle_statistics,
-            reducer=stat_resample,
+            statistic=resample_statistic,
             window=window,
             dim=dim,
             freq=freq,
         )
-        out = getattr(out, stat)(dim=dim)
+        out = getattr(out, statistic)(dim=dim)
         out = out.where(mask)
         return out.rename("out").to_dataset()
 
@@ -397,11 +420,11 @@ def _spell_length_distribution(
         method=method,
         thresh=thresh,
         window=window,
-        op=op,
+        condition=condition,
         freq=group.freq,
         resample_before_rl=resample_before_rl,
-        stat=stat,
-        stat_resample=stat_resample or stat,
+        statistic=statistic,
+        resample_statistic=resample_statistic or statistic,
     ).out
     # in xclim this was managed by to_agg_units
     # will hard-code this part for now
@@ -422,11 +445,11 @@ spell_length_distribution = StatisticalProperty(
 def _threshold_count(
     da: xr.DataArray,
     *,
-    method: str = "amount",
-    op: str = ">=",
+    method: Literal["amount", "quantile"] = "amount",
+    condition: Literal[">", "<", ">=", "<="] = ">=",
     thresh: str = "1 mm d-1",
-    stat: str = "mean",
-    stat_resample: str | None = None,
+    statistic: Literal["mean", "sum", "max", "min"] = "mean",
+    resample_statistic: Literal["mean", "sum", "max", "min"] | None = None,
     group: str | Grouper = "time",
 ) -> xr.DataArray:
     r"""
@@ -442,16 +465,16 @@ def _threshold_count(
         Method to choose the threshold.
         'amount': The threshold is directly the quantity in {thresh}. It needs to have the same units as {da}.
         'quantile': The threshold is calculated as the quantile {thresh} of the distribution.
-    op : {">", "<", ">=", "<="}
+    condition : {">", "<", ">=", "<="}
         Operation to verify the condition for a spell.
-        The condition for a spell is variable {op} threshold.
+        The condition for a spell is variable {condition} threshold.
     thresh : str or float
         Threshold on which to evaluate the condition to have a spell.
         String with units if the method is "amount".
         Float of the quantile if the method is "quantile".
-    stat : {'mean', 'sum', 'max','min'}
+    statistic : {'mean', 'sum', 'max','min'}
         Statistics to apply to the remaining time dimension after resampling (e.g. Jan 1980-2010)
-    stat_resample : {'mean', 'sum', 'max','min'}, optional
+    resample_statistic : {'mean', 'sum', 'max','min'}, optional
         Statistics to apply to the resampled input at the {group} (e.g. 1-31 Jan 1980). If `None`, the same method as `stat` will be used.
     group : {'time', 'time.season', 'time.month'}
         Grouping of the output.
@@ -461,7 +484,7 @@ def _threshold_count(
     Returns
     -------
     xr.DataArray, [dimensionless]
-        {stat} number of days when the variable is {op} the {method} {thresh}.
+        {statistic} number of days when the variable is {condition} the {method} {thresh}.
 
     Notes
     -----
@@ -470,10 +493,10 @@ def _threshold_count(
     return _spell_length_distribution(
         da,
         method=method,
-        op=op,
+        condition=condition,
         thresh=thresh,
-        stat=stat,
-        stat_resample=stat_resample,
+        stat=statistic,
+        resample_statistic=resample_statistic,
         group=group,
         window=1,
     )
@@ -550,7 +573,7 @@ acf = StatisticalProperty(
 def _annual_cycle(
     da: xr.DataArray,
     *,
-    stat: str = "absamp",
+    statistic: str = "absamp",
     window: int = 31,
     group: str | Grouper = "time",
 ) -> xr.DataArray:
@@ -564,7 +587,7 @@ def _annual_cycle(
     ----------
     da : xr.DataArray
         Variable on which to calculate the diagnostic.
-    stat : {'absamp','relamp', 'phase', 'min', 'max', 'asymmetry'}
+    statistic : {'absamp','relamp', 'phase', 'min', 'max', 'asymmetry'}
         - 'absamp' is the peak-to-peak amplitude. (max - min). In the same units as the input.
         - 'relamp' is a relative percentage. 100 * (max - min) / mean (Recommended for precipitation). Dimensionless.
         - 'phase' is the day of year of the maximum.
@@ -577,7 +600,7 @@ def _annual_cycle(
     Returns
     -------
     xr.DataArray, [same units as input or dimensionless or time]
-        {stat} of the annual cycle.
+        {statistic} of the annual cycle.
     """
     group = group if isinstance(group, Grouper) else Grouper(group)
     u = da.units
@@ -592,7 +615,7 @@ def _annual_cycle(
             .mean()
             .isel(dayofyear=slice(window // 2, -(window // 2)))
         )
-    match stat:
+    match statistic:
         case "absamp":
             out = ac.max("dayofyear") - ac.min("dayofyear")
             out.attrs.update(pint2cfattrs(units2pint(u), is_difference=True))
@@ -612,7 +635,7 @@ def _annual_cycle(
             out = (ac.idxmax("dayofyear") - ac.idxmin("dayofyear")) % 365 / 365
             out.attrs["units"] = "yr"
         case _:
-            raise NotImplementedError(f"{stat} is not a valid annual cycle statistic.")
+            raise NotImplementedError(f"{statistic} is not a valid annual cycle statistic.")
     return out
 
 
@@ -620,7 +643,7 @@ annual_cycle_amplitude = StatisticalProperty(
     identifier="annual_cycle_amplitude",
     aspect="temporal",
     compute=_annual_cycle,
-    parameters={"stat": "absamp"},
+    parameters={"statistic": "absamp"},
     allowed_groups=["group"],
     cell_methods="time: mean time: range",
 )
@@ -630,7 +653,7 @@ relative_annual_cycle_amplitude = StatisticalProperty(
     aspect="temporal",
     compute=_annual_cycle,
     units="%",
-    parameters={"stat": "relamp"},
+    parameters={"statistic": "relamp"},
     allowed_groups=["group"],
     cell_methods="time: mean time: range",
     measure="xsdba.measures.RATIO",
@@ -641,7 +664,7 @@ annual_cycle_phase = StatisticalProperty(
     aspect="temporal",
     units="",
     compute=_annual_cycle,
-    parameters={"stat": "phase"},
+    parameters={"statistic": "phase"},
     cell_methods="time: range",
     allowed_groups=["group"],
     measure="xsdba.measures.CIRCULAR_BIAS",
@@ -651,7 +674,7 @@ annual_cycle_asymmetry = StatisticalProperty(
     identifier="annual_cycle_asymmetry",
     aspect="temporal",
     compute=_annual_cycle,
-    parameters={"stat": "asymmetry"},
+    parameters={"statistic": "asymmetry"},
     allowed_groups=["group"],
     units="yr",
 )
@@ -661,7 +684,7 @@ annual_cycle_minimum = StatisticalProperty(
     aspect="temporal",
     units="",
     compute=_annual_cycle,
-    parameters={"stat": "min"},
+    parameters={"statistic": "min"},
     cell_methods="time: mean time: min",
     allowed_groups=["group"],
 )
@@ -670,7 +693,7 @@ annual_cycle_maximum = StatisticalProperty(
     identifier="annual_cycle_maximum",
     aspect="temporal",
     compute=_annual_cycle,
-    parameters={"stat": "max"},
+    parameters={"statistic": "max"},
     cell_methods="time: mean time: max",
     allowed_groups=["group"],
 )
@@ -680,7 +703,7 @@ annual_cycle_maximum = StatisticalProperty(
 def _annual_statistic(
     da: xr.DataArray,
     *,
-    stat: str = "absamp",
+    statistic: str = "absamp",
     window: int = 31,
     group: str | Grouper = "time",
 ):
@@ -694,7 +717,7 @@ def _annual_statistic(
     ----------
     da : xr.DataArray
         Data.
-    stat : {'absamp', 'relamp', 'phase'}
+    statistic : {'absamp', 'relamp', 'phase'}
         The statistic to return.
     window : int
         Size of the window for the moving average filtering. Deactivate this feature by passing window = 1.
@@ -702,7 +725,7 @@ def _annual_statistic(
     Returns
     -------
     xr.DataArray, [same units as input or dimensionless]
-        Average annual {stat}.
+        Average annual {statistic}.
     """
     u = da.units
 
@@ -711,7 +734,7 @@ def _annual_statistic(
 
     yrs = da.resample(time="YS")
 
-    match stat:
+    match statistic:
         case "absamp":
             out = yrs.max() - yrs.min()
             out.attrs.update(pint2cfattrs(units2pint(u), is_difference=True))
@@ -722,7 +745,7 @@ def _annual_statistic(
             out = yrs.map(xr.DataArray.idxmax).dt.dayofyear
             out.attrs.update(units="", is_dayofyear=np.int32(1))
         case _:
-            raise NotImplementedError(f"{stat} is not a valid annual cycle statistic.")
+            raise NotImplementedError(f"{statistic} is not a valid annual cycle statistic.")
 
     return out.mean("time", keep_attrs=True)
 
@@ -731,7 +754,7 @@ mean_annual_range = StatisticalProperty(
     identifier="mean_annual_range",
     aspect="temporal",
     compute=_annual_statistic,
-    parameters={"stat": "absamp"},
+    parameters={"statistic": "absamp"},
     allowed_groups=["group"],
 )
 
@@ -739,7 +762,7 @@ mean_annual_relative_range = StatisticalProperty(
     identifier="mean_annual_relative_range",
     aspect="temporal",
     compute=_annual_statistic,
-    parameters={"stat": "relamp"},
+    parameters={"statistic": "relamp"},
     allowed_groups=["group"],
     units="%",
     measure="xsdba.measures.RATIO",
@@ -749,7 +772,7 @@ mean_annual_phase = StatisticalProperty(
     identifier="mean_annual_phase",
     aspect="temporal",
     compute=_annual_statistic,
-    parameters={"stat": "phase"},
+    parameters={"statistic": "phase"},
     allowed_groups=["group"],
     units="",
     measure="xsdba.measures.CIRCULAR_BIAS",
@@ -833,13 +856,13 @@ def _bivariate_spell_length_distribution(
     *,
     method1: str = "amount",
     method2: str = "amount",
-    op1: str = ">=",
-    op2: str = ">=",
+    condition1: str = ">=",
+    condition2: str = ">=",
     thresh1: str = "1 mm d-1",
     thresh2: str = "1 mm d-1",
     window: int = 1,
-    stat: str = "mean",
-    stat_resample: str | None = None,
+    statistic: Literal["mean", "sum", "max", "min"] = "mean",
+    resample_statistic: Literal["mean", "sum", "max", "min"] | None = None,
     group: str | Grouper = "time",
     resample_before_rl: bool = True,
 ) -> xr.DataArray:
@@ -863,12 +886,12 @@ def _bivariate_spell_length_distribution(
         Method to choose the threshold.
         'amount': The threshold is directly the quantity in {thresh}. It needs to have the same units as {da}.
         'quantile': The threshold is calculated as the quantile {thresh} of the distribution.
-    op1 : {">", "<", ">=", "<="}
+    condition1 : {">", "<", ">=", "<="}
         Operation to verify the condition for a spell.
-        The condition for a spell is variable {op1} threshold.
-    op2 : {">", "<", ">=", "<="}
+        The condition for a spell is variable {condition1} threshold.
+    condition2 : {">", "<", ">=", "<="}
         Operation to verify the condition for a spell.
-        The condition for a spell is variable {op2} threshold.
+        The condition for a spell is variable {condition2} threshold.
     thresh1 : str or float
         Threshold on which to evaluate the condition to have a spell.
         String with units if the method is "amount".
@@ -880,9 +903,9 @@ def _bivariate_spell_length_distribution(
     window : int
         Number of consecutive days respecting the constraint in order to begin a spell.
         Default is 1, which is equivalent to `_bivariate_threshold_count`.
-    stat : {'mean', 'sum', 'max','min'}
+    statistic : {'mean', 'sum', 'max','min'}
         Statistics to apply to the remaining time dimension after resampling (e.g. Jan 1980-2010)
-    stat_resample : {'mean', 'sum', 'max','min'}, optional
+    resample_statistic : {'mean', 'sum', 'max', 'min'}, optional
         Statistics to apply to the resampled input at the {group} (e.g. 1-31 Jan 1980). If `None`, the same method as `stat` will be used.
     group : {'time', 'time.season', 'time.month'}
         Grouping of the output.
@@ -894,13 +917,13 @@ def _bivariate_spell_length_distribution(
     Returns
     -------
     xr.DataArray, [units of the sampling frequency]
-        {stat} of spell length distribution when the first variable is {op1} the {method1} {thresh1}
-        and the second variable is {op2} the {method2} {thresh2} for {window} consecutive day(s).
+        {statistic} of spell length distribution when the first variable is {condition1} the {method1} {thresh1}
+        and the second variable is {condition2} the {method2} {thresh2} for {window} consecutive day(s).
     """
     group = group if isinstance(group, Grouper) else Grouper(group)
-    allowed_ops = [">", "<", ">=", "<="]
-    if op1 not in allowed_ops or op2 not in allowed_ops:
-        raise ValueError(f"`op1` and `op2` must be in {allowed_ops}, but {op1} and {op2} were given.")
+    allowed_conditions = [">", "<", ">=", "<="]
+    if condition1 not in allowed_conditions or condition2 not in allowed_conditions:
+        raise ValueError(f"`condition1` and `condition2` must be in {allowed_conditions}, but {condition1} and {condition2} were given.")
 
     @map_groups(out=[Grouper.PROP], main_only=True)
     def _bivariate_spell_stats(
@@ -913,31 +936,31 @@ def _bivariate_spell_length_distribution(
         freq,
         window,
         resample_before_rl,
-        stat,
-        stat_resample,
+        statistic,
+        resample_statistic,
     ):
         # PB: This prevents an import error in the distributed dask scheduler, but I don't know why.
         import xarray.core.resample_cftime  # noqa: F401, pylint: disable=unused-import
 
         conds = []
         masks = []
-        for da, thresh, op, method in zip([ds.da1, ds.da2], threshs, ops, methods, strict=False):
+        for da, thresh, condition, method in zip([ds.da1, ds.da2], threshs, ops, methods, strict=False):
             masks.append(~(da.isel({dim: 0}).isnull()).drop_vars(dim))  # mask of the ocean with NaNs
             if method == "quantile":
                 thresh = da.quantile(thresh, dim=dim).drop_vars("quantile")
-            conds.append(compare(da, op, thresh))
+            conds.append(compare(da, condition, thresh))
         mask = masks[0] & masks[1]
         cond = conds[0] & conds[1]
         out = rl.resample_and_rl(
             cond,
             resample_before_rl,
             rl.rle_statistics,
-            reducer=stat_resample,
+            statistic=resample_statistic,
             window=window,
             dim=dim,
             freq=freq,
         )
-        out = getattr(out, stat)(dim=dim)
+        out = getattr(out, statistic)(dim=dim)
         out = out.where(mask)
         return out.rename("out").to_dataset()
 
@@ -955,12 +978,12 @@ def _bivariate_spell_length_distribution(
         group=group,
         threshs=threshs,
         methods=methods,
-        ops=[op1, op2],
+        ops=[condition1, condition2],
         window=window,
         freq=group.freq,
         resample_before_rl=resample_before_rl,
-        stat=stat,
-        stat_resample=stat_resample or stat,
+        statistic=statistic,
+        resample_statistic=resample_statistic or statistic,
     ).out
     # in xclim this was managed by to_agg_units
     # will hard-code this part for now
@@ -984,12 +1007,12 @@ def _bivariate_threshold_count(
     *,
     method1: str = "amount",
     method2: str = "amount",
-    op1: str = ">=",
-    op2: str = ">=",
+    condition1: str = ">=",
+    condition2: str = ">=",
     thresh1: str = "1 mm d-1",
     thresh2: str = "1 mm d-1",
-    stat: str = "mean",
-    stat_resample: str | None = None,
+    statistic: Literal["mean", "sum", "max", "min"] = "mean",
+    resample_statistic: Literal["mean", "sum", "max", "min"] | None = None,
     group: str | Grouper = "time",
 ) -> xr.DataArray:
     """
@@ -1012,12 +1035,12 @@ def _bivariate_threshold_count(
         Method to choose the threshold.
         'amount': The threshold is directly the quantity in {thresh}. It needs to have the same units as {da}.
         'quantile': The threshold is calculated as the quantile {thresh} of the distribution.
-    op1 : {">", "<", ">=", "<="}
+    condition1 : {">", "<", ">=", "<="}
         Operation to verify the condition for a spell.
-        The condition for a spell is variable {op} threshold.
-    op2 : {">", "<", ">=", "<="}
+        The condition for a spell is variable {condition} threshold.
+    condition2 : {">", "<", ">=", "<="}
         Operation to verify the condition for a spell.
-        The condition for a spell is variable {op} threshold.
+        The condition for a spell is variable {condition} threshold.
     thresh1 : str or float
         Threshold on which to evaluate the condition to have a spell.
         String with units if the method is "amount".
@@ -1026,9 +1049,9 @@ def _bivariate_threshold_count(
         Threshold on which to evaluate the condition to have a spell.
         String with units if the method is "amount".
         Float of the quantile if the method is "quantile".
-    stat : {'mean', 'sum', 'max','min'}
+    statistic : {'mean', 'sum', 'max','min'}
         Statistics to apply to the remaining time dimension after resampling (e.g. Jan 1980-2010)
-    stat_resample : {'mean', 'sum', 'max','min'}, optional
+    resample_statistic : {'mean', 'sum', 'max','min'}, optional
         Statistics to apply to the resampled input at the {group} (e.g. 1-31 Jan 1980).
         If `None`, the same method as `stat` will be used.
     group : {'time', 'time.season', 'time.month'}
@@ -1039,8 +1062,8 @@ def _bivariate_threshold_count(
     Returns
     -------
     xr.DataArray, [dimensionless]
-        {stat} number of days when the first variable is {op1} the {method1} {thresh1}
-        and the second variable is {op2} the {method2} {thresh2} for {window} consecutive day(s).
+        {statistic} number of days when the first variable is {condition1} the {method1} {thresh1}
+        and the second variable is {condition2} the {method2} {thresh2} for {window} consecutive day(s).
 
     Notes
     -----
@@ -1051,13 +1074,13 @@ def _bivariate_threshold_count(
         da2,
         method1=method1,
         method2=method2,
-        op1=op1,
-        op2=op2,
+        condition1=condition1,
+        condition2=condition2,
         thresh1=thresh1,
         thresh2=thresh2,
         window=1,
-        stat=stat,
-        stat_resample=stat_resample,
+        stat=statistic,
+        resample_statistic=resample_statistic,
         group=group,
     )
 
@@ -1073,7 +1096,7 @@ bivariate_threshold_count = StatisticalProperty(
 def _relative_frequency(
     da: xr.DataArray,
     *,
-    op: str = ">=",
+    condition: Literal[">", "<", ">=", "<="] = ">=",
     thresh: str = "1 mm d-1",
     group: str | Grouper = "time",
 ) -> xr.DataArray:
@@ -1088,9 +1111,9 @@ def _relative_frequency(
     ----------
     da : xr.DataArray
         Variable on which to calculate the diagnostic.
-    op : {">", "<", ">=", "<="}
+    condition : {">", "<", ">=", "<="}
         Operation to verify the condition.
-        The condition is variable {op} threshold.
+        The condition is variable {condition} threshold.
     thresh : str
         Threshold on which to evaluate the condition.
     group : {'time', 'time.season', 'time.month'}
@@ -1100,17 +1123,17 @@ def _relative_frequency(
     Returns
     -------
     xr.DataArray, [dimensionless]
-        Relative frequency of values {op} {thresh}.
+        Relative frequency of values {condition} {thresh}.
     """
     # mask of the ocean with NaNs
     mask = ~(da.isel({group.dim: 0}).isnull()).drop_vars(group.dim)
-    allowed_ops = [">", "<", ">=", "<="]
-    if op not in allowed_ops:
-        raise ValueError(f"`op` must be in {allowed_ops}, but {op} was given.")
+    allowed_conditions = [">", "<", ">=", "<="]
+    if condition not in allowed_conditions:
+        raise ValueError(f"`op` must be in {allowed_conditions}, but {condition} was given.")
 
     t = convert_units_to(thresh, da)
     length = da.sizes[group.dim]
-    cond = compare(da, op, t)
+    cond = compare(da, condition, t)
     if group.prop != "group":  # change the time resolution if necessary
         cond = cond.groupby(group.name)
         # length of the groupBy groups
@@ -1127,12 +1150,13 @@ def _relative_frequency(
 relative_frequency = StatisticalProperty(identifier="relative_frequency", aspect="temporal", compute=_relative_frequency)
 
 
+# TODO: add a test
 @parse_group
 def _transition_probability(
     da: xr.DataArray,
     *,
-    initial_op: str = ">=",
-    final_op: str = ">=",
+    initial_condition: Literal[">", "<", ">=", "<=", "==", "!="] = ">=",
+    final_condition: Literal[">", "<", ">=", "<=", "==", "!="] = ">=",
     thresh: str = "1 mm d-1",
     group: str | Grouper = "time",
 ) -> xr.DataArray:
@@ -1148,12 +1172,12 @@ def _transition_probability(
     ----------
     da : xr.DataArray
         Variable on which to calculate the diagnostic.
-    initial_op : {">", "gt", "<", "lt", ">=", "ge", "<=", "le", "==", "eq", "!=", "ne"}
+    initial_condition : {">", "gt", "<", "lt", ">=", "ge", "<=", "le", "==", "eq", "!=", "ne"}
         Operation to verify the condition for the initial state.
-        The condition is variable {op} threshold.
-    final_op : {">", "gt", "<", "lt", ">=", "ge", "<=", "le", "==", "eq", "!=", "ne"}
+        The condition is variable {initial_condition} threshold.
+    final_condition : {">", "gt", "<", "lt", ">=", "ge", "<=", "le", "==", "eq", "!=", "ne"}
         Operation to verify the condition for the final state.
-        The condition is variable {op} threshold.
+        The condition is variable {final_condition} threshold.
     thresh : str
         Threshold on which to evaluate the condition.
     group : {"time", "time.season", "time.month"}
@@ -1163,7 +1187,7 @@ def _transition_probability(
     Returns
     -------
     xr.DataArray, [dimensionless]
-        Transition probability of values {initial_op} {thresh} to values {final_op} {thresh}.
+        Transition probability of values {initial_condition} {thresh} to values {final_condition} {thresh}.
     """
     # mask of the ocean with NaNs
     mask = ~(da.isel({group.dim: 0}).isnull()).drop_vars(group.dim)
@@ -1172,7 +1196,7 @@ def _transition_probability(
     tomorrow = da.shift(time=-1).isel(time=slice(0, -1))
 
     t = convert_units_to(thresh, da)
-    cond = compare(today, initial_op, t) * compare(tomorrow, final_op, t)
+    cond = compare(today, initial_condition, t) * compare(tomorrow, final_condition, t)
     out = group.apply("mean", cond)
     out = out.where(mask, np.nan)
     out.attrs["units"] = ""
@@ -1260,8 +1284,8 @@ def _return_value(
     da: xr.DataArray,
     *,
     period: int = 20,
-    op: str = "max",
-    method: str = "ML",
+    statistic: str = "max",
+    method: Literal["ML", "PWM"] = "ML",
     group: str | Grouper = "time",
 ) -> xr.DataArray:
     r"""
@@ -1278,7 +1302,7 @@ def _return_value(
         Variable on which to calculate the diagnostic.
     period : int
         Return period. Number of years over which to check if the value is exceeded (or not for op='min').
-    op : {'max','min'}
+    statistic : {'max','min'}
         Whether we are looking for a probability of exceedance ('max', right side of the distribution)
         or a probability of non-exceedance (min, left side of the distribution).
     method : {"ML", "PWM"}
@@ -1290,17 +1314,17 @@ def _return_value(
     Returns
     -------
     xr.DataArray, [same as input]
-        {period}-{group.prop_name} {op} return level of the variable.
+        {period}-{group.prop_name} {statistic} return level of the variable.
     """
 
     @map_groups(out=[Grouper.PROP], main_only=True)
-    def frequency_analysis_method(ds, *, dim, method, op, period):
-        sub = select_resample_op(ds.x, op=op)
+    def frequency_analysis_method(ds, *, dim, method, statistic, period):
+        sub = statistics(ds.x, statistic=statistic, freq="YS")
         params = fit(sub, dist="genextreme", method=method)
         out = parametric_quantile(params, q=1 - 1.0 / period)
-        return out.isel(quantile=0, drop=True).rename("out").to_dataset()
+        return out.isel(quantile=0).drop("quantile").rename("out").to_dataset()
 
-    out = frequency_analysis_method(da.rename("x").to_dataset(), method=method, group=group, op=op, period=period).out
+    out = frequency_analysis_method(da.rename("x").to_dataset(), method=method, group=group, statistic=statistic, period=period).out
     return out.assign_attrs(units=da.units)
 
 
