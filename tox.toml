@@ -41,7 +41,7 @@ extras = ["extras"]
 deps = [
   {replace = "if", condition = "env.EIGEN3  == 'true'", then = ["sbck>=1.4.2"], extend = true},
   {replace = "if", condition = "env.NUMPY == 'true'", then = ["numpy>=1.26.0,<2.0"], extend = true},
-  {replace = "if", condition = "env.XCLIM_UPSTREAM == 'true'", then = ["xclim @ git+https://github.com/Ouranosinc/xclim.git"], extend = true}
+  {replace = "if", condition = "env.XCLIM_UPSTREAM == 'true'", then = ["xclim @ git+https://github.com/Ouranosinc/xclim.git@skip_resample"], extend = true}
 ]
 install_command = ["python", "-m", "pip", "install", "--no-user", "{opts}", "{packages}"]
 commands_pre = [["pip", "list"], ["pip", "check"]]
