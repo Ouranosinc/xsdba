@@ -15,8 +15,7 @@ import numpy as np
 import xarray as xr
 from boltons.funcutils import wraps
 
-from xsdba import calendar
-from xsdba.calendar import add_gen_season_coord, get_gen_seasons, parse_offset
+from xsdba.calendar import _MONTHS, _MONTHS_NUMBERS, add_gen_season_coord, get_gen_seasons, parse_offset
 
 
 # TODO : Redistributes some functions in existing/new scripts
@@ -107,7 +106,7 @@ class Grouper(Parametrizable):
     PROP = "<PROP>"
     DIM = "<DIM>"
     ADD_DIMS = "<ADD_DIMS>"
-    _GENSEASON_PROPS = [f"QS-{m}" for m in calendar._MONTHS] + [f"2QS-{m}" for m in calendar._MONTHS]
+    _GENSEASON_PROPS = [f"QS-{m}" for m in _MONTHS] + [f"2QS-{m}" for m in _MONTHS]
 
     def __init__(
         self,
@@ -321,7 +320,7 @@ class Grouper(Parametrizable):
                 i = da[self.dim].copy(data=ind.month % 12 // 3)
             elif self.prop == "gen_season":
                 mult, _, _, anchor = parse_offset(self.freq)
-                months = ind.month - (calendar._MONTHS_NUMBERS[anchor] - 1)
+                months = ind.month - (_MONTHS_NUMBERS[anchor] - 1)
                 i = da[self.dim].copy(data=months % 12 // (3 * mult))
             else:
                 i = getattr(ind, self.prop)
