@@ -67,6 +67,14 @@ def test_grouper_get_index(timeseries, group, interp, val90, calendar):
 
 # xarray does not yet access "week" or "weekofyear" with groupby in a pandas-compatible way for cftime objects.
 # See: https://github.com/pydata/xarray/discussions/6375
+
+
+def test_grouper_apply_funky(timeseries):
+    da1 = timeseries(np.arange(366), start="2000-01-01")
+    group = Grouper("time.half_year")
+    group.apply(xr.DataArray.mean, da1)
+
+
 @pytest.mark.filterwarnings("ignore:dt.weekofyear and dt.week have been deprecated")
 @pytest.mark.slow
 @pytest.mark.parametrize(
@@ -207,6 +215,12 @@ class TestMapBlocks:
             add_dims=["lat"],
         ).load()
         assert set(data.data.dims) == {"dayofyear"}
+
+    def test_grouper_funk(self, timeseries):
+        da0 = timeseries(np.arange(366), start="2000-01-01")
+        da0 = da0.expand_dims(lat=[1, 2, 3, 4]).chunk()
+        group = Grouper("time.half_year")
+        group.group(da0)
 
     def test_grouper_prop_main_only(self, timeseries):
         da0 = timeseries(np.arange(366), start="2000-01-01")

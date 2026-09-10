@@ -45,9 +45,9 @@ class StatisticalMeasure(Indicator):
             raise ValueError(f"{cls.__name__} requires 'sim' and 'ref' as inputs. Got {inputs}.")
         return super()._ensure_correct_parameters(parameters)
 
-    def _preprocess_and_checks(self, das, params):
+    def _preprocess_and_checks(self, das, params, meta):
         """Perform parent's checks and also check convert units so that sim matches ref."""
-        das, params = super()._preprocess_and_checks(das, params)
+        das, params, meta = super()._preprocess_and_checks(das, params, meta)
 
         # Convert grouping and check if allowed:
         das["sim"] = convert_units_to(das["sim"], das["ref"])
@@ -103,9 +103,9 @@ class StatisticalPropertyMeasure(Indicator):
 
         return super()._ensure_correct_parameters(parameters)
 
-    def _preprocess_and_checks(self, das, params):
+    def _preprocess_and_checks(self, das, params, meta):
         """Perform parent's checks and also check convert units so that sim matches ref."""
-        das, params = super()._preprocess_and_checks(das, params)
+        das, params, meta = super()._preprocess_and_checks(das, params, meta)
         das["sim"] = convert_units_to(das["sim"], das["ref"])
         # Convert grouping and check if allowed:
         if isinstance(params["group"], str):

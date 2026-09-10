@@ -11,7 +11,7 @@ This module depends on `xclim`. Run `pip install xsdba['extras']` to install it.
 """
 
 from __future__ import annotations
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from typing import Literal
 
 import numpy as np
@@ -20,14 +20,14 @@ import xclim.compute.run_length as rl
 from scipy import stats
 from scipy.fft import dctn
 from statsmodels.tsa import stattools
-from xclim.compute.generic import compare, percentile, statistics, thresholded_percentile
+from xclim.compute.generic import compare, percentile, statistics, thresholded_percentile, thresholded_running_statistics
 from xclim.compute.stats import fit, parametric_quantile
+from xclim.core import Quantified
 from xclim.core.indicator import Indicator, base_registry
 
 from xsdba.base import Grouper, map_groups, parse_group, uses_dask
 from xsdba.nbutils import _pairwise_haversine_and_bins
 from xsdba.processing import _normalized_radial_wavenumber
-from xsdba.typing import DataType
 from xsdba.units import (
     convert_units_to,
     infer_sampling_units,
@@ -37,39 +37,6 @@ from xsdba.units import (
     units2pint,
 )
 from xsdba.utils import _pairwise_spearman, copy_all_attrs
-
-
-def group_map(
-    obj: DataType,
-    group: Grouper,
-    func: Callable | str,
-    map_kwargs: dict | None = None,
-) -> DataType:
-    r"""
-    Wrap xarray's group(...).map().
-
-    Ensures that `group='time'` is treated differently.
-
-    Parameters
-    ----------
-    obj : DataArray or Dataset
-        The xarray object to group and transform.
-    group : {Grouper('time'), Grouper('time.season'), Grouper('time.month')}
-        Grouping of the output.
-    func : callable
-        Function to map on each resampled group.
-    map_kwargs : dict, optional
-        Arguments to pass to `map`.
-
-    Returns
-    -------
-    xr.DataArray or xr.Dataset
-        Grouped and transformed object.
-    """
-    if group.prop != "group":
-        return obj.groupby(group.name).map(func, **map_kwargs)
-    else:
-        return func(obj, **map_kwargs)
 
 
 class StatisticalProperty(Indicator):
@@ -109,9 +76,9 @@ class StatisticalProperty(Indicator):
             )
         return super()._ensure_correct_parameters(parameters)
 
-    def _preprocess_and_checks(self, das, params):
+    def _preprocess_and_checks(self, das, params, meta):
         """Perform parent's checks and also check if group is allowed."""
-        das, params = super()._preprocess_and_checks(das, params)
+        das, params, meta = super()._preprocess_and_checks(das, params, meta)
 
         # Convert grouping and check if allowed:
         if isinstance(params["group"], str):
@@ -125,17 +92,17 @@ class StatisticalProperty(Indicator):
                     f"{map(lambda g: '<dim>.' + g.replace('group', ''), self.allowed_groups)})."
                 )
 
-        return das, params
+        return das, params, meta
 
-    def _postprocess(self, outs, das, params):
+    def _postprocess(self, outs, das, params, meta):
         """Squeeze `group` dim if needed."""
-        outs = super()._postprocess(outs, das, params)
+        outs, meta = super()._postprocess(outs, das, params, meta)
 
         for ii, out in enumerate(outs):
             if "group" in out.dims:
                 outs[ii] = out.squeeze("group", drop=True)
 
-        return outs
+        return outs, meta
 
     def get_measure(self):
         """Get the statistical measure indicator that is best used with this statistical property."""
@@ -149,66 +116,102 @@ base_registry["StatisticalProperty"] = StatisticalProperty
 
 @parse_group
 def _statistics(da: xr.DataArray, statistic: str, *, group: str | Grouper = "time") -> xr.DataArray:
-    return group_map(da, group, statistics, map_kwargs={"statistic": statistic, "freq": None})
+    return group.apply(statistics, da, **{"statistic": statistic, "freq": None})
 
 
-# @parse_group
-# def _thresholded_statistics(da: xr.DataArray, statistic: str, thresh: Quantified, condition: str, *, constrain: Sequence[str] | None = None ,group: str | Grouper = "time") -> xr.DataArray:
-#     return group_map(da, group, thresholded_statistics, map_kwargs = {'statistic':statistic, 'freq':None, 'thresh': thresh, 'condition':condition, 'constrain':constrain})
-
-# @parse_group
-# def _thresholded_running_statistics(
-#     da: xr.DataArray,
-#     condition: Condition,
-#     thresh: Quantified,
-#     window: int,
-#     resample_statistic: str,
-#     statistic: str,
-#     *,
-#     window_center: bool = True,
-#     constrain: Sequence[Condition] | None = None,
-#     group: str | Grouper = "time")-> xr.DataArray:
-#     return group_map(da, group, thresholded_running_statistics, map_kwargs =
-#     {
-#     'condition': condition ,
-#     'thresh': thresh ,
-#     'window': window,
-#     'resample_statistic':resample_statistic,
-#     'statistic': statistic,
-#     'window_center': window_center ,
-#     'constrain': constrain,
-#     'freq': None
-#     })
+@parse_group
+def _thresholded_statistics(
+    da: xr.DataArray, statistic: str, thresh: Quantified, condition: str, *, constrain: Sequence[str] | None = None, group: str | Grouper = "time"
+) -> xr.DataArray:
+    func_kwargs = {"statistic": statistic, "thresh": thresh, "condition": condition, "constrain": constrain, "freq": None}
+    return group.apply(statistics, da, **func_kwargs)
 
 
-mean = StatisticalProperty(
-    identifier="mean",
-    long_name="Mean of the variable.",
+@parse_group
+def _thresholded_running_statistics(
+    da: xr.DataArray,
+    condition: str,
+    thresh: Quantified,
+    window: int,
+    resample_statistic: str,
+    statistic: str,
+    *,
+    window_center: bool = True,
+    constrain: Sequence[str] | None = None,
+    group: str | Grouper = "time",
+) -> xr.DataArray:
+    return group.apply(
+        da,
+        thresholded_running_statistics,
+        map_kwargs={
+            "condition": condition,
+            "thresh": thresh,
+            "window": window,
+            "resample_statistic": resample_statistic,
+            "statistic": statistic,
+            "window_center": window_center,
+            "constrain": constrain,
+            "freq": None,
+        },
+    )
+
+
+generic_statistics = StatisticalProperty(
+    identifier="{statistic}",
     aspect="marginal",
-    cell_methods="time: mean",
+    cell_methods="time: {statistic}",
     compute=_statistics,
-    parameters={"statistic": "mean"},
 )
 
-var = StatisticalProperty(
-    identifier="var",
-    long_name="Variance of the variable.",
+generic_thresholded_statistics = StatisticalProperty(
+    identifier="{statistic}",
     aspect="marginal",
-    cell_methods="time: var",
-    compute=_statistics,
-    parameters={"statistic": "var"},
-    measure="xsdba.measures.RATIO",
+    cell_methods="time: {statistic}",
+    compute=_thresholded_statistics,
 )
 
-std = StatisticalProperty(
-    identifier="std",
-    long_name="Standard deviation of the variable.",
+generic_thresholded_running_statistics = StatisticalProperty(
+    identifier="{statistic}",
     aspect="marginal",
-    cell_methods="time: std",
-    compute=_statistics,
-    parameters={"statistic": "std"},
-    measure="xsdba.measures.RATIO",
+    cell_methods="time: {statistic}",
+    compute=_thresholded_running_statistics,
 )
+
+
+def _get_simple_statisticalproperty(
+    statistic: str,
+    **kwargs,
+) -> StatisticalProperty:
+    """
+    Build a StatisticalProperty around the shared `_statistics` compute fn.
+
+    Parameters
+    ----------
+    statistic : str
+        Name of the statistic (used as identifier and injected into `_statistics`).
+    """
+    kwargs = (
+        dict(
+            identifier=statistic,
+            long_name=f"{statistic.replace('_', ' ').capitalize()} of the variable.",
+            aspect="marginal",
+            cell_methods=f"time: {statistic}",
+        )
+        | kwargs
+    )
+    return StatisticalProperty(
+        compute=_statistics,
+        parameters={"statistic": statistic},
+        **kwargs,
+    )
+
+
+mean = _get_simple_statisticalproperty("mean")
+mininimum = _get_simple_statisticalproperty("min", long_name="Minimum of the variable.")
+maximum = _get_simple_statisticalproperty("max", long_name="Maximum of the variable.")
+var = _get_simple_statisticalproperty("var", long_name="Variance of the variable.", measure="xsdba.measures.RATIO")
+std = _get_simple_statisticalproperty("std", long_name="Standard deviation of the variable.", measure="xsdba.measures.RATIO")
+summation = _get_simple_statisticalproperty("sum", long_name="Summation of the variable.")
 
 # TODO: Add thresholded_stattistics
 
@@ -237,16 +240,17 @@ def _skewness(da: xr.DataArray, *, group: str | Grouper = "time") -> xr.DataArra
     --------
     scipy.stats.skew
     """
-    if group.prop != "group":
-        da = da.groupby(group.name)
-    out = xr.apply_ufunc(
-        stats.skew,
-        da,
-        input_core_dims=[[group.dim]],
-        vectorize=True,
-        dask="parallelized",
-    )
-    out.attrs["units"] = ""
+
+    def _get_skew(da, dim):
+        return xr.apply_ufunc(
+            stats.skew,
+            da,
+            input_core_dims=[[dim]],
+            vectorize=True,
+            dask="parallelized",
+        ).assign_attrs({"units": ""})
+
+    out = group.apply(_get_skew, da)
     return out
 
 
@@ -275,7 +279,7 @@ def _quantile(da: xr.DataArray, *, q: float = 0.98, group: str | Grouper = "time
     xr.DataArray, [same as input]
         Quantile {q} of the variable.
     """
-    return group_map(da, group, percentile, map_kwargs={"per": 100 * q, "freq": None})
+    return group.apply(percentile, da, per=100 * q, freq=None)
 
 
 quantile = StatisticalProperty(identifier="quantile", aspect="marginal", compute=_quantile)
@@ -310,7 +314,7 @@ def _thresholded_quantile(
         Quantile {q} of the thresholded variable.
     """
     map_kwargs = {"condition": condition, "thresh": thresh, "per": 100 * q, "freq": None, "constrain": [">", "<", ">=", "<="]}
-    return group_map(da, group, thresholded_percentile, map_kwargs)
+    return group.apply(thresholded_percentile, da, **map_kwargs)
 
 
 thresholded_quantile = StatisticalProperty(identifier="thresholded_quantile", aspect="marginal", compute=_thresholded_quantile)

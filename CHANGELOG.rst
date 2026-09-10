@@ -11,11 +11,11 @@ Contributors: Éric Dupuis (:user:`coxipi`).
 Changes
 ^^^^^^^
 * New property: ``xsdba.properties.thresholded_quantile``. (:pull:`304`).
-* Make ``xsdba.properties`` compatible with `xclim-v1`.
+* Make ``xsdba.properties`` compatible with `xclim-v1`.  (:pull:`304`).
 
 Breaking changes
 ^^^^^^^^^^^^^^^^
-* Many arguments name in ``xsdba.properties`` have been changed to reflect the nomenclature in `xclim-v1`. This includes changes where `op` is either renamed as `statistic` or `condition`, depending on the context.
+* Many arguments name in ``xsdba.properties`` have been changed to reflect the nomenclature in `xclim-v1`. This includes changes where `op` is either renamed as `statistic` or `condition`, depending on the context.  (:pull:`304`).
 
 .. _changes_0.7.0:
 

@@ -27,13 +27,47 @@ class TestProperties:
 
         out_year = properties.mean(sim)
         np.testing.assert_array_almost_equal(out_year.values, [3.0016028e-05])
-
         out_season = properties.mean(sim, group="time.season")
         np.testing.assert_array_almost_equal(
             out_season.values,
-            [4.6115547e-05, 1.7220482e-05, 2.8805329e-05, 2.825359e-05],
+            [4.6115547e-05, 2.8805329e-05, 1.7220482e-05, 2.825359e-05],
         )
         assert out_season.long_name.startswith("Mean")
+
+    def test_mean_halfyear(self, gosset, use_dask):
+        sim = (
+            xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf", chunks={})
+            .sel(time=slice("1950", "1980"), location="Vancouver")
+            .pr
+        )
+        if not use_dask:
+            sim = sim.load()
+
+        out_season = properties.mean(sim, group="time.2QS-JAN")
+        np.testing.assert_array_almost_equal(
+            out_season.values,
+            [3.169884e-05, 2.836053e-05],
+        )
+
+        assert out_season.long_name.startswith("Mean")
+
+    def test_mean_from_generic_statistics(self, gosset, use_dask):
+        sim = (
+            xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf", chunks={})
+            .sel(time=slice("1950", "1980"), location="Vancouver")
+            .pr
+        )
+        if not use_dask:
+            sim = sim.load()
+
+        out_year = properties.generic_statistics(sim, statistic="mean")
+        np.testing.assert_array_almost_equal(out_year.values, [3.0016028e-05])
+
+        out_season = properties.generic_statistics(sim, statistic="mean", group="time.season")
+        np.testing.assert_array_almost_equal(
+            out_season.values,
+            [4.6115547e-05, 2.8805329e-05, 1.7220482e-05, 2.825359e-05],
+        )
 
     def test_var(self, gosset, use_dask):
         sim = (
@@ -164,6 +198,18 @@ class TestProperties:
             properties.spell_length_distribution(simt, method="percentile")
 
         assert outd["mean"].long_name == "Average of spell length distribution when the variable is >= the quantile 0.9 for 1 consecutive day(s)."
+
+    def test_spell_length_distribution_halfyear(self, gosset, use_dask):
+        ds = xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf", chunks={}).sel(
+            time=slice("1950", "1952"), location="Vancouver"
+        )
+        if not use_dask:
+            ds = ds.load()
+
+        # test pr, with amount method
+        sim = ds.pr
+        kws = {"condition": "<", "group": "time.2QS-JAN", "thresh": "1.157e-05 kg/m/m/s"}
+        {stat: properties.spell_length_distribution(da=sim, **kws, statistic=stat).isel(gen_season=0).values for stat in ["mean", "max", "min"]}
 
     def test_spell_length_distribution_mixed_stat(self, use_dask):
         time = pd.date_range("2000-01-01", periods=2 * 365, freq="D")
