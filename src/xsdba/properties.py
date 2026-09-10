@@ -78,7 +78,7 @@ class StatisticalProperty(Indicator):
 
     def _preprocess_and_checks(self, das, params, meta):
         """Perform parent's checks and also check if group is allowed."""
-        das, params, meta = super()._preprocess_and_checks(self, das, params, meta)
+        das, params, meta = super()._preprocess_and_checks(das, params, meta)
 
         # Convert grouping and check if allowed:
         if isinstance(params["group"], str):
