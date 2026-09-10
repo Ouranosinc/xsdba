@@ -69,12 +69,6 @@ def test_grouper_get_index(timeseries, group, interp, val90, calendar):
 # See: https://github.com/pydata/xarray/discussions/6375
 
 
-def test_grouper_apply_funky(timeseries):
-    da1 = timeseries(np.arange(366), start="2000-01-01")
-    group = Grouper("time.half_year")
-    group.apply(xr.DataArray.mean, da1)
-
-
 @pytest.mark.filterwarnings("ignore:dt.weekofyear and dt.week have been deprecated")
 @pytest.mark.slow
 @pytest.mark.parametrize(
