@@ -33,8 +33,7 @@ if xclim_installed:
     )
 
 from xsdba.adjustment import *
-from xsdba.base import Grouper
-from xsdba.calendar import stack_periods, unstack_periods
+from xsdba.base import Grouper, stack_periods, unstack_periods
 from xsdba.options import set_options
 from xsdba.processing import stack_variables, unstack_variables
 
