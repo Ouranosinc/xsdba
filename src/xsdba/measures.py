@@ -59,7 +59,7 @@ class StatisticalMeasure(Indicator):
         for dim in set(sim.dims).union(ref.dims):
             if [sim[dim].size, ref[dim].size] != [newsim[dim].size, newref[dim].size]:
                 raise ValueError(f"Common dimension {dim} has different coordinates between ref and sim.")
-        return das, params
+        return das, params, meta
 
 
 class StatisticalPropertyMeasure(Indicator):
@@ -118,17 +118,17 @@ class StatisticalPropertyMeasure(Indicator):
                     f"{self.identifier} (needs something in "
                     f"{list(map(lambda g: '<dim>.' + g.replace('group', ''), self.allowed_groups))})."
                 )
-        return das, params
+        return das, params, meta
 
-    def _postprocess(self, outs, das, params):
+    def _postprocess(self, outs, das, params, meta):
         """Squeeze `group` dim if needed."""
-        outs = super()._postprocess(outs, das, params)
+        outs, meta = super()._postprocess(outs, das, params, meta)
 
         for ii, out in enumerate(outs):
             if "group" in out.dims:
                 outs[ii] = out.squeeze("group", drop=True)
 
-        return outs
+        return outs, meta
 
 
 base_registry["StatisticalMeasure"] = StatisticalMeasure
