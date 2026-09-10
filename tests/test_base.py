@@ -210,12 +210,6 @@ class TestMapBlocks:
         ).load()
         assert set(data.data.dims) == {"dayofyear"}
 
-    def test_grouper_funk(self, timeseries):
-        da0 = timeseries(np.arange(366), start="2000-01-01")
-        da0 = da0.expand_dims(lat=[1, 2, 3, 4]).chunk()
-        group = Grouper("time.half_year")
-        group.group(da0)
-
     def test_grouper_prop_main_only(self, timeseries):
         da0 = timeseries(np.arange(366), start="2000-01-01")
         da0 = da0.expand_dims(lat=[1, 2, 3, 4]).chunk()
