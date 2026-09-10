@@ -10,12 +10,12 @@ from collections.abc import Callable, Sequence
 from inspect import _empty, signature
 
 import dask.array as dsk
-import dtypes
 import jsonpickle
 import numpy as np
 import pandas as pd
 import xarray as xr
 from boltons.funcutils import wraps
+from xarray.core import dtypes
 
 from xsdba.calendar import (
     _MONTHS,
