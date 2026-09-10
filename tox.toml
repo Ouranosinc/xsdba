@@ -1,6 +1,6 @@
 envlist = [
   "lint",
-  {product = [{prefix = "py3.", start = 10, stop = 14}]},
+  {product = [{prefix = "py3.", start = 11, stop = 14}]},
   "docs"
 ]
 skip_missing_interpreters = true
@@ -41,7 +41,7 @@ extras = ["extras"]
 deps = [
   {replace = "if", condition = "env.EIGEN3  == 'true'", then = ["sbck>=1.4.2"], extend = true},
   {replace = "if", condition = "env.NUMPY == 'true'", then = ["numpy>=1.26.0,<2.0"], extend = true},
-  {replace = "if", condition = "env.XCLIM_SKIP_RESAMPLE == 'true'", then = ["xclim @ git+https://github.com/Ouranosinc/xclim.git@skip_resample"], extend = true}
+  {replace = "if", condition = "env.XCLIM_UPSTREAM == 'true'", then = ["xclim @ git+https://github.com/Ouranosinc/xclim.git"], extend = true}
 ]
 install_command = ["python", "-m", "pip", "install", "--no-user", "{opts}", "{packages}"]
 commands_pre = [["pip", "list"], ["pip", "check"]]
@@ -53,7 +53,6 @@ commands_post = [
 ]
 
 [gh.python]
-"3.10" = ["py3.10"]
 "3.11" = ["py3.11"]
 "3.12" = ["py3.12"]
 "3.13" = ["py3.13"]
