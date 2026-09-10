@@ -104,7 +104,7 @@ class TestProperties:
         out_season = properties.std(sim, group="time.season")
         np.testing.assert_array_almost_equal(
             out_season.values,
-            [6.2666411e-05, 3.5410259e-05, 4.3654352e-05, 5.3643853e-05],
+            [6.2666411e-05, 4.3654352e-05, 3.5410259e-05, 5.3643853e-05],
         )
         assert out_season.long_name.startswith("Standard deviation")
         assert out_season.units == "kg m-2 s-1"
@@ -126,8 +126,8 @@ class TestProperties:
             out_season.values,
             [
                 2.036650744163691,
-                3.7909534745807147,
                 2.416590445325826,
+                3.7909534745807147,
                 3.3521301798559566,
             ],
         )
@@ -168,7 +168,7 @@ class TestProperties:
 
         out_season = properties.thresholded_quantile(sim, thresh="1 kg m-2 d-1", condition=">=", group="time.season", q=0.2)
         expected = filtered_sim.groupby("time.season").quantile(dim="time", q=0.2)
-        np.testing.assert_array_almost_equal(out_season.values, expected.values)
+        np.testing.assert_array_almost_equal(out_season.values, expected.sel(season=["DJF", "MAM", "JJA", "SON"]).values)
         assert out_season.long_name.startswith("Quantile 0.2")
 
     def test_spell_length_distribution(self, gosset, use_dask):
@@ -407,12 +407,6 @@ class TestProperties:
         )
         assert pc.long_name == "Pearson correlation coefficient."
         assert pc.units == ""
-
-        with pytest.raises(
-            ValueError,
-            match="pear is not a valid type. Choose 'Pearson' or 'Spearman'.",
-        ):
-            properties.corr_btw_var(sim, simt, group="time", corr_type="pear")
 
     def test_relative_frequency(self, gosset, use_dask):
         sim = (

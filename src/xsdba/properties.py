@@ -108,7 +108,7 @@ class StatisticalProperty(Indicator):
         """Get the statistical measure indicator that is best used with this statistical property."""
         from xclim.core.indicator import registry
 
-        return registry[self.measure].get_instance()
+        return registry[self.measure]
 
 
 base_registry["StatisticalProperty"] = StatisticalProperty
@@ -209,8 +209,8 @@ def _get_simple_statisticalproperty(
 mean = _get_simple_statisticalproperty("mean")
 mininimum = _get_simple_statisticalproperty("min", long_name="Minimum of the variable.")
 maximum = _get_simple_statisticalproperty("max", long_name="Maximum of the variable.")
-var = _get_simple_statisticalproperty("var", long_name="Variance of the variable.", measure="xsdba.measures.RATIO")
-std = _get_simple_statisticalproperty("std", long_name="Standard deviation of the variable.", measure="xsdba.measures.RATIO")
+var = _get_simple_statisticalproperty("var", long_name="Variance of the variable.", measure="ratio")
+std = _get_simple_statisticalproperty("std", long_name="Standard deviation of the variable.", measure="ratio")
 summation = _get_simple_statisticalproperty("sum", long_name="Summation of the variable.")
 
 # TODO: Add thresholded_stattistics
@@ -227,7 +227,7 @@ def _skewness(da: xr.DataArray, *, group: str | Grouper = "time") -> xr.DataArra
     ----------
     da : xr.DataArray
         Variable on which to calculate the diagnostic.
-    group : {'time', 'time.season', 'time.month'}
+    group : str or Grouper
         Grouping of the output.
         e.g. If 'time.month', the skewness is performed separately for each month.
 
@@ -241,11 +241,12 @@ def _skewness(da: xr.DataArray, *, group: str | Grouper = "time") -> xr.DataArra
     scipy.stats.skew
     """
 
-    def _get_skew(da, dim):
+    def _get_skew(da, dim="time"):
         return xr.apply_ufunc(
             stats.skew,
             da,
-            input_core_dims=[[dim]],
+            input_core_dims=[dim],
+            output_core_dims=[[]],
             vectorize=True,
             dask="parallelized",
         ).assign_attrs({"units": ""})
@@ -270,7 +271,7 @@ def _quantile(da: xr.DataArray, *, q: float = 0.98, group: str | Grouper = "time
         Variable on which to calculate the diagnostic.
     q : float
         Quantile to be calculated. Should be between 0 and 1.
-    group : {'time', 'time.season', 'time.month'}
+    group : str or Grouper
         Grouping of the output.
         e.g. If 'time.month', the quantile is computed separately for each month.
 
@@ -304,7 +305,7 @@ def _thresholded_quantile(
         Logical comparison operator. Comparison is done as ``da {condition} thresh``.
     q : float
         Quantile to be calculated. Should be between 0 and 1.
-    group : {'time', 'time.season', 'time.month'}
+    group : str or Grouper
         Grouping of the output.
         e.g. If 'time.month', the quantile is computed separately for each month.
 
@@ -362,7 +363,7 @@ def _spell_length_distribution(
     resample_statistic : {'mean', 'sum', 'max','min'}, optional
         Statistics to apply to the resampled input at the {group} (e.g. 1-31 Jan 1980).
         If `None`, the same method as `stat` will be used.
-    group : {'time', 'time.season', 'time.month'}
+    group : str or Grouper
         Grouping of the output.
         e.g. If 'time.month', the spell lengths are computed separately for each month.
     resample_before_rl : bool
@@ -480,7 +481,7 @@ def _threshold_count(
         Statistics to apply to the remaining time dimension after resampling (e.g. Jan 1980-2010)
     resample_statistic : {'mean', 'sum', 'max','min'}, optional
         Statistics to apply to the resampled input at the {group} (e.g. 1-31 Jan 1980). If `None`, the same method as `stat` will be used.
-    group : {'time', 'time.season', 'time.month'}
+    group : str or Grouper
         Grouping of the output.
         e.g. For 'time.month', the correlation would be calculated on each month separately,
         but with all the years together.
@@ -807,7 +808,7 @@ def _corr_btw_var(
         Type of correlation to calculate.
     output: {'correlation', 'pvalue'}
         Whether to return the correlation coefficient or the p-value.
-    group : {'time', 'time.season', 'time.month'}
+    group : str or Grouper
         Grouping of the output.
         e.g. For 'time.month', the correlation would be calculated on each month separately,
         but with all the years together.
@@ -911,7 +912,7 @@ def _bivariate_spell_length_distribution(
         Statistics to apply to the remaining time dimension after resampling (e.g. Jan 1980-2010)
     resample_statistic : {'mean', 'sum', 'max', 'min'}, optional
         Statistics to apply to the resampled input at the {group} (e.g. 1-31 Jan 1980). If `None`, the same method as `stat` will be used.
-    group : {'time', 'time.season', 'time.month'}
+    group : str or Grouper
         Grouping of the output.
         e.g. If 'time.month', the spell lengths are computed separately for each month.
     resample_before_rl : bool
@@ -1058,7 +1059,7 @@ def _bivariate_threshold_count(
     resample_statistic : {'mean', 'sum', 'max','min'}, optional
         Statistics to apply to the resampled input at the {group} (e.g. 1-31 Jan 1980).
         If `None`, the same method as `stat` will be used.
-    group : {'time', 'time.season', 'time.month'}
+    group : str or Grouper
         Grouping of the output.
         e.g. For 'time.month', the correlation would be calculated on each month separately,
         but with all the years together.
@@ -1120,7 +1121,7 @@ def _relative_frequency(
         The condition is variable {condition} threshold.
     thresh : str
         Threshold on which to evaluate the condition.
-    group : {'time', 'time.season', 'time.month'}
+    group : str or Grouper
         Grouping on the output.
         e.g. For 'time.month', the relative frequency would be calculated on each month, with all years included.
 
@@ -1231,7 +1232,7 @@ def _trend(
     ----------
     da : xr.DataArray
         Variable on which to calculate the diagnostic.
-    group : {'time', 'time.season', 'time.month'}
+    group : str or Grouper
         Grouping on the output.
     output : {'slope', 'intercept', 'rvalue', 'pvalue', 'stderr', 'intercept_stderr'}
         The attributes of the linear regression to return, as defined in scipy.stats.linregress:
@@ -1312,7 +1313,7 @@ def _return_value(
     method : {"ML", "PWM"}
         Fitting method, either maximum likelihood (ML) or probability weighted moments (PWM), also called L-Moments.
         The PWM method is usually more robust to outliers.
-    group : {'time', 'time.season', 'time.month'}
+    group : str or Grouper
         Grouping of the output. A distribution of the extremes is done for each group.
 
     Returns
@@ -1649,6 +1650,11 @@ def _spectral_variance(
         Nominal resolution of the grid. It should be a string with units.
     group: xr.Coordinate | str | None = "time"
         Useless for now # FIXME: this needs to be clarified.
+
+    Returns
+    -------
+    xr.DataArray
+        Spectral variance.
 
     Notes
     -----
