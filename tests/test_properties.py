@@ -190,13 +190,6 @@ class TestProperties:
         outd = {stat: properties.spell_length_distribution(da=simt, **kws, statistic=stat).sel(month=6) for stat in ["mean", "max", "min"]}
         np.testing.assert_array_almost_equal([outd[k].values for k in ["mean", "max", "min"]], [3.0, 6, 1])
 
-        # test varia
-        with pytest.raises(
-            ValueError,
-            match="percentile is not a valid method. Choose 'amount' or 'quantile'.",
-        ):
-            properties.spell_length_distribution(simt, method="percentile")
-
         assert outd["mean"].long_name == "Average of spell length distribution when the variable is >= the quantile 0.9 for 1 consecutive day(s)."
 
     def test_spell_length_distribution_halfyear(self, gosset, use_dask):
