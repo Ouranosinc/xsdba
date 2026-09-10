@@ -1133,7 +1133,7 @@ def _relative_frequency(
     mask = ~(da.isel({group.dim: 0}).isnull()).drop_vars(group.dim)
     allowed_conditions = [">", "<", ">=", "<="]
     if condition not in allowed_conditions:
-        raise ValueError(f"`op` must be in {allowed_conditions}, but {condition} was given.")
+        raise ValueError(f"`condition` must be in {allowed_conditions}, but {condition} was given.")
 
     t = convert_units_to(thresh, da)
     length = da.sizes[group.dim]
@@ -1296,7 +1296,7 @@ def _return_value(
     Return value.
 
     Return the value corresponding to a return period. On average, the return value will be exceeded
-    (or not exceed for op='min') every return period (e.g. 20 years). The return value is computed by first extracting
+    (or not exceed for statistic='min') every return period (e.g. 20 years). The return value is computed by first extracting
     the variable annual maxima/minima, fitting a statistical distribution to the maxima/minima,
     then estimating the percentile associated with the return period (eg. 95th percentile (1/20) for 20 years)
 
@@ -1305,7 +1305,7 @@ def _return_value(
     da : xr.DataArray
         Variable on which to calculate the diagnostic.
     period : int
-        Return period. Number of years over which to check if the value is exceeded (or not for op='min').
+        Return period. Number of years over which to check if the value is exceeded (or not for statistic='min').
     statistic : {'max','min'}
         Whether we are looking for a probability of exceedance ('max', right side of the distribution)
         or a probability of non-exceedance (min, left side of the distribution).
