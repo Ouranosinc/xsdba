@@ -20,8 +20,6 @@ from xsdba.calendar import add_gen_season_coord, get_gen_seasons, parse_offset
 
 
 # TODO : Redistributes some functions in existing/new scripts
-
-
 # ## Base class for the sdba module
 class Parametrizable(UserDict):
     """
