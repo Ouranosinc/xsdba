@@ -9,7 +9,6 @@ from collections import UserDict
 from collections.abc import Callable, Sequence
 from inspect import _empty, signature
 
-import cftime
 import dask.array as dsk
 import jsonpickle
 import numpy as np
@@ -18,10 +17,19 @@ import xarray as xr
 from boltons.funcutils import wraps
 from xarray.core import dtypes
 
+from xsdba.calendar import (
+    _MONTHS,
+    _MONTHS_NUMBERS,
+    _month_is_first_period_month,
+    add_gen_season_coord,
+    construct_offset,
+    get_gen_seasons,
+    parse_offset,
+    uniform_calendars,
+)
+
 
 # TODO : Redistributes some functions in existing/new scripts
-
-
 # ## Base class for the sdba module
 class Parametrizable(UserDict):
     """
@@ -100,21 +108,6 @@ class ParametrizableWithDataset(Parametrizable):
         self.ds.attrs[self._attribute] = jsonpickle.encode(self)
 
 
-# XC: calendar
-# TODO: remove this and use `ds[self.dim].dt.days_in_year.max().item()` when minimum xarray is 2024.09
-max_doy = {
-    "standard": 366,
-    "gregorian": 366,
-    "proleptic_gregorian": 366,
-    "julian": 366,
-    "noleap": 365,
-    "365_day": 365,
-    "all_leap": 366,
-    "366_day": 366,
-    "360_day": 360,
-}
-
-
 class Grouper(Parametrizable):
     """Grouper inherited class for parameterizable classes."""
 
@@ -124,6 +117,7 @@ class Grouper(Parametrizable):
     PROP = "<PROP>"
     DIM = "<DIM>"
     ADD_DIMS = "<ADD_DIMS>"
+    _GENSEASON_PROPS = [f"QS-{m}" for m in _MONTHS] + [f"2QS-{m}" for m in _MONTHS]
 
     def __init__(
         self,
@@ -158,6 +152,22 @@ class Grouper(Parametrizable):
             dim, prop = group.split(".")
         else:
             dim, prop = group, "group"
+        freq = (
+            {
+                "group": "YS",
+                "season": "QS-DEC",
+                "month": "MS",
+                "week": "W",
+                "dayofyear": "D",
+            }
+            | {k: k for k in self._GENSEASON_PROPS}
+        ).get(prop, None)
+
+        if prop in self._GENSEASON_PROPS:
+            if window > 1:
+                raise NotImplementedError(f"A window greater than 1 is not support with prop {prop}.")
+            prop = "gen_season"
+
         # TODO : Remove this special workaround
         # This will only work with MBCn
         if group == "5D":
@@ -172,6 +182,7 @@ class Grouper(Parametrizable):
             prop=prop,
             name=group,
             window=window,
+            freq=freq,
         )
 
     @classmethod
@@ -183,21 +194,6 @@ class Grouper(Parametrizable):
             add_dims=kwargs.pop("add_dims", []),
         )
         return kwargs
-
-    @property
-    def freq(self):
-        """
-        Format a frequency string corresponding to the group.
-
-        For use with xarray's resampling functions.
-        """
-        return {
-            "group": "YS",
-            "season": "QS-DEC",
-            "month": "MS",
-            "week": "W",
-            "dayofyear": "D",
-        }.get(self.prop, None)
 
     @property
     def prop_name(self):
@@ -216,11 +212,11 @@ class Grouper(Parametrizable):
             return xr.DataArray(np.arange(1, 13), dims=("month",), name="month")
         if self.prop == "season":
             return xr.DataArray(["DJF", "MAM", "JJA", "SON"], dims=("season",), name="season")
+        if self.prop == "gen_season":
+            return xr.DataArray(get_gen_seasons(self.freq), dims=("gen_season",), name="gen_season")
         if self.prop == "dayofyear":
             if ds is not None:
-                cal = ds.time.dt.calendar
-                # TODO : Change this to `ds[self.dim].dt.days_in_year.max().item()` when minimum xarray is 2024.09
-                mdoy = max_doy[cal]
+                mdoy = ds[self.dim].dt.days_in_year.max().item()
             else:
                 mdoy = 365
             return xr.DataArray(np.arange(1, mdoy + 1), dims="dayofyear", name="dayofyear")
@@ -266,9 +262,11 @@ class Grouper(Parametrizable):
 
         if self.prop == "group":
             group = self.get_index(da)
+        elif self.prop == "gen_season":
+            group = "gen_season"
+            da = add_gen_season_coord(da, self.freq)
         else:
             group = self.name
-
         return da.groupby(group)
 
     def get_index(
@@ -310,12 +308,18 @@ class Grouper(Parametrizable):
                 i = ind.month - 0.5 + ind.day / ind.days_in_month
 
             elif self.prop == "season":
-                calendar = ind.calendar if hasattr(ind, "calendar") else "standard"
-                length_year = 360 if calendar == "360_day" else 365 + (0 if calendar == "noleap" else ind.is_leap_year)
+                cal = ind.calendar if hasattr(ind, "calendar") else "standard"
+                length_year = 360 if cal == "360_day" else 365 + (0 if cal == "noleap" else ind.is_leap_year)
                 # This is assuming that seasons have the same length. The factor 1/6 comes from the fact that
                 # the first season is shifted by 1 month the but the middle of the season is shifted in the other direction
                 # by half a month so -(1/12-1/24)*4 = -1/6
-                i = ind.dayofyear / length_year * 4 - 1 / 6
+                i = ind.dayofyear / length_year * 4 - (1 / 3) / 2
+            elif self.prop == "gen_season":
+                mult, _, _, anchor = parse_offset(self.freq)
+                length_year = 360 if cal == "360_day" else 365 + (0 if cal == "noleap" else ind.is_leap_year)
+                ngroups = 12 // (3 * mult)
+                lgroup = 12 // ngroups
+                i = ind.dayofyear / length_year * ngroups - (1 / lgroup) / 2
             elif self.prop == "dayofyear":
                 i = ind.dayofyear
             else:
@@ -325,6 +329,10 @@ class Grouper(Parametrizable):
                 i = da[self.dim].copy(data=ind.isocalendar().week).astype(int)
             elif self.prop == "season":
                 i = da[self.dim].copy(data=ind.month % 12 // 3)
+            elif self.prop == "gen_season":
+                mult, _, _, anchor = parse_offset(self.freq)
+                months = ind.month - (_MONTHS_NUMBERS[anchor] - 1)
+                i = da[self.dim].copy(data=months % 12 // (3 * mult))
             else:
                 i = getattr(ind, self.prop)
 
@@ -344,11 +352,12 @@ class Grouper(Parametrizable):
         xi.name = self.prop
         return xi
 
-    def apply(
+    def apply(  # noqa: C901
         self,
         func: Callable | str,
         da: xr.DataArray | dict[str, xr.DataArray] | xr.Dataset,
         main_only: bool = False,
+        input_dims: bool = True,
         **kwargs,
     ) -> xr.DataArray | xr.Dataset:
         r"""
@@ -367,6 +376,8 @@ class Grouper(Parametrizable):
             (if False, default) (including the window and dimensions given through `add_dims`).
             The dimensions used are also written in the "group_compute_dims" attribute.
             If all the input arrays are missing one of the 'add_dims', it is silently omitted.
+        input_dims: bool
+            Whether to add `dims` in the callable arguments.
         **kwargs
             Other keyword arguments to pass to the function.
 
@@ -414,10 +425,13 @@ class Grouper(Parametrizable):
             if self.window > 1:
                 dims += ["window"]
 
+        map_kwargs = {**kwargs}
+        if input_dims:
+            map_kwargs["dim"] = dims
         if isinstance(func, str):
-            out = getattr(grpd, func)(dim=dims, **kwargs)
+            out = getattr(grpd, func)(**map_kwargs)
         else:
-            out = grpd.map(func, dim=dims, **kwargs)
+            out = grpd.map(func, **map_kwargs)
 
         # Case where the function wants to return more than one variable.
         # and that some have grouped dims and other have the same dimensions as the input.
@@ -450,6 +464,13 @@ class Grouper(Parametrizable):
             # Special case for "DIM.season", it is often returned in alphabetical order,
             # but that doesn't fit the coord given in get_coordinate
             out = out.sel(season=np.array(["DJF", "MAM", "JJA", "SON"]))
+        if self.prop == "gen_season" and self.prop in out.coords:
+            # Special case for "DIM.gen_season"
+            order = self.get_coordinate().values
+            if "gen_season" in out.dims:
+                out = out.sel(gen_season=order)
+            else:
+                out = out.sortby("gen_season")
         if self.prop in out.dims and uses_dask(out):
             # Same as above : downstream methods expect only one chunk along the group
             out = out.chunk({self.prop: -1})
@@ -931,48 +952,6 @@ def _interpolate_doy_calendar(source: xr.DataArray, doy_max: int, doy_min: int =
     return filled_na.interp(dayofyear=range(doy_min, doy_max + 1))
 
 
-# XC: calendar
-def parse_offset(freq: str) -> tuple[int, str, bool, str | None]:
-    """
-    Parse an offset string.
-
-    Parse a frequency offset and, if needed, convert to cftime-compatible components.
-
-    Parameters
-    ----------
-    freq : str
-        Frequency offset.
-
-    Returns
-    -------
-    multiplier : int
-        Multiplier of the base frequency. "[n]W" is always replaced with "[7n]D",
-        as xarray doesn't support "W" for cftime indexes.
-    offset_base : str
-        Base frequency.
-    is_start_anchored : bool
-        Whether coordinates of this frequency should correspond to the beginning of the period (`True`)
-        or its end (`False`). Can only be False when base is Y, Q or M; in other words, xsdba assumes frequencies finer
-        than monthly are all start-anchored.
-    anchor : str, optional
-        Anchor date for bases Y or Q. As xarray doesn't support "W",
-        neither does xsdba (anchor information is lost when given).
-    """
-    # Useful to raise on invalid freqs, convert Y to A and get default anchor (A, Q)
-    offset = pd.tseries.frequencies.to_offset(freq)
-    base, *anchor = offset.name.split("-")
-    anchor = anchor[0] if len(anchor) > 0 else None
-    start = ("S" in base) or (base[0] not in "AYQM")
-    if base.endswith("S") or base.endswith("E"):
-        base = base[:-1]
-    mult = offset.n
-    if base == "W":
-        mult = 7 * mult
-        base = "D"
-        anchor = None
-    return mult, base, start, anchor
-
-
 # XC : calendar
 def compare_offsets(freqA: str, op: str, freqB: str) -> bool:
     """
@@ -1010,60 +989,6 @@ def compare_offsets(freqA: str, op: str, freqB: str) -> bool:
     # else Same base freq, compare multiplier only.
 
     return get_op(op)(t_a, t_b)
-
-
-# XC: calendar
-def construct_offset(mult: int, base: str, start_anchored: bool, anchor: str | None):
-    """
-    Reconstruct an offset string from its parts.
-
-    Parameters
-    ----------
-    mult : int
-        The period multiplier (>= 1).
-    base : str
-        The base period string (one char).
-    start_anchored : bool
-        If True and base in [Y, Q, M], adds the "S" flag, False add "E".
-    anchor : str, optional
-        The month anchor of the offset. Defaults to JAN for bases YS and QS and to DEC for bases YE and QE.
-
-    Returns
-    -------
-    str
-        An offset string, conformant to pandas-like naming conventions.
-
-    Notes
-    -----
-    This provides the mirror opposite functionality of :py:func:`parse_offset`.
-    """
-    start = ("S" if start_anchored else "E") if base in "YAQM" else ""
-    if anchor is None and base in "AQY":
-        anchor = "JAN" if start_anchored else "DEC"
-    return f"{mult if mult > 1 else ''}{base}{start}{'-' if anchor else ''}{anchor or ''}"
-
-
-# XC: calendar
-# Names of calendars that have the same number of days for all years
-uniform_calendars = ("noleap", "all_leap", "365_day", "366_day", "360_day")
-
-
-# XC: calendar
-def _month_is_first_period_month(time, freq):
-    """Return True if the given time is from the first month of freq."""
-    if isinstance(time, cftime.datetime):
-        frq_monthly = xr.coding.cftime_offsets.to_offset("MS")
-        frq = xr.coding.cftime_offsets.to_offset(freq)
-        if frq_monthly.onOffset(time):
-            return frq.onOffset(time)
-        return frq.onOffset(frq_monthly.rollback(time))
-    # Pandas
-    time = pd.Timestamp(time)
-    frq_monthly = pd.tseries.frequencies.to_offset("MS")
-    frq = pd.tseries.frequencies.to_offset(freq)
-    if frq_monthly.is_on_offset(time):
-        return frq.is_on_offset(time)
-    return frq.is_on_offset(frq_monthly.rollback(time))
 
 
 # XC: calendar
