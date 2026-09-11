@@ -20,7 +20,8 @@ import xclim.compute.run_length as rl
 from scipy import stats
 from scipy.fft import dctn
 from statsmodels.tsa import stattools
-from xclim.compute.generic import compare, percentile, statistics, thresholded_percentile, thresholded_running_statistics
+from xclim import set_options as xc_set_options
+from xclim.compute.generic import compare, percentile, statistics, thresholded_percentile, thresholded_running_statistics, thresholded_statistics
 from xclim.compute.stats import fit, parametric_quantile
 from xclim.core.indicator import Indicator, base_registry
 
@@ -37,6 +38,10 @@ from xsdba.units import (
     units2pint,
 )
 from xsdba.utils import _pairwise_spearman, copy_all_attrs
+
+
+# TODO: follow xclim conventions (work with datasets by default)?
+xc_set_options(as_dataset=False)
 
 
 class StatisticalProperty(Indicator):
@@ -114,9 +119,19 @@ class StatisticalProperty(Indicator):
 base_registry["StatisticalProperty"] = StatisticalProperty
 
 
+# def add_dim_arg(func, da, dim, **kwargs):
+#     if dim != "time":
+#         raise ValueError("The dimension to be reduced should be 'time'.")
+#     return func(da, **kwargs)
+
+# @parse_group
+# def _statistics(da: xr.DataArray, statistic: str, *, group: str | Grouper = "time") -> xr.DataArray:
+#     return group.apply(partial(add_dim_arg, statistics), da, **{"statistic": statistic, "freq": None})
+
+
 @parse_group
 def _statistics(da: xr.DataArray, statistic: str, *, group: str | Grouper = "time") -> xr.DataArray:
-    return group.apply(statistics, da, **{"statistic": statistic, "freq": None})
+    return group.apply(statistics, da, **{"statistic": statistic, "freq": None}, input_dims=False)
 
 
 @parse_group
@@ -124,7 +139,7 @@ def _thresholded_statistics(
     da: xr.DataArray, statistic: str, thresh: Quantified, condition: str, *, constrain: Sequence[str] | None = None, group: str | Grouper = "time"
 ) -> xr.DataArray:
     func_kwargs = {"statistic": statistic, "thresh": thresh, "condition": condition, "constrain": constrain, "freq": None}
-    return group.apply(statistics, da, **func_kwargs)
+    return group.apply(thresholded_statistics, da, **func_kwargs, input_dims=False)
 
 
 @parse_group
@@ -153,6 +168,7 @@ def _thresholded_running_statistics(
             "constrain": constrain,
             "freq": None,
         },
+        input_dims=False,
     )
 
 
@@ -280,7 +296,7 @@ def _quantile(da: xr.DataArray, *, q: float = 0.98, group: str | Grouper = "time
     xr.DataArray, [same as input]
         Quantile {q} of the variable.
     """
-    return group.apply(percentile, da, per=100 * q, freq=None)
+    return group.apply(percentile, da, per=100 * q, freq=None, input_dims=False)
 
 
 quantile = StatisticalProperty(identifier="quantile", aspect="marginal", compute=_quantile)
@@ -315,7 +331,7 @@ def _thresholded_quantile(
         Quantile {q} of the thresholded variable.
     """
     map_kwargs = {"condition": condition, "thresh": thresh, "per": 100 * q, "freq": None, "constrain": [">", "<", ">=", "<="]}
-    return group.apply(thresholded_percentile, da, **map_kwargs)
+    return group.apply(thresholded_percentile, da, input_dims=False, **map_kwargs)
 
 
 thresholded_quantile = StatisticalProperty(identifier="thresholded_quantile", aspect="marginal", compute=_thresholded_quantile)

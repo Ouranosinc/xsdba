@@ -357,6 +357,7 @@ class Grouper(Parametrizable):
         func: Callable | str,
         da: xr.DataArray | dict[str, xr.DataArray] | xr.Dataset,
         main_only: bool = False,
+        input_dims: bool = True,
         **kwargs,
     ) -> xr.DataArray | xr.Dataset:
         r"""
@@ -375,6 +376,8 @@ class Grouper(Parametrizable):
             (if False, default) (including the window and dimensions given through `add_dims`).
             The dimensions used are also written in the "group_compute_dims" attribute.
             If all the input arrays are missing one of the 'add_dims', it is silently omitted.
+        input_dims: bool
+            Whether to add `dims` in the callable arguments.
         **kwargs
             Other keyword arguments to pass to the function.
 
@@ -422,7 +425,9 @@ class Grouper(Parametrizable):
             if self.window > 1:
                 dims += ["window"]
 
-        map_kwargs = {"dim": dims, **kwargs}
+        map_kwargs = {**kwargs}
+        if input_dims:
+            map_kwargs["dim"] = dims
         if isinstance(func, str):
             out = getattr(grpd, func)(**map_kwargs)
         else:
