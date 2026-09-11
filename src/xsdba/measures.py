@@ -151,7 +151,7 @@ def _bias(sim: xr.DataArray, ref: xr.DataArray) -> xr.DataArray:
     Returns
     -------
     xr.DataArray, [same as ref]
-      Bias.
+      Absolute Bias.
     """
     out = sim - ref
     out.attrs.update(pint2cfattrs(units2pint(ref.attrs["units"]), is_difference=True))
