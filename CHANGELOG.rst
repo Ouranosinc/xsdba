@@ -9,7 +9,7 @@ Contributors: Gabriel Rondeau-Genesse (:user:`RondeauG`), Éric Dupuis (:user:`c
 
 Fixes
 ^^^^^
-* ``xsdba.measures.circular_bias`` was fixed, previous version had the wrong signs in some cases. (:issue:`307`, :pull:`308`).
+* ``xsdba.measures.circular_bias`` was fixed, the previous implementation gave the wrong sign in some cases. (:issue:`307`, :pull:`308`).
 
 .. _changes_0.7.0:
 
