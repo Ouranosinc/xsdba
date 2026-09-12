@@ -995,7 +995,7 @@ def _pairwise_spearman(da, dims):
         data_nonan = data_noallnan[:, ~mask_skip]
 
         # spearmanr doesn't work for 0 or 1 variable
-        if data_nonan.shape[0] == 0 or data_nonan.shape[0] == 1:
+        if data_nonan.shape[0] in [0, 1]:
             return np.full((data.shape[0], data.shape[0]), fill_value=np.nan)
 
         # We still have a possibility that a nan was unique to a variable and time.
