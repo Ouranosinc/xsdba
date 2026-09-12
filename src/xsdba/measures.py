@@ -205,9 +205,7 @@ def _circular_bias(sim: xr.DataArray, ref: xr.DataArray) -> xr.DataArray:
     xr.DataArray, [days]
       Circular bias.
     """
-    out = (sim - ref) % 365
-    out = out.where(out <= 365 / 2, 365 - out)  # when condition false, replace by 2nd arg
-    out = out.where(ref >= sim, out * -1)  # when condition false, replace by 2nd arg
+    out = ((sim - ref + 365 / 2) % 365) - 365 / 2
     return out.assign_attrs(units="days")
 
 
