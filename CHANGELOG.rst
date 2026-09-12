@@ -10,6 +10,7 @@ Contributors: Gabriel Rondeau-Genesse (:user:`RondeauG`), Éric Dupuis (:user:`c
 Fixes
 ^^^^^
 * ``xsdba.measures.circular_bias`` was fixed, the previous implementation gave the wrong sign in some cases. (:issue:`307`, :pull:`308`).
+* Fix handling of cases including nan values in ``xsdba.properties.decorrelation_length`` and ``xsdba.properties.spatial_correlogram``. (:pull:`308`).
 
 .. _changes_0.7.0:
 
