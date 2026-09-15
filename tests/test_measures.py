@@ -25,7 +25,7 @@ def test_circular_bias():
     sim = xr.DataArray(data=np.array([1, 1, 1, 2, 365, 300]), attrs={"units": "", "long_name": "test"})
     ref = xr.DataArray(data=np.array([2, 365, 300, 1, 1, 1]), attrs={"units": "", "long_name": "test"})
     test = measures.circular_bias(sim, ref).values
-    np.testing.assert_array_almost_equal(test, [1, 1, 66, -1, -1, -66])
+    np.testing.assert_array_almost_equal(test, [-1, 1, 66, 1, -1, -66])
 
 
 def test_ratio(gosset):

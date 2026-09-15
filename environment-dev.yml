@@ -14,7 +14,7 @@ dependencies:
 - numpy >=1.26.0
 - pandas >=2.2
 - pint>=0.24.4
-- scipy >=1.11.0
+- scipy>=1.11.0,<1.18 # TODO: remove when SBCK fixed
 - statsmodels >=0.14.2
 - typer >=0.16.0
 - xarray >=2023.11.0
