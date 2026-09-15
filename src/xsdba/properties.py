@@ -1309,7 +1309,7 @@ return_value = StatisticalProperty(identifier="return_value", aspect="temporal",
 
 def _bin_correlations(corr, distance, edges):
     """Bin and mean."""
-    mask_nan = ~np.isnan(corr)
+    mask_nan = (~np.isnan(corr)) & (~np.isnan(distance))
     if mask_nan.any():
         binned_corr = stats.binned_statistic(distance[mask_nan], corr[mask_nan], statistic="mean", bins=edges)
         stat = binned_corr.statistic
