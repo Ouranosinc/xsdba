@@ -994,6 +994,10 @@ def _pairwise_spearman(da, dims):
         # Remove those times (they'll be omitted anyway)
         data_nonan = data_noallnan[:, ~mask_skip]
 
+        # spearmanr doesn't work for 0 or 1 variable
+        if data_nonan.shape[0] <= 1:
+            return np.full((data.shape[0], data.shape[0]), fill_value=np.nan)
+
         # We still have a possibility that a nan was unique to a variable and time.
         # If this is the case, it will be a lot longer, but what can we do.
         coef = spearmanr(data_nonan, axis=1, nan_policy="omit").statistic

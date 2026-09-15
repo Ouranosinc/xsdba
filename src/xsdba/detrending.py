@@ -53,7 +53,7 @@ class BaseDetrend(ParametrizableWithDataset):
 
     @property
     def fitted(self) -> bool:
-        """Report whether instance is fitted."""
+        """Whether instance is fitted."""
         return hasattr(self, "ds")
 
     def fit(self, da: xr.DataArray):
