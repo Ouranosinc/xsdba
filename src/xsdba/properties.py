@@ -63,7 +63,7 @@ class StatisticalProperty(Indicator):
     aspect = None
     """The aspect the statistical property studies: marginal, temporal, multivariate or spatial."""
 
-    measure = "xsdba.measures.BIAS"
+    measure = "bias"
     """The default measure to use when comparing the properties of two datasets.
     This gives the registry id. See :py:meth:`get_measure`."""
 
