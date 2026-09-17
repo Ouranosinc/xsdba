@@ -460,17 +460,16 @@ class Grouper(Parametrizable):
                 # or -1 in case dim_chunks is [], when no input is chunked
                 # (only happens if the operation is chunking the output)
                 out = out.chunk({self.dim: dim_chunks or -1})
+
+        ordered_coords = self.get_coordinate().values
         if self.prop == "season" and self.prop in out.coords:
             # Special case for "DIM.season", it is often returned in alphabetical order,
             # but that doesn't fit the coord given in get_coordinate
-            out = out.sel(season=np.array(["DJF", "MAM", "JJA", "SON"]))
+            out = out.sel(season=[s for s in ordered_coords if s in out.season.values])
+
         if self.prop == "gen_season" and self.prop in out.coords:
             # Special case for "DIM.gen_season"
-            order = self.get_coordinate().values
-            if "gen_season" in out.dims:
-                out = out.sel(gen_season=order)
-            else:
-                out = out.sortby("gen_season")
+            out = out.sel(gen_season=[s for s in ordered_coords if s in out.gen_season.values])
         if self.prop in out.dims and uses_dask(out):
             # Same as above : downstream methods expect only one chunk along the group
             out = out.chunk({self.prop: -1})
