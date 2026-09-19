@@ -40,10 +40,6 @@ from xsdba.units import (
 from xsdba.utils import _pairwise_spearman, copy_all_attrs
 
 
-# TODO: follow xclim conventions (work with datasets by default)?
-xc_set_options(as_dataset=False)
-
-
 class StatisticalProperty(Indicator):
     """
     Base indicator class for statistical properties used for validating bias-adjusted outputs.
@@ -72,6 +68,11 @@ class StatisticalProperty(Indicator):
     The latter stands for no temporal grouping."""
 
     realm = "generic"
+
+    def __call__(self, *args, **kwargs):
+        """Overridden Indicator call to avoid dataset output."""
+        with xc_set_options(as_dataset=False):
+            return super().__call__(*args, **kwargs)
 
     @classmethod
     def _ensure_correct_parameters(cls, parameters):
@@ -117,16 +118,6 @@ class StatisticalProperty(Indicator):
 
 
 base_registry["StatisticalProperty"] = StatisticalProperty
-
-
-# def add_dim_arg(func, da, dim, **kwargs):
-#     if dim != "time":
-#         raise ValueError("The dimension to be reduced should be 'time'.")
-#     return func(da, **kwargs)
-
-# @parse_group
-# def _statistics(da: xr.DataArray, statistic: str, *, group: str | Grouper = "time") -> xr.DataArray:
-#     return group.apply(partial(add_dim_arg, statistics), da, **{"statistic": statistic, "freq": None})
 
 
 @parse_group

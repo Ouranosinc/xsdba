@@ -210,6 +210,8 @@ class Grouper(Parametrizable):
         """
         if self.prop == "month":
             return xr.DataArray(np.arange(1, 13), dims=("month",), name="month")
+        if self.prop == "week":
+            return xr.DataArray(np.arange(1, 52 + 1), dims=("week",), name="week")
         if self.prop == "season":
             return xr.DataArray(["DJF", "MAM", "JJA", "SON"], dims=("season",), name="season")
         if self.prop == "gen_season":
