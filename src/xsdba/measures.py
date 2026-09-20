@@ -15,6 +15,7 @@ from collections.abc import Sequence
 
 import numpy as np
 import xarray as xr
+from xclim import set_options as xc_set_options
 from xclim.core.indicator import Indicator, base_registry
 
 from xsdba.base import Grouper
@@ -37,6 +38,11 @@ class StatisticalMeasure(Indicator):
     """
 
     realm = "generic"
+
+    def __call__(self, *args, **kwargs):
+        """Overridden Indicator call to avoid dataset output."""
+        with xc_set_options(as_dataset=False):
+            return super().__call__(*args, **kwargs)
 
     @classmethod
     def _ensure_correct_parameters(cls, parameters):
@@ -89,6 +95,11 @@ class StatisticalPropertyMeasure(Indicator):
     The latter stands for no temporal grouping."""
 
     realm = "generic"
+
+    def __call__(self, *args, **kwargs):
+        """Overridden Indicator call to avoid dataset output."""
+        with xc_set_options(as_dataset=False):
+            return super().__call__(*args, **kwargs)
 
     @classmethod
     def _ensure_correct_parameters(cls, parameters):
