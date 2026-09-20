@@ -11,6 +11,7 @@ Changes
 ^^^^^^^
 * New property: ``xsdba.properties.thresholded_quantile``. (:pull:`304`).
 * Make ``xsdba.properties`` compatible with `xclim-v1`.  (:pull:`304`).
+* New groups that generalize seasons (season starting at any possible month, or with a duration of six months can now be given in properties and measures. (:pull:`304`).
 
 Fixes
 ^^^^^
