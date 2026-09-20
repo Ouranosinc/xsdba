@@ -1220,6 +1220,43 @@ class TestMBCn:
         # 'does it run' test
         p.load()
 
+    @pytest.mark.parametrize("use_dask", [True, False])
+    @pytest.mark.parametrize("group, window", [["time", 1], ["time.dayofyear", 31], ["5D", 7]])
+    @pytest.mark.parametrize("period_dim", [None, "period"])
+    def test_sim_with_unequal_times(self, use_dask, group, window, period_dim, gosset):
+        group, window, period_dim, use_dask = "time", 1, None, False
+        if use_dask:
+            chunks = {"location": -1}
+        else:
+            chunks = None
+        ref, dsim = (
+            xr.open_dataset(
+                gosset.fetch(f"sdba/{file}"),
+                chunks=chunks,
+                drop_variables=["lat", "lon"],
+            )
+            .isel(location=1, drop=True)
+            .expand_dims(location=["Amos"])
+            for file in ["ahccd_1950-2013.nc", "CanESM2_1950-2100.nc"]
+        )
+        water_density_inverse = "1e-03 m^3/kg"
+        dsim["pr"] = convert_units_to(pint_multiply(dsim.pr, water_density_inverse), ref.pr)
+        ref, hist = (ds.sel(time=slice("1981", "2010")).isel(time=slice(365 * 4)) for ds in [ref, dsim])
+        dsim = dsim.sel(time=slice("1981", None))
+        sim = (stack_periods(dsim).isel(period=slice(1, 2))).isel(time=slice(365 * 3))
+
+        ref, hist, sim = (stack_variables(ds) for ds in [ref, hist, sim])
+
+        MBCN = MBCn.train(
+            ref,
+            hist,
+            base_kws=dict(nquantiles=50, group=Grouper(group, window)),
+            adj_kws=dict(interp="linear"),
+        )
+        p = MBCN.adjust(sim=sim, ref=ref, hist=hist, period_dim=period_dim)
+        # 'does it run' test
+        p.load()
+
 
 class TestPrincipalComponents:
     @pytest.mark.parametrize("group", (Grouper("time.month"), Grouper("time", add_dims=["lon"])))
