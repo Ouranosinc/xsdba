@@ -1835,14 +1835,9 @@ class MBCn(TrainAdjust):
         pts_dim: str = "multivar",
         rot_matrices: xr.DataArray | None = None,
     ):
-        # set default values for non-specified parameters
-        base_kws = base_kws if base_kws is not None else {}
-        adj_kws = adj_kws if adj_kws is not None else {}
-        base_kws.setdefault("nquantiles", 20)
-        base_kws.setdefault("group", Grouper("time", 1))
-        adj_kws.setdefault("interp", "nearest")
-        adj_kws.setdefault("extrapolation", "constant")
 
+        base_kws = {"nquantiles": 20, "group": Grouper("time", 1)} | (base_kws or {})
+        adj_kws = {"interp": "nearest", "extrapolation": "constant"} | (adj_kws or {})
         if np.isscalar(base_kws["nquantiles"]):
             base_kws["nquantiles"] = equally_spaced_nodes(base_kws["nquantiles"])
         if isinstance(base_kws["group"], str):
@@ -1931,26 +1926,13 @@ class MBCn(TrainAdjust):
                 else:
                     units = self.train_units
 
-                if "jitter_under_thresh_value" in base_kws_vars[v]:
-                    base_kws_vars[v]["jitter_under_thresh_value"] = str(
-                        convert_units_to(
-                            base_kws_vars[v]["jitter_under_thresh_value"],
-                            units[v],
-                        )
-                    )
-                if "adapt_freq_thresh" in base_kws_vars[v]:
-                    base_kws_vars[v]["adapt_freq_thresh"] = str(
-                        convert_units_to(
-                            base_kws_vars[v]["adapt_freq_thresh"],
-                            units[v],
-                        )
-                    )
-
-        adj_kws = adj_kws or {}
-        adj_kws.setdefault("interp", self.interp)
-        adj_kws.setdefault("extrapolation", self.extrapolation)
+                for key in ("jitter_under_thresh_value", "adapt_freq_thresh"):
+                    if key in base_kws_vars[v]:
+                        base_kws_vars[v][key] = str(convert_units_to(base_kws_vars[v][key], units[v]))
+        adj_kws = {"interp": self.interp, "extrapolation": self.extrapolation} | (adj_kws or {})
 
         g_idxs, gw_idxs = grouped_time_indexes(ref.time, self.group)
+        g_idxs_sim, gw_idxs_sim = grouped_time_indexes(sim.time, self.group)
         ds = self.ds.copy()
 
         # adjust (adjust for npft transform, train/adjust for univariate bias correction)
@@ -1958,8 +1940,9 @@ class MBCn(TrainAdjust):
             ref=ref,
             hist=hist,
             sim=sim,
-            g_idxs=g_idxs,
             gw_idxs=gw_idxs,
+            g_idxs_sim=g_idxs_sim,
+            gw_idxs_sim=gw_idxs_sim,
             ds=ds,
             pts_dims=self.pts_dims,
             interp=self.interp,
