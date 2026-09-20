@@ -66,7 +66,6 @@ class StatisticalProperty(Indicator):
     allowed_groups = None
     """A list of allowed groupings. A subset of dayofyear, week, month, season or group.
     The latter stands for no temporal grouping."""
-
     realm = "generic"
 
     def __call__(self, *args, **kwargs):
