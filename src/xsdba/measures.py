@@ -51,6 +51,13 @@ class StatisticalMeasure(Indicator):
             raise ValueError(f"{cls.__name__} requires 'sim' and 'ref' as inputs. Got {inputs}.")
         return super()._ensure_correct_parameters(parameters)
 
+    @classmethod
+    def _ensure_correct_outputs(cls, outputs, identifier):
+        outputs = super()._ensure_correct_outputs(outputs, identifier)
+        for output in outputs:
+            output.attrs.setdefault("measure", identifier)
+        return outputs
+
     def _preprocess_and_checks(self, das, params, meta):
         """Perform parent's checks and also check convert units so that sim matches ref."""
         das, params, meta = super()._preprocess_and_checks(das, params, meta)
@@ -113,6 +120,14 @@ class StatisticalPropertyMeasure(Indicator):
             )
 
         return super()._ensure_correct_parameters(parameters)
+
+    @classmethod
+    def _ensure_correct_outputs(cls, outputs, identifier):
+        outputs = super()._ensure_correct_outputs(outputs, identifier)
+        for output in outputs:
+            output.attrs.setdefault("measure", identifier)
+            output.attrs.setdefault("property", identifier)
+        return outputs
 
     def _preprocess_and_checks(self, das, params, meta):
         """Perform parent's checks and also check convert units so that sim matches ref."""

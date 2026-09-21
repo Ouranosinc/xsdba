@@ -81,6 +81,13 @@ class StatisticalProperty(Indicator):
             )
         return super()._ensure_correct_parameters(parameters)
 
+    @classmethod
+    def _ensure_correct_outputs(cls, outputs, identifier):
+        outputs = super()._ensure_correct_outputs(outputs, identifier)
+        for output in outputs:
+            output.attrs.setdefault("property", identifier)
+        return outputs
+
     def _preprocess_and_checks(self, das, params, meta):
         """Perform parent's checks and also check if group is allowed."""
         das, params, meta = super()._preprocess_and_checks(das, params, meta)
