@@ -76,7 +76,11 @@ jobs:
         run: |
           python -m flit build
 
-      - name: Publish distribution 📦 to Test PyPI
+      - name: Validate Distribution Metadata
+        run: |
+          python -m twine check dist/*
+
+      - name: Publish Distribution 📦 to Test PyPI
         uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
         with:
           repository-url: https://test.pypi.org/legacy/
