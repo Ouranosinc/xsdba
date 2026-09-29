@@ -10,8 +10,9 @@ from xsdba import measures
 def test_bias(gosset):
     sim = xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc")).sel(time="1950-01-01").tasmax
     ref = xr.open_dataset(gosset.fetch("sdba/nrcan_1950-2013.nc")).sel(time="1950-01-01").tasmax
-    test = measures.bias(sim, ref).values
-    np.testing.assert_array_almost_equal(test, np.array([[6.430237, 39.088974, 5.2402344]]))
+    test = measures.bias(sim, ref)
+    assert test.attrs["measure"] == "bias"
+    np.testing.assert_array_almost_equal(test.values, np.array([[6.430237, 39.088974, 5.2402344]]))
 
 
 def test_relative_bias(gosset):
@@ -38,8 +39,10 @@ def test_ratio(gosset):
 def test_rmse(gosset):
     sim = xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc")).sel(time=slice("1950", "1953")).tasmax
     ref = xr.open_dataset(gosset.fetch("sdba/nrcan_1950-2013.nc")).sel(time=slice("1950", "1953")).tasmax
-    test = measures.rmse(sim, ref).values
-    np.testing.assert_array_almost_equal(test, [5.4499755, 18.124086, 12.387193], 4)
+    test = measures.rmse(sim, ref)
+    assert test.attrs["measure"] == "rmse"
+    assert test.attrs["property"] == "rmse"
+    np.testing.assert_array_almost_equal(test.values, [5.4499755, 18.124086, 12.387193], 4)
 
 
 def test_rmse_nan(timeseries):

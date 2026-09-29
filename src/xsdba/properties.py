@@ -40,10 +40,6 @@ from xsdba.units import (
 from xsdba.utils import _pairwise_spearman, copy_all_attrs
 
 
-# TODO: follow xclim conventions (work with datasets by default)?
-xc_set_options(as_dataset=False)
-
-
 class StatisticalProperty(Indicator):
     """
     Base indicator class for statistical properties used for validating bias-adjusted outputs.
@@ -63,15 +59,19 @@ class StatisticalProperty(Indicator):
     aspect = None
     """The aspect the statistical property studies: marginal, temporal, multivariate or spatial."""
 
-    measure = "xsdba.measures.BIAS"
+    measure = "bias"
     """The default measure to use when comparing the properties of two datasets.
     This gives the registry id. See :py:meth:`get_measure`."""
 
     allowed_groups = None
     """A list of allowed groupings. A subset of dayofyear, week, month, season or group.
     The latter stands for no temporal grouping."""
-
     realm = "generic"
+
+    def __call__(self, *args, **kwargs):
+        """Overridden Indicator call to avoid dataset output."""
+        with xc_set_options(as_dataset=False):
+            return super().__call__(*args, **kwargs)
 
     @classmethod
     def _ensure_correct_parameters(cls, parameters):
@@ -80,6 +80,13 @@ class StatisticalProperty(Indicator):
                 f"{cls.__name__} require a 'group' argument, use the base Indicator class if your computation doesn't perform any regrouping."
             )
         return super()._ensure_correct_parameters(parameters)
+
+    @classmethod
+    def _ensure_correct_outputs(cls, outputs, identifier):
+        outputs = super()._ensure_correct_outputs(outputs, identifier)
+        for output in outputs:
+            output.attrs.setdefault("property", identifier)
+        return outputs
 
     def _preprocess_and_checks(self, das, params, meta):
         """Perform parent's checks and also check if group is allowed."""
@@ -117,16 +124,6 @@ class StatisticalProperty(Indicator):
 
 
 base_registry["StatisticalProperty"] = StatisticalProperty
-
-
-# def add_dim_arg(func, da, dim, **kwargs):
-#     if dim != "time":
-#         raise ValueError("The dimension to be reduced should be 'time'.")
-#     return func(da, **kwargs)
-
-# @parse_group
-# def _statistics(da: xr.DataArray, statistic: str, *, group: str | Grouper = "time") -> xr.DataArray:
-#     return group.apply(partial(add_dim_arg, statistics), da, **{"statistic": statistic, "freq": None})
 
 
 @parse_group

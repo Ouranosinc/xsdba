@@ -15,6 +15,7 @@ from collections.abc import Sequence
 
 import numpy as np
 import xarray as xr
+from xclim import set_options as xc_set_options
 from xclim.core.indicator import Indicator, base_registry
 
 from xsdba.base import Grouper
@@ -38,12 +39,24 @@ class StatisticalMeasure(Indicator):
 
     realm = "generic"
 
+    def __call__(self, *args, **kwargs):
+        """Overridden Indicator call to avoid dataset output."""
+        with xc_set_options(as_dataset=False):
+            return super().__call__(*args, **kwargs)
+
     @classmethod
     def _ensure_correct_parameters(cls, parameters):
         inputs = {k for k, p in parameters.items() if p.kind == InputKind.VARIABLE}
         if not inputs.issuperset({"sim", "ref"}):
             raise ValueError(f"{cls.__name__} requires 'sim' and 'ref' as inputs. Got {inputs}.")
         return super()._ensure_correct_parameters(parameters)
+
+    @classmethod
+    def _ensure_correct_outputs(cls, outputs, identifier):
+        outputs = super()._ensure_correct_outputs(outputs, identifier)
+        for output in outputs:
+            output.attrs.setdefault("measure", identifier)
+        return outputs
 
     def _preprocess_and_checks(self, das, params, meta):
         """Perform parent's checks and also check convert units so that sim matches ref."""
@@ -90,6 +103,11 @@ class StatisticalPropertyMeasure(Indicator):
 
     realm = "generic"
 
+    def __call__(self, *args, **kwargs):
+        """Overridden Indicator call to avoid dataset output."""
+        with xc_set_options(as_dataset=False):
+            return super().__call__(*args, **kwargs)
+
     @classmethod
     def _ensure_correct_parameters(cls, parameters):
         inputs = {k for k, p in parameters.items() if p.kind == InputKind.VARIABLE}
@@ -102,6 +120,14 @@ class StatisticalPropertyMeasure(Indicator):
             )
 
         return super()._ensure_correct_parameters(parameters)
+
+    @classmethod
+    def _ensure_correct_outputs(cls, outputs, identifier):
+        outputs = super()._ensure_correct_outputs(outputs, identifier)
+        for output in outputs:
+            output.attrs.setdefault("measure", identifier)
+            output.attrs.setdefault("property", identifier)
+        return outputs
 
     def _preprocess_and_checks(self, das, params, meta):
         """Perform parent's checks and also check convert units so that sim matches ref."""
