@@ -33,6 +33,7 @@ class TestProperties:
             [4.6115547e-05, 2.8805329e-05, 1.7220482e-05, 2.825359e-05],
         )
         assert out_season.long_name.startswith("Mean")
+        assert out_year.attrs["property"] == "mean"
 
     def test_mean_halfyear(self, gosset, use_dask):
         sim = (
