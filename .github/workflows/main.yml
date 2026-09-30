@@ -129,7 +129,7 @@ jobs:
       matrix:
         os: [ "ubuntu-latest" ]
         python-version: [ "3.11", "3.12", "3.13" ]
-        xclim-pre: false
+        xclim-pre: [ false ]
         include:
           - os: "ubuntu-latest"
             python-version: "3.14"
