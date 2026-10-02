@@ -15,6 +15,7 @@ from collections.abc import Sequence
 
 import numpy as np
 import xarray as xr
+from xclim import set_options as xc_set_options
 from xclim.core.indicator import Indicator, base_registry
 
 from xsdba.base import Grouper
@@ -38,6 +39,11 @@ class StatisticalMeasure(Indicator):
 
     realm = "generic"
 
+    def __call__(self, *args, **kwargs):
+        """Overridden Indicator call to avoid dataset output."""
+        with xc_set_options(as_dataset=False):
+            return super().__call__(*args, **kwargs)
+
     @classmethod
     def _ensure_correct_parameters(cls, parameters):
         inputs = {k for k, p in parameters.items() if p.kind == InputKind.VARIABLE}
@@ -45,9 +51,16 @@ class StatisticalMeasure(Indicator):
             raise ValueError(f"{cls.__name__} requires 'sim' and 'ref' as inputs. Got {inputs}.")
         return super()._ensure_correct_parameters(parameters)
 
-    def _preprocess_and_checks(self, das, params):
+    @classmethod
+    def _ensure_correct_outputs(cls, outputs, identifier):
+        outputs = super()._ensure_correct_outputs(outputs, identifier)
+        for output in outputs:
+            output.attrs.setdefault("measure", identifier)
+        return outputs
+
+    def _preprocess_and_checks(self, das, params, meta):
         """Perform parent's checks and also check convert units so that sim matches ref."""
-        das, params = super()._preprocess_and_checks(das, params)
+        das, params, meta = super()._preprocess_and_checks(das, params, meta)
 
         # Convert grouping and check if allowed:
         das["sim"] = convert_units_to(das["sim"], das["ref"])
@@ -59,7 +72,7 @@ class StatisticalMeasure(Indicator):
         for dim in set(sim.dims).union(ref.dims):
             if [sim[dim].size, ref[dim].size] != [newsim[dim].size, newref[dim].size]:
                 raise ValueError(f"Common dimension {dim} has different coordinates between ref and sim.")
-        return das, params
+        return das, params, meta
 
 
 class StatisticalPropertyMeasure(Indicator):
@@ -90,6 +103,11 @@ class StatisticalPropertyMeasure(Indicator):
 
     realm = "generic"
 
+    def __call__(self, *args, **kwargs):
+        """Overridden Indicator call to avoid dataset output."""
+        with xc_set_options(as_dataset=False):
+            return super().__call__(*args, **kwargs)
+
     @classmethod
     def _ensure_correct_parameters(cls, parameters):
         inputs = {k for k, p in parameters.items() if p.kind == InputKind.VARIABLE}
@@ -103,9 +121,17 @@ class StatisticalPropertyMeasure(Indicator):
 
         return super()._ensure_correct_parameters(parameters)
 
-    def _preprocess_and_checks(self, das, params):
+    @classmethod
+    def _ensure_correct_outputs(cls, outputs, identifier):
+        outputs = super()._ensure_correct_outputs(outputs, identifier)
+        for output in outputs:
+            output.attrs.setdefault("measure", identifier)
+            output.attrs.setdefault("property", identifier)
+        return outputs
+
+    def _preprocess_and_checks(self, das, params, meta):
         """Perform parent's checks and also check convert units so that sim matches ref."""
-        das, params = super()._preprocess_and_checks(das, params)
+        das, params, meta = super()._preprocess_and_checks(das, params, meta)
         das["sim"] = convert_units_to(das["sim"], das["ref"])
         # Convert grouping and check if allowed:
         if isinstance(params["group"], str):
@@ -118,17 +144,17 @@ class StatisticalPropertyMeasure(Indicator):
                     f"{self.identifier} (needs something in "
                     f"{list(map(lambda g: '<dim>.' + g.replace('group', ''), self.allowed_groups))})."
                 )
-        return das, params
+        return das, params, meta
 
-    def _postprocess(self, outs, das, params):
+    def _postprocess(self, outs, das, params, meta):
         """Squeeze `group` dim if needed."""
-        outs = super()._postprocess(outs, das, params)
+        outs, meta = super()._postprocess(outs, das, params, meta)
 
         for ii, out in enumerate(outs):
             if "group" in out.dims:
                 outs[ii] = out.squeeze("group", drop=True)
 
-        return outs
+        return outs, meta
 
 
 base_registry["StatisticalMeasure"] = StatisticalMeasure
