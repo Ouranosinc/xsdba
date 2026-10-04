@@ -859,8 +859,6 @@ def cdft_adjust(
         The interpolation method to use.
     extrapolation : str
         The extrapolation method to use.
-    detrend : int | PolyDetrend
-        The degree of the polynomial detrending to apply. If 0, no detrending is applied.
     adapt_freq_thresh : str, optional
         Threshold for frequency adaptation. See :py:class:`xsdba.processing.adapt_freq` for details.
         Default is None, meaning that frequency adaptation is not performed.
@@ -878,26 +876,32 @@ def cdft_adjust(
             dim=None,
         ).sim
 
-    sim_q = group.apply(u.rank, ds.sim, main_only=True, pct=True)
+    # F_{Mf}(x)
+    sim_r = group.apply(u.rank, ds.sim, main_only=True, pct=True)
 
-    ref0 = u.interp_on_quantiles(
-        sim_q,
+    # F_{Mh}^{-1}(F_{Mf}(x))
+    hist0 = u.interp_on_quantiles(
+        sim_r,
         ds.quantiles,
+        # ds.hist_q,
         ds.ref_q,
         group=group,
         method=interp,
         extrapolation=extrapolation,
     )
-
+    # F_{Oh}(F_{Mh}^{-1}(F_{Mf}(x)))
     q0 = u.interp_on_quantiles(
-        ref0,
+        hist0,
         ds.hist_q,
+        # ds.ref_q,
         ds.quantiles,
         group=group,
         method=interp,
         extrapolation=extrapolation,
     )
-
+    # Invert with F_{Mf}???
+    sim_q = group.apply(nbu.quantile, ds.sim, q=ds.quantiles.values)
+    # sim_q = group.apply(nbu.quantile, ds.sim, q=ds.quantiles.values)
     scen = u.interp_on_quantiles(
         q0,
         ds.quantiles,
@@ -907,7 +911,7 @@ def cdft_adjust(
         extrapolation=extrapolation,
     )
 
-    return xr.Dataset({"scen": scen, "sim_q": sim_q})
+    return xr.Dataset({"scen": scen, "sim_q": sim_r})
 
 
 @map_blocks(

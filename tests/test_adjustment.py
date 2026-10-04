@@ -12,6 +12,7 @@ from xsdba.adjustment import (
     LOCI,
     OTC,
     BaseAdjustment,
+    CDFt,
     DetrendedQuantileMapping,
     EmpiricalQuantileMapping,
     ExtremeValues,
@@ -232,6 +233,87 @@ class TestScaling:
         assert "lon" not in scaling.ds
         p = scaling.adjust(sim)
         np.testing.assert_allclose(p.isel(lon=0).transpose(*ref.dims), ref, rtol=1e-2)
+
+
+@pytest.mark.slow
+class TestCDFt:
+    @pytest.mark.parametrize("kind,units", [(ADDITIVE, "K"), (MULTIPLICATIVE, "kg m-2 s-1")])
+    def test_quantiles(self, timelonlatseries, kind, units, random):
+        """
+        Train on
+        hist: U
+        ref: Normal
+
+        Predict on hist to get ref
+        """
+        ns = 10000
+        u = random.random(ns)
+
+        # Define distributions
+        xd = uniform(loc=10, scale=1)
+        yd = norm(loc=12, scale=1)
+
+        # Generate random numbers with u so we get exact results for comparison
+        x = xd.ppf(u)
+        y = yd.ppf(u)
+
+        # Test train
+        attrs = {"units": units, "kind": kind}
+
+        hist = sim = timelonlatseries(x, attrs=attrs)
+        ref = timelonlatseries(y, attrs=attrs)
+
+        group = Grouper("time")
+        myCDFt = CDFt.train(ref, hist, group=group, nquantiles=50)
+        out = myCDFt.adjust(sim)
+        out.load()
+        # out = xa._adjustment.cdft_train(ds,group=group, quantiles = np.array([0.25,0.5,0.75]))
+        # out['sim'] = hist
+        # out = xa._adjustment.cdft_adjust(out,group=group, interp='nearest', extrapolation='constant')
+
+        # DQM = DetrendedQuantileMapping.train(
+        #     ref,
+        #     hist,
+        #     kind=kind,
+        #     group="time",
+        #     nquantiles=50,
+        # )
+        # p = DQM.adjust(sim, interp="linear")
+
+        # q = DQM.ds.quantiles
+        # ex = apply_correction(xd.ppf(q), invert(xd.mean(), kind), kind)
+        # ey = apply_correction(yd.ppf(q), invert(yd.mean(), kind), kind)
+        # expected = get_correction(ex, ey, kind)
+
+        # # Results are not so good at the endpoints
+        # np.testing.assert_array_almost_equal(DQM.ds.af[:, 2:-2], expected[np.newaxis, 2:-2], 1)
+
+        # # Test predict
+        # # Accept discrepancies near extremes
+        # middle = (x > 1e-2) * (x < 0.99)
+        # np.testing.assert_array_almost_equal(p[middle], ref[middle], 1)
+
+        # # PB 13-01-21 : This seems the same as the next test.
+        # # Test with sim not equal to hist
+        # # ff = series(np.ones(ns) * 1.1, name)
+        # # sim2 = apply_correction(sim, ff, kind)
+        # # ref2 = apply_correction(ref, ff, kind)
+
+        # # p2 = DQM.adjust(sim2, interp="linear")
+
+        # # np.testing.assert_array_almost_equal(p2[middle], ref2[middle], 1)
+
+        # # Test with actual trend in sim
+        # attrs = {"units": units, "kind": kind}
+
+        # trend = timelonlatseries(
+        #     np.linspace(-0.2, 0.2, ns) + (1 if kind == MULTIPLICATIVE else 0),
+        #     attrs=attrs,
+        # )
+        # sim3 = apply_correction(sim, trend, kind)
+        # ref3 = apply_correction(ref, trend, kind)
+        # p3 = DQM.adjust(sim3, interp="linear")
+        # np.testing.assert_array_almost_equal(p3[middle], ref3[middle], 1)
 
 
 @pytest.mark.slow

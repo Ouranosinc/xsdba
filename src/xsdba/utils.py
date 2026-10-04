@@ -6,7 +6,7 @@ Testing Utilities for xsdba
 from __future__ import annotations
 import itertools
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Literal
 from warnings import warn
 
 import bottleneck as bn
@@ -14,7 +14,7 @@ import numpy as np
 import xarray as xr
 from boltons.funcutils import wraps
 from dask import array as dsk
-from scipy.interpolate import griddata, interp1d
+from scipy.interpolate import RegularGridInterpolator, interp1d
 from scipy.spatial import distance
 from scipy.stats import spearmanr
 from xarray.core.utils import get_temp_dimname
@@ -25,7 +25,6 @@ from xsdba.base import (
     ensure_chunk_size,
     parse_group,
 )
-from xsdba.nbutils import _extrapolate_on_quantiles
 
 
 MULTIPLICATIVE = "*"
@@ -364,6 +363,8 @@ def _interp_on_quantiles_1D(newx, oldx, oldy, method, extrap):  # noqa: N802
             oldy[~np.isnan(oldy)][0],
             oldy[~np.isnan(oldy)][-1],
         )
+    elif extrap == "extrapolate":
+        fill_value = "extrapolate"
     else:  # extrap == 'nan'
         fill_value = np.nan
 
@@ -382,22 +383,61 @@ def _interp_on_quantiles_2d(newx, newg, oldx, oldy, oldg, method, extrap):
     mask_old = np.isnan(oldy) | np.isnan(oldx) | np.isnan(oldg)
     out = np.full_like(newx, np.nan, dtype=f"float{oldy.dtype.itemsize * 8}")
     if np.all(mask_new) or np.all(mask_old):
-        warn(
-            "All-nan slice encountered in interp_on_quantiles",
-            category=RuntimeWarning,
-            stacklevel=2,
-        )
+        warn("All-nan slice encountered in interp_on_quantiles", category=RuntimeWarning, stacklevel=2)
         return out
-    out[~mask_new] = griddata(
-        (oldx[~mask_old], oldg[~mask_old]),
-        oldy[~mask_old],
-        (newx[~mask_new], newg[~mask_new]),
-        method=method,
+
+    valid_cols = ~np.any(mask_old, axis=0)
+    valid_rows = ~np.any(mask_old, axis=1)
+
+    x_axis = oldx[0, valid_cols]
+    g_axis = oldg[valid_rows, 0]
+    values = oldy[np.ix_(valid_rows, valid_cols)]
+    # import pdb; pdb.set_trace()
+
+    interp = RegularGridInterpolator(
+        (g_axis, x_axis),
+        values,
+        method="linear",
+        bounds_error=False,
+        fill_value=None if extrap == "extrapolate" else np.nan,
     )
-    if method == "nearest" or extrap != "nan":
-        # 'nan' extrapolation implicit for cubic and linear interpolation.
-        out = _extrapolate_on_quantiles(out, oldx, oldg, oldy, newx, newg, extrap)
+
+    query_pts = np.stack([newg[~mask_new], newx[~mask_new]], axis=-1)
+    out[~mask_new] = interp(query_pts)
     return out
+
+    # mask_new = np.isnan(newx) | np.isnan(newg)
+    # mask_old = np.isnan(oldy) | np.isnan(oldx) | np.isnan(oldg)
+    # out = np.full_like(newx, np.nan, dtype=f"float{oldy.dtype.itemsize * 8}")
+    # if np.all(mask_new) or np.all(mask_old):
+    #     warn(
+    #         "All-nan slice encountered in interp_on_quantiles",
+    #         category=RuntimeWarning,
+    #         stacklevel=2,
+    #     )
+    #     return out
+    # out[~mask_new] = griddata(
+    #     (oldx[~mask_old], oldg[~mask_old]),
+    #     oldy[~mask_old],
+    #     (newx[~mask_new], newg[~mask_new]),
+    #     method=method,
+    #     fill_value = "extrapolate" if extrap =="extrapolate" else "nan"
+    # )
+    # interp = RegularGridInterpolator(
+    #     (oldx[~mask_old], oldg[~mask_old][0, :]),
+    #     oldy[~mask_old],
+    #     method="linear",
+    #     bounds_error=False,
+    #     fill_value=None,  # None → linear extrapolation instead of NaN
+    # )
+    # query_pts = np.stack([newx[~mask_new].ravel(), newg[~mask_new].ravel()], axis=-1)
+    # out = interp(query_pts).reshape(newx.shape)
+    # # result = interp
+
+    # if method == "nearest" or extrap == "constant":
+    #     # 'nan' extrapolation implicit for cubic and linear interpolation.
+    #     out = _extrapolate_on_quantiles(out, oldx, oldg, oldy, newx, newg, extrap)
+    # return out
 
 
 SEASON_MAP = {"DJF": 0, "MAM": 1, "JJA": 2, "SON": 3}
@@ -412,8 +452,8 @@ def interp_on_quantiles(
     yq: xr.DataArray,
     *,
     group: str | Grouper = "time",
-    method: str = "linear",
-    extrapolation: str = "constant",
+    method: Literal["nearest", "linear", "cubic"] = "nearest",
+    extrapolation: Literal["nan", "constant", "extrapolate"] = "constant",
 ):
     """
     Interpolate values of yq on new values of x.
