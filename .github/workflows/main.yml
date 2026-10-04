@@ -30,7 +30,7 @@ jobs:
         python-version: [ "3.14" ]
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@20cf305ff2072d973412fa9b1e3a4f227bda3c76 # v2.14.0
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
         with:
           disable-sudo: true
           egress-policy: block
@@ -39,11 +39,11 @@ jobs:
             github.com:443
             pypi.org:443
       - name: Checkout Repository
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Set up Python${{ matrix.python-version }}
-        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: ${{ matrix.python-version }}
           cache: "pip"
@@ -51,40 +51,53 @@ jobs:
         run: |
           python -m pip install --require-hashes -r CI/requirements_ci.txt
       - name: Environment Caching
-        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
-           .tox
-          key: ${{ hashFiles('pyproject.toml', 'tox.ini') }}-lint
+            .tox
+          key: ${{ hashFiles('pyproject.toml', 'tox.toml') }}-lint
       - name: Run linting suite
         run: |
           python -m tox -e lint
 
   test-pypi:
-    name: Test with Python${{ matrix.python-version }} (tox, ${{ matrix.os }})
+    name: Test with Python${{ matrix.python-version }} (tox, ${{ matrix.os }}, eigen3=${{ matrix.eigen3 }})
     needs: lint
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ 'ubuntu-latest' ]
-        python-version: [ "3.10", "3.11", "3.12", "3.13", "3.14" ]
+        os: [ "ubuntu-latest" ]
+        python-version: [ "3.11", "3.12", "3.13" ]
+        eigen3: [ false ]
+        xclim-pre: [ false ]
+        include:
+          - os: "ubuntu-latest"
+            python-version: "3.12"
+            eigen3: true
+            xclim-pre: false
+          - os: "ubuntu-latest"
+            python-version: "3.14"
+            eigen3: false
+            xclim-pre: true
+    env:
+      XCLIM_UPSTREAM: true # Enabled for all builds; passed to tox
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@20cf305ff2072d973412fa9b1e3a4f227bda3c76 # v2.14.0
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
         with:
           disable-sudo: false
           egress-policy: audit
       - name: Checkout Repository
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Install Eigen3 (SBCK)
-        if: ${{ matrix.python-version == '3.11' && matrix.os == 'ubuntu-latest' }}
+        if: ${{ matrix.eigen3 }}
         run: |
           sudo apt-get update
           sudo apt-get install libeigen3-dev
       - name: Set up Python${{ matrix.python-version }}
-        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: ${{ matrix.python-version }}
           cache: "pip"
@@ -92,18 +105,21 @@ jobs:
         run: |
           python -m pip install --require-hashes -r CI/requirements_ci.txt
       - name: Environment Caching
-        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .tox
-          key: ${{ matrix.os }}-Python${{ matrix.python-version }}-${{ hashFiles('pyproject.toml', 'tox.ini') }}
+          key: ${{ matrix.os }}-Python${{ matrix.python-version }}-${{ hashFiles('pyproject.toml', 'tox.toml') }}
       - name: Test with tox
         run: |
           python -m tox
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          COVERALLS_FLAG_NAME: run-${{ matrix.python-version }}
-          COVERALLS_PARALLEL: true
-          COVERALLS_SERVICE_NAME: github
+          EIGEN3: ${{ matrix.eigen3 }}
+          XCLIM_PRE: ${{ matrix.xclim-pre }}
+      - name: Report Coverage
+        uses: coverallsapp/github-action@8d6379e14d29928660c4ba802d8e85393440b329 # v2.3.8
+        with:
+          flag-name: run-${{ matrix.python-version }}-pypi-eigen=${{ matrix.eigen3 }}
+          parallel: true
 
   test-conda:
     name: Test with Python${{ matrix.python-version }} (Anaconda, ${{ matrix.os }})
@@ -111,23 +127,30 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ 'ubuntu-latest' ]
-        python-version: [ "3.10", "3.11", "3.12", "3.13", "3.14" ]
+        os: [ "ubuntu-latest" ]
+        python-version: [ "3.11", "3.12", "3.13" ]
+        xclim-pre: [ false ]
+        include:
+          - os: "ubuntu-latest"
+            python-version: "3.14"
+            xclim-pre: true
+    env:
+      XCLIM_UPSTREAM: true # FIXME: Remove when xclim v1.0 is released
     defaults:
       run:
         shell: bash -l {0}
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@20cf305ff2072d973412fa9b1e3a4f227bda3c76 # v2.14.0
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
         with:
           disable-sudo: true
           egress-policy: audit
       - name: Checkout Repository
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Setup Conda (Micromamba) with Python${{ matrix.python-version }}
-        uses: mamba-org/setup-micromamba@add3a49764cedee8ee24e82dfde87f5bc2914462 # v2.0.7
+        uses: mamba-org/setup-micromamba@f457c30a868e4760d3a6fcea5f25dc655b8edf39 # v3.2.1
         with:
           cache-downloads: true
           cache-environment: true
@@ -140,9 +163,17 @@ jobs:
         run: |
           mamba install -y -c conda-forge eigen3
           python -m pip install --require-hashes -r CI/requirements_sbck.txt
+      - name: Install xclim@main
+        if: ${{ matrix.xclim-pre }}
+        run: |
+          python -m pip install --no-user --pre xclim
+      - name: Install xclim@main
+        if: ${{ env.XCLIM_UPSTREAM }}
+        run: |
+          python -m pip install --no-user "xclim @ git+https://github.com/Ouranosinc/xclim.git@main"
       - name: Install xsdba
         run: |
-          python -m pip install --no-deps .
+          python -m pip install --no-deps --no-user .
       - name: Check versions
         run: |
           micromamba list
@@ -151,7 +182,7 @@ jobs:
         run: |
           python -m pytest --numprocesses=logical --durations=10 --cov=xsdba --cov-report=lcov
       - name: Report Coverage
-        uses: coverallsapp/github-action@648a8eb78e6d50909eff900e4ec85cab4524a45b # v2.3.6
+        uses: coverallsapp/github-action@8d6379e14d29928660c4ba802d8e85393440b329 # v2.3.8
         with:
           flag-name: run-Python${{ matrix.python-version }}-conda
           parallel: true
@@ -164,11 +195,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@20cf305ff2072d973412fa9b1e3a4f227bda3c76 # v2.14.0
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
         with:
           disable-sudo: true
           egress-policy: audit
       - name: Coveralls Finished
-        uses: coverallsapp/github-action@648a8eb78e6d50909eff900e4ec85cab4524a45b # v2.3.6
+        uses: coverallsapp/github-action@8d6379e14d29928660c4ba802d8e85393440b329 # v2.3.8
         with:
           parallel-finished: true

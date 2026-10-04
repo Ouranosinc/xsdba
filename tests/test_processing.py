@@ -174,14 +174,14 @@ def test_adapt_freq_add_dims(use_dask, random):
     )
 
     if use_dask:
-        pr = pr.chunk()
+        pr = pr.chunk({"lat": -1})
     group = Grouper("time.month", add_dims=["lat"])
     with xr.set_options(keep_attrs=True):
         prsim = xr.where(pr < 20, pr / 20, pr)
         prref = xr.where(pr < 10, pr / 20, pr)
     sim_ad, pth, _dP0 = adapt_freq(prref, prsim, thresh="1 mm d-1", group=group)
     assert set(sim_ad.dims) == set(prsim.dims)
-    assert "lat" not in pth.dims
+    assert "lat" in pth.dims
 
     group = Grouper("time.dayofyear", window=5)
     with xr.set_options(keep_attrs=True):
@@ -475,9 +475,10 @@ class TestSpectralUtils:
         # using the default filter
         tx_filt = spectral_filter(
             tx,
+            dims=["lon", "lat"],
             lam_long=None,
             lam_short=None,
-            dims=["lon", "lat"],
+            delta=None,
             alpha_low_high=[0.9, 0.99],  # dummy value
         ).isel(lon=0)
         # performing dctn & idctn has a small inherent imprecision
@@ -494,17 +495,18 @@ class TestSpectralUtils:
         # using the default filter
         tx_filt_al = spectral_filter(
             tx,
+            dims=["lon", "lat"],
             lam_long=None,
             lam_short=None,
-            dims=["lon", "lat"],
+            delta=None,
             alpha_low_high=[0.9, 0.99],  # dummy value
         )
         tx_filt_lam = spectral_filter(
             tx,
+            dims=["lon", "lat"],
             lam_long=f"{2 / 0.9} km",
             lam_short=f"{2 / 0.99} km",
             delta="1 km",
-            dims=["lon", "lat"],
         )
         # performing dctn & idctn has a small inherent imprecision
         np.testing.assert_allclose(tx_filt_al.values, tx_filt_lam.values, rtol=1e-5)
@@ -519,16 +521,17 @@ class TestSpectralUtils:
         tx = ds.tasmax.isel(time=0).sel(lat=slice(50, 47), lon=slice(-80, -74))
         tx_filt = spectral_filter(
             tx,
+            dims=["lon", "lat"],
             lam_long=None,
             lam_short=None,
-            dims=["lon", "lat"],
+            delta=None,
             alpha_low_high=[0.9, 0.99],  # dummy value
             mask_func=lambda da, _1, _2: 0 * da + 1,  # identity function, mask =1
         )
         # performing dctn & idctn has a small inherent imprecision
         np.testing.assert_allclose(tx.values, tx_filt.values, rtol=1e-5)
 
-    def test_spectral_filter_everthing(self, gosset):
+    def test_spectral_filter_everything(self, gosset):
         ds = xr.open_dataset(
             gosset.fetch("NRCANdaily/nrcan_canada_daily_tasmax_1990.nc"),
             engine="h5netcdf",
@@ -536,9 +539,10 @@ class TestSpectralUtils:
         tx = ds.tasmax.isel(time=0).sel(lat=slice(50, 47), lon=slice(-80, -74))
         tx_filt = spectral_filter(
             tx,
+            dims=["lon", "lat"],
             lam_long=None,
             lam_short=None,
-            dims=["lon", "lat"],
+            delta=None,
             alpha_low_high=[0.9, 0.99],  # dummy value
             mask_func=lambda da, _1, _2: 0 * da,  # mask =0
         )

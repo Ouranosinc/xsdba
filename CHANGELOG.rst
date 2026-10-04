@@ -5,35 +5,137 @@ Changelog
 `Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
 ------------------------------------------------------------
 
-Contributors: Éric Dupuis (:user:`coxipi`), Trevor James Smith (:user:`Zeitsperre`), Pascal Bourgault (:user:`aulemahal`), Juliette Lavoie (:user: `juliettelavoie`).
+Contributors: Gabriel Rondeau-Genesse (:user:`RondeauG`), Éric Dupuis (:user:`coxipi`).
+
+Changes
+^^^^^^^
+* New property: ``xsdba.properties.thresholded_quantile``. (:pull:`304`).
+* Make ``xsdba.properties`` compatible with `xclim-v1`.  (:pull:`304`).
+* New groups that generalize seasons (season starting at any possible month, or with a duration of six months can now be given in properties and measures. (:pull:`304`).
+
+Fixes
+^^^^^
+* ``xsdba.measures.circular_bias`` was fixed, the previous implementation gave the wrong sign in some cases. (:issue:`307`, :pull:`308`).
+* Fix handling of cases including nan values in ``xsdba.properties.decorrelation_length`` and ``xsdba.properties.spatial_correlogram``. (:pull:`308`).
+
+Breaking changes
+^^^^^^^^^^^^^^^^
+* Many arguments name in ``xsdba.properties`` have been changed to reflect the nomenclature in `xclim-v1`. This includes changes where `op` is either renamed as `statistic` or `condition`, depending on the context.  (:pull:`304`).
+
+Internal changes
+^^^^^^^^^^^^^^^^
+* `scipy` is pinned below 1.18 as ``scipy.stats.rankdata`` with method "max" now outputs float instead of int. The pin will be removed when the problem is handled upstream in SBCK. (:pull:`308`)
+
+
+.. _changes_0.7.0:
+
+`v0.7.0 <https://github.com/Ouranosinc/xsdba/tree/0.7.0>`_ (2026-06-16)
+-----------------------------------------------------------------------
+
+Contributors: Gabriel Rondeau-Genesse (:user:`RondeauG`), Pascal Bourgault (:user:`aulemahal`), Éric Dupuis (:user:`coxipi`), Juliette Lavoie (:user:`juliettelavoie`), Trevor James Smith (:user:`Zeitsperre`).
+
+Changes
+^^^^^^^
+* Add ``max_tail_factor`` arg  to quantile mapping functions. (:pull:`279`, :issue:`278`).
+* Add ``mult_skip_zeros`` to detrending classes. (:pull:`279`, :issue:`289`).
+* New example in notebook `advanced_example.ipynb` showing how to use spectral utils (``xsdba.processing.spectral_filter`` and ``xsdba.properties.spectral_variance``). (:issue:`247`, :pull:`259`, :pull:`282`).
+* `QuantileDeltaMapping.adjust` now allows using training grouper by setting `rank_window` to `True`. (:issue:`287`, :pull:`288`).
+* ``xsdba.utils.rank`` accepts a new argument: `random_tiebreaking`. If set to `True`, equal values are now ranked with distinct ranks. (:issue:`182`, :pull:`183`).
+
+Breaking changes
+^^^^^^^^^^^^^^^^
+* Default values for `frac` and `power` in ``xsdba.adjustment.ExtremeValues`` have been changed to '0.7' and '3', respectively. (:pull:`262`).
+* The order of the arguments has been reorganized in ``xsdba.processing.spectral_filter``.  (:pull:`259`).
+* `delta` is no longer computed automatically from the `lat` or `rlat` field in ``xsdba.processing.spectral_filter``.  (:pull:`259`).
+
+Fixes
+^^^^^
+* Fixed property ``return_value`` and ``decorrelation_length`` for `dask` inputs. (:issue:`266`, :pull:`267`).
+* Fix `adapt_freq` processing in training when ``xsdba.Grouper`` uses `add_dims`. (:issue:`182`, :pull:`183`, :pull:`291`).
+
+Internal changes
+^^^^^^^^^^^^^^^^
+* Updated the cookiecutter template to the latest version. (:pull:`276`):
+    * Migrated developement-based `optional-dependencies` to `dependency-groups`.
+    * Sets token-based workflows to run within an `automation` environment.
+    * Updated and synchornized dependencies.
+    * `pre-commit` has been replaced by `prek`.
+    * `Makefile` now handles some dependency installation logic.
+    * `tox.ini` has been replaced by `tox.toml` with v4.52.0 standards.
+* Documentation adjustments. (:pull:`283`):
+    * Added an acknowledgement statement about Ouranos to the `README.rst` and the rendered documentation.
+    * Added the Ouranos logo with light/dark theme support for `furo`.
+    * Added an `intersphinx` mapping for `xarray` objects.
+* `xsdba` now has guidance documents on acceptable usages of AI and the expected methods of AI usage disclosure. See the documentation for more details. (:pull:`293`).
+* Fast-forwarded the cookiecutter with the latest changes. (:pull:`293`):
+    * Adjusted the permissions for some workflows to address security issues.
+    * Added the new "standard" AI disclosure guidance for code contributions.
+    * Updated the ReadTheDocs configuration to use newer OS and conda images.
+    * Modified ``make servedocs`` to use `sphinx-autobuild` (``make livehtml``).
+    * Added guidance for maintainers on git commit signing and immutable releases.
+    * Adjusted the source distribution inclusion/exclusion list.
+    * Set `bump-my-version` to sign tags by default.
+
+.. _changes_0.6.1:
+
+`v0.6.1 <https://github.com/Ouranosinc/xsdba/tree/0.6.1>`_ (2026-03-03)
+-----------------------------------------------------------------------
+
+Contributors: Éric Dupuis (:user:`coxipi`), Trevor James Smith (:user:`Zeitsperre`).
+
+Changes
+^^^^^^^
+* Development dependencies now follow the `dependency-groups` standard (`PEP 735 <https://peps.python.org/pep-0735/>`_). (:pull:`276`).
+
+Fixes
+^^^^^
+* Replace deprecated `numpy.in1d` call with `numpy.isin`. (:issue:`260`, :pull:`261`).
+
+Internal changes
+^^^^^^^^^^^^^^^^
+* Updated pre-commit hooks and ignored `ruff` rule ``D420`` due to a bug in its implementation. (:pull:`263`).
+
+.. _changes_0.6.0:
+
+`v0.6.0 <https://github.com/Ouranosinc/xsdba/tree/0.6.0>`_ (2026-02-11)
+-----------------------------------------------------------------------
+
+Contributors: Éric Dupuis (:user:`coxipi`), Trevor James Smith (:user:`Zeitsperre`), Pascal Bourgault (:user:`aulemahal`), Juliette Lavoie (:user:`juliettelavoie`).
 
 Changes
 ^^^^^^^
 * `numpy` >=1.26 and `numba` >=0.58.1 are now required. (:pull:`231`).
-* `xsdba` now officially supports Python 3.14 and `pandas` v3.0+. (:issue:`251`, ::pull:`252`).
+* `xsdba` now officially supports Python 3.14 and `pandas` >=3.0. (:issue:`251`, ::pull:`252`).
+* ``xsdba.processing.to_additive_space`` option `clip_next_to_bounds` was changed to an optional string with modes: "strict"  and "permissive".
+  The "permissive" mode allows to reduce a larger range of a variable `[lower-a, upper+b]` to a smaller range `]lower, upper[`.
+  The strict mode only allows to change closed bounds `[lower, upper]` to open bounds  `]lower, upper[` (to ensure non-singular behaviour with log / logit transforms). (:pull:`194`).
 
 Fixes
 ^^^^^
-* ``xsdba.adjustment.ExtremeValues`` throws an error with a clear message when the clustered precipitation exceed `1-q_thresh`. This happens when `cluster_thresh` is too small (still in the bulk of the distribution). (:issue:`177`, :pull:`184`).
+* ``xsdba.adjustment.ExtremeValues`` now throws an error with a clear message when the clustered precipitation exceed `1-q_thresh`.
+  This happens when `cluster_thresh` is too small (still in the bulk of the distribution). (:issue:`177`, :pull:`184`).
 * ``xsdba.properties.spectral_variance`` now works with a `delta` that is not `None`. (:pull:`217`).
 * ``xsdba.loess.loess_smoothing`` fixed for cases when the input has many zeros. (:issue:`100`, :pull:`208`).
 * Fixed an issue with attribute fields added to normalized arrays under newer `xarray` versions. (:pull:`223`).
 * ``xsdba.processing.spectral_filter`` now works with a `lambda_long` and `lambda_short` that are not `None`. (:pull:`220`).
-* Prepend history instead of appending it. (:pull:`238`).
-* ``xsdba._processing._adapt_freq`` now avoids inserting nans. This was solved using `(dP0 <= 0)| (dP0.isnull())` and not `dP0 < 0` as a condition. (:pull:`239`,:issue:`248`, :pull:`249`).
+* Prepend history of operations within dataset attributes instead of appending them. (:pull:`238`).
+* ``xsdba._processing._adapt_freq`` now avoids inserting nans. This was solved using `(dP0 <= 0)| (dP0.isnull())` and not `dP0 < 0` as a condition. (:pull:`239`, :issue:`248`, :pull:`249`).
+* More edge cases and compatibility with `numpy <2.0` were fixed  to ensure ``xsdba.processing.to_additive_space`` does not yield singular values in the log / logit transforms in relation with the machine resolution. (:pull:`194`).
+* ``xsdba.properties.decorrelation_length`` now handles all-nan slices correctly. (:issue:`255`, :pull:`256`).
+
 
 Internal changes
 ^^^^^^^^^^^^^^^^
 * Removed the ``benchmark.ipynb`` notebook from the documentation as it was specifically written for benchmarking purposes. (:issue:`167`, :pull:`206`).
 * Removed the API references to ensure that the documentation favours the user guide for learning how to use `xsdba` and the module index for finding specific functions/classes. (:issue:`63`, :pull:`206`)
-* Adjusted docstrings to allow RST210 and RST213 violations (`\*\*` and `\*` syntax) in docstrings and `pylint` exceptions for titles with underbars. (:issue:`167`, :pull:`206`)
+* Adjusted docstrings to allow `flake8` violations (``RST210`` and ``RST213``; `\*\*` and `\*` syntax) in docstrings and `pylint` exceptions for titles with underbars. (:issue:`167`, :pull:`206`)
 * Updated the cookiecutter template to use the latest version of `cookiecutter-pypackage`. (:pull:`205`):
     * Added a `CITATION.cff` file for better citation metadata.
     * Replace `black`, `blackdocs` and `isort` pre-commit hooks with `ruff`.
     * Updated Contributor Covenant Agreement to v3.0.
     * Various updates to CI dependencies and configurations.
 * The minimum supported `pytest` is now v9.0 and above. `pytest` conventions and configurations have been updated to use the new TOML format. (:pull:`231`).
-* Many DeprecationWarning API changes from dependencies have been addressed. (:pull:`250`):
+* Many `DeprecationWarning` API changes from dependencies have been addressed. (:pull:`250`):
     * Replaced `xarray.cftime_range` with `xarray.date_range(..., use_cftime=True)`.
     * Import check for `numpy.trapezoid` (replacement of `numpy.trapz`).
     * Refactored `grouped_time_indexes` to use `GroupBy.map` instead of `GroupBy.apply`.

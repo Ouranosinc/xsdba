@@ -553,7 +553,64 @@ def interp_on_quantiles(
     )
 
 
-def rank(da: xr.DataArray, dim: str | list[str] = "time", pct: bool = False) -> xr.DataArray:
+def sort_along_dim(da: xr.DataArray, dim: str | list[str]) -> xr.DataArray:
+    """
+    Sort a DataArray along a dimension.
+
+    Parameters
+    ----------
+    da : xr.DataArray
+        Source array.
+    dim : str | list[str]
+        Dimension(s) along which to sort.
+
+    Returns
+    -------
+    xr.DataArray
+        Sorted DataArray with the same shape and coordinates as `da`.
+    """
+    dim = [dim] if isinstance(dim, str) else dim
+    return xr.apply_ufunc(
+        np.sort,
+        da,
+        input_core_dims=[dim],
+        output_core_dims=[dim],
+        vectorize=True,
+        dask="parallelized",
+    ).assign_attrs(da.attrs)
+
+
+def random_tiebreak(da, dim):
+    """
+    Add random noise to a DataArray to break ties prior to ranking.
+
+    The noise is scaled to the smallest nonzero absolute difference between
+    any two values along `dim`, ensuring it is large enough to break ties
+    but small enough to never alter the order of non-tied values.
+
+    Parameters
+    ----------
+    da : xr.DataArray
+        Source array.
+    dim : str | list[str]
+        Dimension(s) along which ties will later be ranked.
+
+    Returns
+    -------
+    xr.DataArray
+        DataArray with the same shape and coordinates as `da`, with small
+        random noise added.
+    """
+    dims = [dim] if isinstance(dim, str) else dim
+    tmp_dim = dims[0] if len(dims) == 1 else get_temp_dimname(list(da.dims), "temp")
+    if len(dims) > 1:
+        da = da.stack(**{tmp_dim: dims})
+    min_diff = sort_along_dim(da, tmp_dim).diff(dim=tmp_dim).where(lambda x: x > 0).min()
+    da = da + da.copy(data=np.random.uniform(low=0.1 * min_diff, high=0.25 * min_diff, size=da.shape))
+    return da
+
+
+def rank(da: xr.DataArray, dim: str | list[str] = "time", pct: bool = False, use_random_tiebreak: bool = False) -> xr.DataArray:
     """
     Rank data along a dimension.
 
@@ -570,10 +627,14 @@ def rank(da: xr.DataArray, dim: str | list[str] = "time", pct: bool = False) -> 
         Source array.
     dim : str | list[str], hashable
         Dimension(s) over which to compute rank.
-    pct : bool, optional
-        If True, compute percentage ranks, otherwise compute integer ranks.
+    pct : bool
+        If `True`, compute percentage ranks, otherwise compute integer ranks.
         Percentage ranks range from 0 to 1, in opposition to xarray's implementation,
         where they range from 1/N to 1.
+    use_random_tiebreak: bool
+        If `True`, small random values are added to the input dataset to avoid equal values. The scale of the noise
+        added is chosen according to the input data, such that the ranks are only modified to equal values and not
+        between unequal values. Default value is `False`.
 
     Returns
     -------
@@ -595,7 +656,17 @@ def rank(da: xr.DataArray, dim: str | list[str] = "time", pct: bool = False) -> 
     # multi-dimensional ranking through stacking
     if len(dims) > 1:
         da = da.stack(**{rnk_dim: dims})
-    rnk = da.rank(rnk_dim, pct=pct)
+    if use_random_tiebreak:
+        # this implementation below breaks the ties on the ranks rather than the values, like in the function
+        # `random_tiebreak` but it's equivalent
+        rnk = da.rank(rnk_dim, pct=False)
+        # add noise on the rank to remove ties. Ranks are integers, so values below 0.25 are enough and will not cause
+        # changes in the rank structure outside of ties.
+        rnk = rnk + da.copy(data=np.random.uniform(low=0.1, high=0.25, size=da.shape))
+        # re-rank
+        rnk = rnk.rank(rnk_dim, pct=pct)
+    else:
+        rnk = da.rank(rnk_dim, pct=pct)
 
     if pct:
         mn = rnk.min(rnk_dim)
@@ -963,11 +1034,16 @@ def _pairwise_spearman(da, dims):
         # Remove those times (they'll be omitted anyway)
         data_nonan = data_noallnan[:, ~mask_skip]
 
+        # spearmanr doesn't work for 0 or 1 variable
+        if data_nonan.shape[0] <= 1:
+            return np.full((data.shape[0], data.shape[0]), fill_value=np.nan)
+
         # We still have a possibility that a nan was unique to a variable and time.
         # If this is the case, it will be a lot longer, but what can we do.
-        coef = spearmanr(data_nonan, axis=1, nan_policy="omit").correlation
-
+        coef = spearmanr(data_nonan, axis=1, nan_policy="omit").statistic
+        coef = np.asarray(coef)
         # The output
+        # why not da.dtype instead? we are converting float32 -> float64 with da.type
         out = np.empty((nv, nv), dtype=coef.dtype)
         # A 2D mask of removed variables
         M = (mask_omit)[:, np.newaxis] | (mask_omit)[np.newaxis, :]

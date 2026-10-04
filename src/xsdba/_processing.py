@@ -18,13 +18,19 @@ from xsdba.utils import ADDITIVE, apply_correction, ecdf, invert, rank
 
 
 @map_groups(
-    sim_ad=[Grouper.ADD_DIMS, Grouper.DIM],
-    dP0=[Grouper.PROP],
-    P0_ref=[Grouper.PROP],
-    P0_hist=[Grouper.PROP],
-    pth=[Grouper.PROP],
+    sim_ad=[Grouper.DIM, Grouper.ADD_DIMS],
+    dP0=[Grouper.PROP, Grouper.ADD_DIMS],
+    P0_ref=[Grouper.PROP, Grouper.ADD_DIMS],
+    P0_hist=[Grouper.PROP, Grouper.ADD_DIMS],
+    pth=[Grouper.PROP, Grouper.ADD_DIMS],
 )
-def _adapt_freq(ds: xr.Dataset, *, dim: Sequence[str], thresh: float = 0, kind: str = "+") -> xr.Dataset:
+def _adapt_freq(
+    ds: xr.Dataset,
+    *,
+    dim: Sequence[str],
+    thresh: float = 0,
+    kind: str = "+",
+) -> xr.Dataset:
     r"""
     Adapt frequency of values under thresh of `sim`, in order to match ref.
 
@@ -65,22 +71,28 @@ def _adapt_freq(ds: xr.Dataset, *, dim: Sequence[str], thresh: float = 0, kind: 
         `ds.ref` is optional: If `P0_ref`, `P0_hist`,`pth` are given, these values will be used and `ds.ref` is not necessary.
         Either `ds.ref` or the triplet (`P0_ref`, `P0_hist`,`pth`)  must be given.
     """
+    # Different behaviours on training and adjust branches. In the latter, the outputs can be reused
     ref, P0_ref, P0_hist, pth = (ds.get(k, None) for k in ["ref", "P0_ref", "P0_hist", "pth"])
     reuse_adapt_output = {P0_ref is not None, P0_hist is not None, pth is not None}
     if len(reuse_adapt_output) != 1:
         raise ValueError("`P0_ref`, `P0_hist`, `pth` must all be given, or be `None`.")
     reuse_adapt_output = list(reuse_adapt_output)[0]
+
     if len({ref is not None, reuse_adapt_output}) != 2:
         raise ValueError("Either `ref` or the triplet (`P0_ref`,`P0_hist`,`pth`) must be None.")
     dim = [dim] if isinstance(dim, str) else dim
+
+    # ADD_DIMS are not pooled with other dims for frequency adaptation
+    dim = Grouper.filter_add_dims(dim)
+
     # map_groups quirk: datasets are broadcasted and must be sliced
     P0_ref, P0_hist, pth = (da if da is None else da[{d: 0 for d in set(dim).intersection(set(da.dims))}] for da in [P0_ref, P0_hist, pth])
-
     # Compute the probability of finding a value <= thresh
     # This is the "dry-day frequency" in the precipitation case
     P0_sim = ecdf(ds.sim, thresh, dim=dim)
     P0_hist = P0_sim if P0_hist is None else P0_hist
     P0_ref = ecdf(ref, thresh, dim=dim) if P0_ref is None else P0_ref
+    P0_ref, P0_hist = xr.broadcast(P0_ref, P0_hist)
     dP0 = xr.where(P0_hist == 0, np.nan, (P0_hist - P0_ref) / P0_hist)
     if ((dP0 <= 0) | (dP0.isnull())).all():
         pth = np.nan * dP0
@@ -89,18 +101,25 @@ def _adapt_freq(ds: xr.Dataset, *, dim: Sequence[str], thresh: float = 0, kind: 
         # Compute : ecdf_ref^-1( ecdf_sim( thresh ) )
         # The value in ref with the same rank as the first non-zero value in sim.
         # pth is meaningless when freq. adaptation is not needed
-        pth = nbu.vecquantiles(ref, P0_hist, dim).where(dP0 > 0) if pth is None else pth
+        # `ref` /`P0_hist` need broadcasting if `add_dims` is only present on one dataset
+        if pth is None:
+            ref_b = ref.broadcast_like(P0_hist)
+            pth = nbu.vecquantiles(ref_b, P0_hist, dim).where(dP0 > 0)
         # Probabilities and quantiles computed within all dims, but correction along the first one only.
         sim = ds.sim
         # Get the percentile rank of each value in sim.
-        rnk = rank(sim, dim=dim, pct=True)
+        rnk = rank(sim, dim=dim, pct=True, use_random_tiebreak=True)
         # Frequency-adapted sim
+        no_adaptation_needed = (dP0 <= 0) | (dP0.isnull())
+        too_small_too_big_or_null = (rnk < (P0_ref / P0_hist) * P0_sim) | (rnk > P0_sim) | sim.isnull()
+        # ensure we have the same order of dims for the .shape call below
+        too_small_too_big_or_null = too_small_too_big_or_null.transpose(*sim.dims, ...)
         sim_ad = sim.where(
-            (dP0 <= 0) | (dP0.isnull()),  # if True, no adaptation required
+            no_adaptation_needed,
             sim.where(
-                (rnk < (P0_ref / P0_hist) * P0_sim) | (rnk > P0_sim) | sim.isnull(),  # Preserve current values
+                too_small_too_big_or_null,  # Preserve current values
                 # Generate random numbers ~ U[T0, Pth]
-                (pth.broadcast_like(sim) - thresh) * np.random.random_sample(size=sim.shape).astype(sim.dtype) + thresh,
+                (pth.broadcast_like(sim) - thresh) * np.random.random_sample(size=too_small_too_big_or_null.shape).astype(sim.dtype) + thresh,
             ),
         )
 

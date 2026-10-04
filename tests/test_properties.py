@@ -10,27 +10,74 @@ from xsdba import properties
 from xsdba.units import convert_units_to, pint_multiply
 
 
+@pytest.fixture(params=[True, False])
+def use_dask(request):
+    return request.param
+
+
 class TestProperties:
-    def test_mean(self, gosset):
+    def test_mean(self, gosset, use_dask):
         sim = (
-            xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf").sel(time=slice("1950", "1980"), location="Vancouver").pr
-        ).load()
+            xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf", chunks={})
+            .sel(time=slice("1950", "1980"), location="Vancouver")
+            .pr
+        )
+        if not use_dask:
+            sim = sim.load()
 
         out_year = properties.mean(sim)
         np.testing.assert_array_almost_equal(out_year.values, [3.0016028e-05])
-
         out_season = properties.mean(sim, group="time.season")
         np.testing.assert_array_almost_equal(
             out_season.values,
-            [4.6115547e-05, 1.7220482e-05, 2.8805329e-05, 2.825359e-05],
+            [4.6115547e-05, 2.8805329e-05, 1.7220482e-05, 2.825359e-05],
+        )
+        assert out_season.long_name.startswith("Mean")
+        assert out_year.attrs["property"] == "mean"
+
+    def test_mean_halfyear(self, gosset, use_dask):
+        sim = (
+            xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf", chunks={})
+            .sel(time=slice("1950", "1980"), location="Vancouver")
+            .pr
+        )
+        if not use_dask:
+            sim = sim.load()
+
+        out_season = properties.mean(sim, group="time.2QS-JAN")
+        np.testing.assert_array_almost_equal(
+            out_season.values,
+            [3.169884e-05, 2.836053e-05],
         )
 
         assert out_season.long_name.startswith("Mean")
 
-    def test_var(self, gosset):
+    def test_mean_from_generic_statistics(self, gosset, use_dask):
         sim = (
-            xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf").sel(time=slice("1950", "1980"), location="Vancouver").pr
-        ).load()
+            xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf", chunks={})
+            .sel(time=slice("1950", "1980"), location="Vancouver")
+            .pr
+        )
+        if not use_dask:
+            sim = sim.load()
+
+        out_year = properties.generic_statistics(sim, statistic="mean")
+        np.testing.assert_array_almost_equal(out_year.values, [3.0016028e-05])
+
+        out_season = properties.generic_statistics(sim, statistic="mean", group="time.season")
+        np.testing.assert_array_almost_equal(
+            out_season.values,
+            [4.6115547e-05, 2.8805329e-05, 1.7220482e-05, 2.825359e-05],
+        )
+
+    def test_var(self, gosset, use_dask):
+        sim = (
+            xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf", chunks={})
+            .sel(time=slice("1950", "1980"), location="Vancouver")
+            .pr
+        )
+        if not use_dask:
+            sim = sim.load()
 
         out_year = properties.var(sim)
         np.testing.assert_array_almost_equal(out_year.values, [2.5884779e-09])
@@ -43,10 +90,14 @@ class TestProperties:
         assert out_season.long_name.startswith("Variance")
         assert out_season.units == "kg2 m-4 s-2"
 
-    def test_std(self, gosset):
+    def test_std(self, gosset, use_dask):
         sim = (
-            xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf").sel(time=slice("1950", "1980"), location="Vancouver").pr
-        ).load()
+            xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf", chunks={})
+            .sel(time=slice("1950", "1980"), location="Vancouver")
+            .pr
+        )
+        if not use_dask:
+            sim = sim.load()
 
         out_year = properties.std(sim)
         np.testing.assert_array_almost_equal(out_year.values, [5.08770208398345e-05])
@@ -54,15 +105,19 @@ class TestProperties:
         out_season = properties.std(sim, group="time.season")
         np.testing.assert_array_almost_equal(
             out_season.values,
-            [6.2666411e-05, 3.5410259e-05, 4.3654352e-05, 5.3643853e-05],
+            [6.2666411e-05, 4.3654352e-05, 3.5410259e-05, 5.3643853e-05],
         )
         assert out_season.long_name.startswith("Standard deviation")
         assert out_season.units == "kg m-2 s-1"
 
-    def test_skewness(self, gosset):
+    def test_skewness(self, gosset, use_dask):
         sim = (
-            xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf").sel(time=slice("1950", "1980"), location="Vancouver").pr
-        ).load()
+            xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf", chunks={})
+            .sel(time=slice("1950", "1980"), location="Vancouver")
+            .pr
+        )
+        if not use_dask:
+            sim = sim.load()
 
         out_year = properties.skewness(sim)
         np.testing.assert_array_almost_equal(out_year.values, [2.8497460898513745])
@@ -72,61 +127,85 @@ class TestProperties:
             out_season.values,
             [
                 2.036650744163691,
-                3.7909534745807147,
                 2.416590445325826,
+                3.7909534745807147,
                 3.3521301798559566,
             ],
         )
         assert out_season.long_name.startswith("Skewness")
         assert out_season.units == ""
 
-    def test_quantile(self, gosset):
+    def test_quantile(self, gosset, use_dask):
         sim = (
-            xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf").sel(time=slice("1950", "1980"), location="Vancouver").pr
-        ).load()
+            xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf", chunks={})
+            .sel(time=slice("1950", "1980"), location="Vancouver")
+            .pr
+        )
+        if not use_dask:
+            sim = sim.load()
 
         out_year = properties.quantile(sim, q=0.2)
-        np.testing.assert_array_almost_equal(out_year.values, [2.8109431013945154e-07])
+        expected = sim.quantile(dim="time", q=0.2)
+        np.testing.assert_array_almost_equal(out_year.values, expected.values)
 
         out_season = properties.quantile(sim, group="time.season", q=0.2)
-        np.testing.assert_array_almost_equal(
-            out_season.values,
-            [
-                1.5171653330980917e-06,
-                9.822543773907455e-08,
-                1.8135805248675763e-07,
-                4.135342521749408e-07,
-            ],
-        )
+        expected = sim.groupby("time.season").quantile(dim="time", q=0.2)
+        np.testing.assert_array_almost_equal(out_season.values, expected.values)
         assert out_season.long_name.startswith("Quantile 0.2")
 
-    def test_spell_length_distribution(self, gosset):
-        ds = (
-            xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf").sel(time=slice("1950", "1952"), location="Vancouver").load()
+    def test_thresholded_quantile(self, gosset, use_dask):
+        sim = (
+            xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf", chunks={})
+            .sel(time=slice("1950", "1980"), location="Vancouver")
+            .pr
         )
+        if not use_dask:
+            sim = sim.load()
+
+        out_year = properties.thresholded_quantile(sim, thresh="1 kg m-2 d-1", condition=">=", q=0.2)
+        filtered_sim = sim.where(sim >= 1 / 86400)
+        expected = filtered_sim.quantile(dim="time", q=0.2)
+        np.testing.assert_array_almost_equal(out_year.values, expected.values)
+
+        out_season = properties.thresholded_quantile(sim, thresh="1 kg m-2 d-1", condition=">=", group="time.season", q=0.2)
+        expected = filtered_sim.groupby("time.season").quantile(dim="time", q=0.2)
+        np.testing.assert_array_almost_equal(out_season.values, expected.sel(season=["DJF", "MAM", "JJA", "SON"]).values)
+        assert out_season.long_name.startswith("Quantile 0.2")
+
+    def test_spell_length_distribution(self, gosset, use_dask):
+        ds = xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf", chunks={}).sel(
+            time=slice("1950", "1952"), location="Vancouver"
+        )
+        if not use_dask:
+            ds = ds.load()
 
         # test pr, with amount method
         sim = ds.pr
-        kws = {"op": "<", "group": "time.month", "thresh": "1.157e-05 kg/m/m/s"}
-        outd = {stat: properties.spell_length_distribution(da=sim, **kws, stat=stat).sel(month=1).values for stat in ["mean", "max", "min"]}
+        kws = {"condition": "<", "group": "time.month", "thresh": "1.157e-05 kg/m/m/s"}
+        outd = {stat: properties.spell_length_distribution(da=sim, **kws, statistic=stat).sel(month=1).values for stat in ["mean", "max", "min"]}
         np.testing.assert_array_almost_equal([outd[k] for k in ["mean", "max", "min"]], [2.44127, 10, 1])
 
         # test tasmax, with quantile method
         simt = ds.tasmax
-        kws = {"thresh": 0.9, "op": ">=", "method": "quantile", "group": "time.month"}
-        outd = {stat: properties.spell_length_distribution(da=simt, **kws, stat=stat).sel(month=6) for stat in ["mean", "max", "min"]}
+        kws = {"thresh": 0.9, "condition": ">=", "method": "quantile", "group": "time.month"}
+        outd = {stat: properties.spell_length_distribution(da=simt, **kws, statistic=stat).sel(month=6) for stat in ["mean", "max", "min"]}
         np.testing.assert_array_almost_equal([outd[k].values for k in ["mean", "max", "min"]], [3.0, 6, 1])
-
-        # test varia
-        with pytest.raises(
-            ValueError,
-            match="percentile is not a valid method. Choose 'amount' or 'quantile'.",
-        ):
-            properties.spell_length_distribution(simt, method="percentile")
 
         assert outd["mean"].long_name == "Average of spell length distribution when the variable is >= the quantile 0.9 for 1 consecutive day(s)."
 
-    def test_spell_length_distribution_mixed_stat(self, gosset):
+    def test_spell_length_distribution_halfyear(self, gosset, use_dask):
+        ds = xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf", chunks={}).sel(
+            time=slice("1950", "1952"), location="Vancouver"
+        )
+        if not use_dask:
+            ds = ds.load()
+
+        # test pr, with amount method
+        sim = ds.pr
+        kws = {"condition": "<", "group": "time.2QS-JAN", "thresh": "1.157e-05 kg/m/m/s"}
+        {stat: properties.spell_length_distribution(da=sim, **kws, statistic=stat).isel(gen_season=0).values for stat in ["mean", "max", "min"]}
+
+    def test_spell_length_distribution_mixed_stat(self, use_dask):
         time = pd.date_range("2000-01-01", periods=2 * 365, freq="D")
         tas = xr.DataArray(
             np.array([0] * 365 + [40] * 365),
@@ -134,10 +213,12 @@ class TestProperties:
             coords={"time": time},
             attrs={"units": "degC"},
         )
+        if use_dask:
+            tas = tas.chunk(time=-1)
 
-        kws_sum = dict(thresh="30 degC", op=">=", stat="sum", stat_resample="sum", group="time")
+        kws_sum = dict(thresh="30 degC", condition=">=", statistic="sum", resample_statistic="sum", group="time")
         out_sum = properties.spell_length_distribution(tas, **kws_sum).values
-        kws_mixed = dict(thresh="30 degC", op=">=", stat="mean", stat_resample="sum", group="time")
+        kws_mixed = dict(thresh="30 degC", condition=">=", statistic="mean", resample_statistic="sum", group="time")
         out_mixed = properties.spell_length_distribution(tas, **kws_mixed).values
 
         assert out_sum == 365
@@ -150,10 +231,13 @@ class TestProperties:
             (3, [1.333333, 4, 0], [2, 6, 0]),
         ],
     )
-    def test_bivariate_spell_length_distribution(self, window, expected_amount, expected_quantile, gosset):
-        ds = (
-            xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf").sel(time=slice("1950", "1952"), location="Vancouver")
-        ).load()
+    def test_bivariate_spell_length_distribution(self, window, expected_amount, expected_quantile, gosset, use_dask):
+        ds = xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf", chunks={}).sel(
+            time=slice("1950", "1952"), location="Vancouver"
+        )
+        if not use_dask:
+            ds = ds.load()
+
         tx = ds.tasmax
         with set_options(keep_attrs=True):
             tn = tx - 5
@@ -162,13 +246,13 @@ class TestProperties:
         kws = {
             "thresh1": "0 degC",
             "thresh2": "0 degC",
-            "op1": ">",
-            "op2": "<=",
+            "condition1": ">",
+            "condition2": "<=",
             "group": "time.month",
             "window": window,
         }
         outd = {
-            stat: properties.bivariate_spell_length_distribution(da1=tx, da2=tn, **kws, stat=stat).sel(month=1).values
+            stat: properties.bivariate_spell_length_distribution(da1=tx, da2=tn, **kws, statistic=stat).sel(month=1).values
             for stat in ["mean", "max", "min"]
         }
         np.testing.assert_array_almost_equal([outd[k] for k in ["mean", "max", "min"]], expected_amount)
@@ -177,23 +261,27 @@ class TestProperties:
         kws = {
             "thresh1": 0.9,
             "thresh2": 0.9,
-            "op1": ">",
-            "op2": ">",
+            "condition1": ">",
+            "condition2": ">",
             "method1": "quantile",
             "method2": "quantile",
             "group": "time.month",
             "window": window,
         }
         outd = {
-            stat: properties.bivariate_spell_length_distribution(da1=tx, da2=tn, **kws, stat=stat).sel(month=6).values
+            stat: properties.bivariate_spell_length_distribution(da1=tx, da2=tn, **kws, statistic=stat).sel(month=6).values
             for stat in ["mean", "max", "min"]
         }
         np.testing.assert_array_almost_equal([outd[k] for k in ["mean", "max", "min"]], expected_quantile)
 
-    def test_acf(self, gosset):
+    def test_acf(self, gosset, use_dask):
         sim = (
-            xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf").sel(time=slice("1950", "1952"), location="Vancouver").pr
-        ).load()
+            xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf", chunks={})
+            .sel(time=slice("1950", "1952"), location="Vancouver")
+            .pr
+        )
+        if not use_dask:
+            sim = sim.load()
 
         out = properties.acf(sim, lag=1, group="time.month").sel(month=1)
         np.testing.assert_array_almost_equal(out.values, [0.11242357313756905])
@@ -205,10 +293,14 @@ class TestProperties:
         assert out.long_name.startswith("Lag-1 autocorrelation")
         assert out.units == ""
 
-    def test_annual_cycle(self, gosset):
+    def test_annual_cycle(self, gosset, use_dask):
         simt = (
-            xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf").sel(time=slice("1950", "1952"), location="Vancouver").tasmax
-        ).load()
+            xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf", chunks={})
+            .sel(time=slice("1950", "1952"), location="Vancouver")
+            .tasmax
+        )
+        if not use_dask:
+            simt = simt.load()
 
         amp = properties.annual_cycle_amplitude(simt)
         relamp = properties.relative_annual_cycle_amplitude(simt)
@@ -238,10 +330,14 @@ class TestProperties:
         assert relamp.units == "%"
         assert phase.units == ""
 
-    def test_annual_range(self, gosset):
+    def test_annual_range(self, gosset, use_dask):
         simt = (
-            xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf").sel(time=slice("1950", "1952"), location="Vancouver").tasmax
-        ).load()
+            xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf", chunks={})
+            .sel(time=slice("1950", "1952"), location="Vancouver")
+            .tasmax
+        )
+        if not use_dask:
+            simt = simt.load()
 
         # Initial annual cycle was this with window = 1
         amp = properties.mean_annual_range(simt, window=1)
@@ -280,10 +376,14 @@ class TestProperties:
         assert relamp.units == "%"
         assert phase.units == ""
 
-    def test_corr_btw_var(self, gosset):
+    def test_corr_btw_var(self, gosset, use_dask):
         simt = (
-            xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf").sel(time=slice("1950", "1952"), location="Vancouver").tasmax
-        ).load()
+            xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf", chunks={})
+            .sel(time=slice("1950", "1952"), location="Vancouver")
+            .tasmax
+        )
+        if not use_dask:
+            simt = simt.load()
 
         sim = (xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc")).sel(time=slice("1950", "1952"), location="Vancouver").pr).load()
 
@@ -309,38 +409,44 @@ class TestProperties:
         assert pc.long_name == "Pearson correlation coefficient."
         assert pc.units == ""
 
-        with pytest.raises(
-            ValueError,
-            match="pear is not a valid type. Choose 'Pearson' or 'Spearman'.",
-        ):
-            properties.corr_btw_var(sim, simt, group="time", corr_type="pear")
-
-    def test_relative_frequency(self, gosset):
+    def test_relative_frequency(self, gosset, use_dask):
         sim = (
-            xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf").sel(time=slice("1950", "1952"), location="Vancouver").pr
-        ).load()
+            xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf", chunks={})
+            .sel(time=slice("1950", "1952"), location="Vancouver")
+            .pr
+        )
+        if not use_dask:
+            sim = sim.load()
 
-        test = properties.relative_frequency(sim, thresh="2.8925e-04 kg/m^2/s", op=">=")
-        testjan = properties.relative_frequency(sim, thresh="2.8925e-04 kg/m^2/s", op=">=", group="time.month").sel(month=1).values
+        test = properties.relative_frequency(sim, thresh="2.8925e-04 kg/m^2/s", condition=">=")
+        testjan = properties.relative_frequency(sim, thresh="2.8925e-04 kg/m^2/s", condition=">=", group="time.month").sel(month=1).values
         np.testing.assert_array_almost_equal([test.values, testjan], [0.0045662100456621, 0.010752688172043012])
         assert test.long_name == "Relative frequency of values >= 2.8925e-04 kg/m^2/s."
         assert test.units == ""
 
-    def test_transition(self, gosset):
+    def test_transition(self, gosset, use_dask):
         sim = (
-            xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf").sel(time=slice("1950", "1952"), location="Vancouver").pr
-        ).load()
+            xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf", chunks={})
+            .sel(time=slice("1950", "1952"), location="Vancouver")
+            .pr
+        )
+        if not use_dask:
+            sim = sim.load()
 
-        test = properties.transition_probability(da=sim, initial_op="<", final_op=">=", thresh="1.157e-05 kg/m^2/s")
+        test = properties.transition_probability(da=sim, initial_condition="<", final_condition=">=", thresh="1.157e-05 kg/m^2/s")
 
         np.testing.assert_array_almost_equal([test.values], [0.14076782449725778])
         assert test.long_name == "Transition probability of values < 1.157e-05 kg/m^2/s to values >= 1.157e-05 kg/m^2/s."
         assert test.units == ""
 
-    def test_trend(self, gosset):
+    def test_trend(self, gosset, use_dask):
         simt = (
-            xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf").sel(time=slice("1950", "1952"), location="Vancouver").tasmax
-        ).load()
+            xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf", chunks={})
+            .sel(time=slice("1950", "1952"), location="Vancouver")
+            .tasmax
+        )
+        if not use_dask:
+            simt = simt.load()
 
         slope = properties.trend(simt).values
         intercept = properties.trend(simt, output="intercept").values
@@ -385,34 +491,39 @@ class TestProperties:
         assert slope.long_name.startswith("Slope of the interannual linear trend")
         assert slope.units == "K/year"
 
-    def test_return_value(self, gosset):
+    def test_return_value(self, gosset, use_dask):
         simt = (
-            xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf").sel(time=slice("1950", "2010"), location="Vancouver").tasmax
-        ).load()
+            xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf", chunks={})
+            .sel(time=slice("1950", "2010"), location="Vancouver")
+            .tasmax
+        )
+        if not use_dask:
+            simt = simt.load()
 
         out_y = properties.return_value(simt)
 
-        out_djf = properties.return_value(simt, op="min", group="time.season").sel(season="DJF").values
+        out_djf = properties.return_value(simt, statistic="min", group="time.season").sel(season="DJF").values
 
         np.testing.assert_array_almost_equal([out_y.values, out_djf], [313.154, 278.072], 3)
         assert out_y.long_name.startswith("20-year maximal return level")
 
     @pytest.mark.slow
-    def test_spatial_correlogram(self, gosset):
+    def test_spatial_correlogram(self, gosset, use_dask):
         # This also tests sdba.utils._pairwise_spearman and sdba.nbutils._pairwise_haversine_and_bins
         # Test 1, does it work with 1D data?
-        sim = (xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf").sel(time=slice("1981", "2010")).tasmax).load()
+        sim = xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf", chunks={}).sel(time=slice("1981", "2010")).tasmax
+        if not use_dask:
+            sim = sim.load()
 
         out = properties.spatial_correlogram(sim, dims=["location"], bins=3)
         np.testing.assert_allclose(out, [-1, np.nan, 0], atol=1e-6)
 
         # Test 2, not very exhaustive, this is more of a detect-if-we-break-it test.
-        sim = xr.open_dataset(gosset.fetch("NRCANdaily/nrcan_canada_daily_tasmax_1990.nc")).tasmax
+        sim = xr.open_dataset(gosset.fetch("NRCANdaily/nrcan_canada_daily_tasmax_1990.nc"), chunks={}, engine="h5netcdf").tasmax
+        if use_dask:
+            sim = sim.load()
         out = properties.spatial_correlogram(sim.isel(lon=slice(0, 50)), dims=["lon", "lat"], bins=20)
-        np.testing.assert_allclose(
-            out[:5],
-            [0.95099902, 0.83028772, 0.66874473, 0.48893958, 0.30915054],
-        )
+        np.testing.assert_allclose(out[:5], [0.95099902, 0.83028772, 0.66874473, 0.48893958, 0.30915054], rtol=5e-07)
         np.testing.assert_allclose(
             out.distance[:5],
             [26.543199, 67.716227, 108.889254, 150.062282, 191.23531],
@@ -420,7 +531,23 @@ class TestProperties:
         )
 
     @pytest.mark.slow
-    def test_decorrelation_length(self, gosset):
+    def test_decorrelation_length(self, gosset, use_dask):
+        sim = xr.open_dataset(
+            gosset.fetch("NRCANdaily/nrcan_canada_daily_tasmax_1990.nc"),
+            engine="h5netcdf",
+            chunks={},
+        ).tasmax.isel(lon=slice(0, 5), lat=slice(0, 1))
+        if use_dask:
+            sim = sim.chunk({"lon": 1})
+
+        out = properties.decorrelation_length(sim, dims=["lat", "lon"], bins=10, radius=30)
+        np.testing.assert_allclose(
+            out[0],
+            [4.5, 4.5, 4.5, 4.5, 10.5],
+        )
+
+    @pytest.mark.slow
+    def test_decorrelation_length_allnan(self, gosset):
         sim = (
             xr.open_dataset(
                 gosset.fetch("NRCANdaily/nrcan_canada_daily_tasmax_1990.nc"),
@@ -429,11 +556,13 @@ class TestProperties:
             .tasmax.isel(lon=slice(0, 5), lat=slice(0, 1))
             .load()
         )
-
+        # sim = np.nan*sim
+        sim = sim.where(sim.lon == sim.lon.values[0], np.nan)
         out = properties.decorrelation_length(sim, dims=["lat", "lon"], bins=10, radius=30)
+
         np.testing.assert_allclose(
             out[0],
-            [4.5, 4.5, 4.5, 4.5, 10.5],
+            [np.nan] * 5,
         )
 
     @pytest.mark.slow
@@ -465,16 +594,14 @@ class TestProperties:
             ),
         ],
     )
-    def test_spectral_variance(self, gosset, delta, expected):
+    def test_spectral_variance(self, gosset, delta, expected, use_dask):
         sim = (
-            xr.open_dataset(
-                gosset.fetch("NRCANdaily/nrcan_canada_daily_tasmax_1990.nc"),
-                engine="h5netcdf",
-            )
+            xr.open_dataset(gosset.fetch("NRCANdaily/nrcan_canada_daily_tasmax_1990.nc"), engine="h5netcdf", chunks={})
             .tasmax.isel(time=0)
             .sel(lat=slice(50, 49.5), lon=slice(-80, -79.5))
-            .load()
         )
+        if not use_dask:
+            sim = sim.load()
 
         var = properties.spectral_variance(
             sim,
@@ -483,16 +610,14 @@ class TestProperties:
         )
         np.testing.assert_allclose(var, expected, rtol=1e-7)
 
-    def test_normalized_radial_wavenumber_conversion(self, gosset):
+    def test_normalized_radial_wavenumber_conversion(self, gosset, use_dask):
         sim = (
-            xr.open_dataset(
-                gosset.fetch("NRCANdaily/nrcan_canada_daily_tasmax_1990.nc"),
-                engine="h5netcdf",
-            )
+            xr.open_dataset(gosset.fetch("NRCANdaily/nrcan_canada_daily_tasmax_1990.nc"), engine="h5netcdf", chunks={})
             .tasmax.isel(time=0)
             .sel(lat=slice(50, 49.5), lon=slice(-80, -79.5))
-            .load()
         )
+        if not use_dask:
+            sim = sim.load()
 
         var_km = properties.spectral_variance(
             sim,
@@ -510,14 +635,22 @@ class TestProperties:
         np.testing.assert_allclose(var_km.wavelength.values, lam, rtol=1e-7)
 
     # ADAPT? The plan was not to allow mm/d -> kg m-2 s-1 in xsdba
-    def test_get_measure(self, gosset):
+    def test_get_measure(self, gosset, use_dask):
         sim = (
-            xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf").sel(time=slice("1981", "2010"), location="Vancouver").pr
-        ).load()
+            xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf", chunks={})
+            .sel(time=slice("1981", "2010"), location="Vancouver")
+            .pr
+        )
 
         ref = (
-            xr.open_dataset(gosset.fetch("sdba/ahccd_1950-2013.nc"), engine="h5netcdf").sel(time=slice("1981", "2010"), location="Vancouver").pr
-        ).load()
+            xr.open_dataset(gosset.fetch("sdba/ahccd_1950-2013.nc"), engine="h5netcdf", chunks={})
+            .sel(time=slice("1981", "2010"), location="Vancouver")
+            .pr
+        )
+        if not use_dask:
+            sim = sim.load()
+            ref = ref.load()
+
         water_density_inverse = "1e-03 m^3/kg"
         sim = convert_units_to(pint_multiply(sim, water_density_inverse), ref)
         sim_var = properties.var(sim)
