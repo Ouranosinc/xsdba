@@ -16,6 +16,8 @@ from scipy import stats
 from xarray.core.dataarray import DataArray
 
 from xsdba._adjustment import (
+    cdft_adjust,
+    cdft_train,
     dotc_adjust,
     dqm_adjust,
     dqm_train,
@@ -53,6 +55,7 @@ __all__ = [
     "LOCI",
     "OTC",
     "BaseAdjustment",
+    "CDFt",
     "DetrendedQuantileMapping",
     "EmpiricalQuantileMapping",
     "ExtremeValues",
@@ -1550,6 +1553,125 @@ class OTC(Adjust):
             if d != pts_dim:
                 scen = scen.dropna(dim=d)
 
+        return scen
+
+
+class CDFt(TrainAdjust):
+    r"""
+    Detrended Quantile Mapping bias-adjustment.
+
+    Attributes
+    ----------
+    Train step:
+
+    nquantiles : int or 1d array of floats
+        The number of quantiles to use. See :py:func:`~xsdba.utils.equally_spaced_nodes`.
+        An array of quantiles [0, 1] can also be passed. Defaults to 20 quantiles.
+    group : str or Grouper
+        The grouping information. See :py:class:`xsdba.base.Grouper` for details.
+        Default is "time", meaning a single adjustment group along dimension "time".
+    adapt_freq_thresh : str, optional
+        Threshold for frequency adaptation. See :py:class:`xsdba.processing.adapt_freq` for details.
+        Default is None, meaning that frequency adaptation is not performed.
+
+    Adjust step:
+
+    interp : {'nearest', 'linear', 'cubic'}
+        The interpolation method to use when interpolating the adjustment factors. Defaults to "nearest".
+    detrend : int or BaseDetrend instance
+        The method to use when detrending. If an int is passed, it is understood as a PolyDetrend (polynomial detrending) degree.
+        Defaults to 1 (linear detrending).
+    extrapolation : {'constant', 'nan'}
+        The type of extrapolation to use. Defaults to "constant".
+
+    Notes
+    -----
+    The algorithm follows these steps, 1-3 being the 'train' and 4-6, the 'adjust' steps.
+
+    1. A scaling factor that would make the mean of `hist` match the mean of `ref` is computed.
+    2. `ref` and `hist` are normalized by removing the "dayofyear" mean.
+    3. Adjustment factors are computed between the quantiles of the normalized `ref` and `hist`.
+    4. `sim` is corrected by the scaling factor, and either normalized by "dayofyear" and  detrended group-wise
+       or directly detrended per "dayofyear", using a linear fit (modifiable).
+    5. Values of detrended `sim` are matched to the corresponding quantiles of normalized `hist` and corrected accordingly.
+    6. The trend is put back on the result.
+
+    .. math::
+
+        F^{-1}_{ref}\left\{F_{hist}\left[\frac{\overline{hist}\cdot sim}{\overline{sim}}\right]\right\}\frac{\overline{sim}}{\overline{hist}}
+
+    where :math:`F` is the cumulative distribution function (CDF) and :math:`\overline{xyz}` is the linear trend of the data.
+    This equation is valid for multiplicative adjustment. Based on the DQM method of :cite:p:`cannon_bias_2015`.
+
+    References
+    ----------
+    :cite:cts:`cannon_bias_2015`
+    """
+
+    _allow_diff_calendars = False
+    _allow_diff_training_times = False
+
+    @classmethod
+    def _train(
+        cls,
+        ref: xr.DataArray,
+        hist: xr.DataArray,
+        *,
+        nquantiles: int | np.ndarray = 20,
+        group: str | Grouper = "time",
+        adapt_freq_thresh: str | None = None,
+        jitter_under_thresh_value: str | None = None,
+        jitter_over_thresh_value: str | None = None,
+        jitter_over_thresh_upper_bnd: str | None = None,
+    ):
+        if group.prop not in ["group", "dayofyear"]:
+            warn(f"Using DQM with a grouping other than 'dayofyear' is not recommended (received {group.name}).", stacklevel=2)
+        if np.isscalar(nquantiles):
+            quantiles = equally_spaced_nodes(nquantiles).astype(ref.dtype)
+        else:
+            quantiles = nquantiles.astype(ref.dtype)
+
+        ds = cdft_train(
+            xr.Dataset({"ref": ref, "hist": hist}),
+            group=group,
+            quantiles=quantiles,
+            adapt_freq_thresh=adapt_freq_thresh,
+            jitter_under_thresh_value=jitter_under_thresh_value,
+            jitter_over_thresh_value=jitter_over_thresh_value,
+            jitter_over_thresh_upper_bnd=jitter_over_thresh_upper_bnd,
+        )
+        if adapt_freq_thresh is None:
+            ds = ds.drop_vars(["P0_ref", "P0_hist", "pth"])
+
+        ds.hist_q.attrs.update(
+            standard_name="Model quantiles",
+            long_name="Quantiles of the anomalies of the model on the reference period, after preprocessing steps. ",
+        )
+        # ds.hist_q_raw.attrs.update(
+        #     standard_name="Model quantiles",
+        #     long_name="Quantiles of model on the reference period, befofe the preprocessing steps.",
+        # )
+        return ds, {
+            "group": group,
+            # "kind": kind,
+            "adapt_freq_thresh": adapt_freq_thresh,
+        }
+
+    def _adjust(
+        self,
+        sim,
+        interp="nearest",
+        extrapolation="constant",
+    ):
+        scen = cdft_adjust(
+            self.ds.assign(sim=sim),
+            interp=interp,
+            extrapolation=extrapolation,
+            group=self.group,
+            adapt_freq_thresh=self.adapt_freq_thresh,
+        ).scen
+        # Detrending needs units.
+        scen.attrs["units"] = sim.units
         return scen
 
 

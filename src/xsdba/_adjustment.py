@@ -286,6 +286,82 @@ def eqm_train(
     )
 
 
+@map_groups(
+    ref_q=[Grouper.PROP, "quantiles"],
+    hist_q=[Grouper.PROP, "quantiles"],
+    P0_ref=[Grouper.PROP],
+    P0_hist=[Grouper.PROP],
+    pth=[Grouper.PROP],
+)
+def cdft_train(
+    ds: xr.Dataset,
+    *,
+    dim: str,
+    quantiles: np.ndarray,
+    adapt_freq_thresh: str | None = None,
+    jitter_under_thresh_value: str | None = None,
+    jitter_over_thresh_value: str | None = None,
+    jitter_over_thresh_upper_bnd: str | None = None,
+) -> xr.Dataset:
+    """
+    EQM: Train step on one group.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        Dataset variables:
+            ref : training target
+            hist : training data
+    dim : str
+        The dimension along which to compute the quantiles.
+    quantiles : array-like
+        The quantiles to compute.
+    adapt_freq_thresh : str, optional
+        Threshold for frequency adaptation. See :py:class:`xsdba.processing.adapt_freq` for details.
+        Default is None, meaning that frequency adaptation is not performed.
+    jitter_under_thresh_value : str, optional
+        Threshold under which a uniform random noise is added to values, a quantity with units.
+        Default is None, meaning that jitter under thresh is not performed.
+    jitter_over_thresh_upper_bnd : str, optional
+        Maximum possible value for the random noise, a quantity with units.
+        Default is None, meaning that jitter over thresh is not performed.
+
+    Returns
+    -------
+    xr.Dataset
+        The dataset containing the adjustment factors and the quantiles over the training data.
+
+    Notes
+    -----
+    `jitter_over_thresh_value` and `jitter_over_thresh_upper_bnd` must be both be specified to
+    use `jitter_over_thresh`, or both be None (default) to skip it.
+    """
+    ds = _preprocess_dataset(
+        ds,
+        dim,
+        adapt_freq_thresh,
+        jitter_under_thresh_value,
+        jitter_over_thresh_value,
+        jitter_over_thresh_upper_bnd,
+    )
+
+    # Ensure we only reduce on valid dims, allows for extra dims like "realization" on the sim
+    ref_dim = Grouper.filter_dim(ds.ref, dim)
+    sim_dim = Grouper.filter_dim(ds.hist, dim)
+    ref_q = nbu.quantile(ds.ref, quantiles, ref_dim)
+    hist_q = nbu.quantile(ds.hist, quantiles, sim_dim)
+
+    return xr.Dataset(
+        data_vars={
+            "ref_q": ref_q,
+            "hist_q": hist_q,
+            "P0_ref": ds.P0_ref,
+            "P0_hist": ds.P0_hist,
+            "pth": ds.pth,
+        }
+    )
+
+
 def _npdft_train(ref, hist, rots, quantiles, method, extrap, n_escore, standardize):
     r"""
     Npdf transform to correct a source `hist` into target `ref`.
@@ -884,6 +960,86 @@ def qdm_adjust(
         scen = scen.where(~mask, adaptedsim)
 
     return xr.Dataset({"scen": scen, "sim_q": sim_q})
+
+
+@map_blocks(reduces=[Grouper.PROP, "quantiles"], scen=[], sim_q=[])
+def cdft_adjust(
+    ds: xr.Dataset,
+    *,
+    group: Grouper,
+    interp: str,
+    extrapolation: str,
+    adapt_freq_thresh: str | None = None,
+) -> xr.Dataset:
+    """
+    CDF-t adjustment on one block.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        Dataset variables:
+            ref_q : Quantiles over the target data
+            hist_q : Quantiles over the source data
+            sim : Data to adjust.
+    group : Grouper
+        The grouper object.
+    interp : str
+        The interpolation method to use.
+    extrapolation : str
+        The extrapolation method to use.
+    adapt_freq_thresh : str, optional
+        Threshold for frequency adaptation. See :py:class:`xsdba.processing.adapt_freq` for details.
+        Default is None, meaning that frequency adaptation is not performed.
+
+    Returns
+    -------
+    xr.Dataset
+        The adjusted data.
+    """
+    if adapt_freq_thresh:
+        ds["sim"] = _adapt_freq_preprocess(
+            ds[["sim", "P0_ref", "P0_hist", "pth"]],
+            adapt_freq_thresh,
+            group=Grouper(group.name),
+            dim=None,
+        ).sim
+
+    # F_{Mf}(x)
+    sim_r = group.apply(u.rank, ds.sim, main_only=True, pct=True)
+
+    # F_{Mh}^{-1}(F_{Mf}(x))
+    hist0 = u.interp_on_quantiles(
+        sim_r,
+        ds.quantiles,
+        # ds.hist_q,
+        ds.ref_q,
+        group=group,
+        method=interp,
+        extrapolation=extrapolation,
+    )
+    # F_{Oh}(F_{Mh}^{-1}(F_{Mf}(x)))
+    q0 = u.interp_on_quantiles(
+        hist0,
+        ds.hist_q,
+        # ds.ref_q,
+        ds.quantiles,
+        group=group,
+        method=interp,
+        extrapolation=extrapolation,
+    )
+    # Invert with F_{Mf}???
+    sim_q = group.apply(nbu.quantile, ds.sim, q=ds.quantiles.values)
+    # sim_q = group.apply(nbu.quantile, ds.sim, q=ds.quantiles.values)
+    scen = u.interp_on_quantiles(
+        q0,
+        ds.quantiles,
+        sim_q,
+        group=group,
+        method=interp,
+        extrapolation=extrapolation,
+    )
+
+    return xr.Dataset({"scen": scen, "sim_q": sim_r})
 
 
 @map_blocks(
