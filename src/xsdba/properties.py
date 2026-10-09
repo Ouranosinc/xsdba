@@ -169,6 +169,7 @@ def _thresholded_running_statistics(
     )
 
 
+# TODO: remove generic everywhere? this would cause conflict with xclim functions
 generic_statistics = StatisticalProperty(
     identifier="property.generic_statistics.{statistic}",
     aspect="marginal",
