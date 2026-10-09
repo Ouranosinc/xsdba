@@ -169,26 +169,26 @@ def _thresholded_running_statistics(
     )
 
 
-generic_statistics = StatisticalProperty(
-    identifier="{statistic}",
-    aspect="marginal",
-    cell_methods="time: {statistic}",
-    compute=_statistics,
-)
+# generic_statistics = StatisticalProperty(
+#     identifier=f"xsdba.properties.generic_statistics.{statistic}",
+#     aspect="marginal",
+#     cell_methods="time: {statistic}",
+#     compute=_statistics,
+# )
 
-generic_thresholded_statistics = StatisticalProperty(
-    identifier="{statistic}",
-    aspect="marginal",
-    cell_methods="time: {statistic}",
-    compute=_thresholded_statistics,
-)
+# generic_thresholded_statistics = StatisticalProperty(
+#     identifier=f"xsdba.properties.generic_thresholded_statistics.{statistic}",
+#     aspect="marginal",
+#     cell_methods="time: {statistic}",
+#     compute=_thresholded_statistics,
+# )
 
-generic_thresholded_running_statistics = StatisticalProperty(
-    identifier="{statistic}",
-    aspect="marginal",
-    cell_methods="time: {statistic}",
-    compute=_thresholded_running_statistics,
-)
+# generic_thresholded_running_statistics = StatisticalProperty(
+#     identifier=f"xsdba.properties.generic_thresholded_running_statistics.{statistic}",
+#     aspect="marginal",
+#     cell_methods="time: {statistic}",
+#     compute=_thresholded_running_statistics,
+# )
 
 
 def _get_simple_statisticalproperty(
@@ -205,8 +205,8 @@ def _get_simple_statisticalproperty(
     """
     kwargs = (
         dict(
-            identifier=statistic,
-            long_name=f"{statistic.replace('_', ' ').capitalize()} of the variable.",
+            identifier=f"property.{statistic}",
+            long_name=f"{statistic.replace('_', ' ')} of the variable.",
             aspect="marginal",
             cell_methods=f"time: {statistic}",
         )
