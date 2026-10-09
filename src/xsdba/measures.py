@@ -184,7 +184,7 @@ def _bias(sim: xr.DataArray, ref: xr.DataArray) -> xr.DataArray:
     return out
 
 
-bias = StatisticalMeasure(identifier="bias", compute=_bias)
+bias = StatisticalMeasure(identifier="measure.bias", compute=_bias)
 
 
 def _relative_bias(sim: xr.DataArray, ref: xr.DataArray) -> xr.DataArray:
@@ -209,7 +209,7 @@ def _relative_bias(sim: xr.DataArray, ref: xr.DataArray) -> xr.DataArray:
     return out.assign_attrs(units="")
 
 
-relative_bias = StatisticalMeasure(identifier="relative_bias", compute=_relative_bias, units="")
+relative_bias = StatisticalMeasure(identifier="measure.relative_bias", compute=_relative_bias, units="")
 
 
 def _circular_bias(sim: xr.DataArray, ref: xr.DataArray) -> xr.DataArray:
@@ -235,7 +235,7 @@ def _circular_bias(sim: xr.DataArray, ref: xr.DataArray) -> xr.DataArray:
     return out.assign_attrs(units="days")
 
 
-circular_bias = StatisticalMeasure(identifier="circular_bias", compute=_circular_bias, units="days")
+circular_bias = StatisticalMeasure(identifier="measure.circular_bias", compute=_circular_bias, units="days")
 
 
 def _ratio(sim: xr.DataArray, ref: xr.DataArray) -> xr.DataArray:
@@ -261,7 +261,7 @@ def _ratio(sim: xr.DataArray, ref: xr.DataArray) -> xr.DataArray:
     return out
 
 
-ratio = StatisticalMeasure(identifier="ratio", compute=_ratio, units="")
+ratio = StatisticalMeasure(identifier="measure.ratio", compute=_ratio, units="")
 
 
 def _rmse(sim: xr.DataArray, ref: xr.DataArray, group: str | Grouper = "time") -> xr.DataArray:
@@ -302,7 +302,7 @@ def _rmse(sim: xr.DataArray, ref: xr.DataArray, group: str | Grouper = "time") -
 
 
 rmse = StatisticalPropertyMeasure(
-    identifier="rmse",
+    identifier="measure.rmse",
     aspect="temporal",
     compute=_rmse,
     allowed_groups=["group"],
@@ -348,7 +348,7 @@ def _mae(sim: xr.DataArray, ref: xr.DataArray, group: str | Grouper = "time") ->
 
 
 mae = StatisticalPropertyMeasure(
-    identifier="mae",
+    identifier="measure.mae",
     aspect="temporal",
     compute=_mae,
     allowed_groups=["group"],
@@ -397,7 +397,7 @@ def _annual_cycle_correlation(
 
 
 annual_cycle_correlation = StatisticalPropertyMeasure(
-    identifier="annual_cycle_correlation",
+    identifier="measure.annual_cycle_correlation",
     aspect="temporal",
     compute=_annual_cycle_correlation,
     allowed_groups=["group"],
@@ -443,7 +443,7 @@ def _scorr(
     return S_corr.assign_attrs(units="")
 
 
-scorr = StatisticalPropertyMeasure(identifier="Scorr", aspect="spatial", compute=_scorr, allowed_groups=["group"])
+scorr = StatisticalPropertyMeasure(identifier="measure.Scorr", aspect="spatial", compute=_scorr, allowed_groups=["group"])
 
 
 def _taylordiagram(
@@ -511,7 +511,7 @@ def _taylordiagram(
 
 
 taylordiagram = StatisticalPropertyMeasure(
-    identifier="taylordiagram",
+    identifier="measure.taylordiagram",
     aspect="temporal",
     compute=_taylordiagram,
     allowed_groups=["group"],
