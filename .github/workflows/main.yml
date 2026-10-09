@@ -59,6 +59,10 @@ jobs:
       - name: Run linting suite
         run: |
           python -m tox -e lint
+      - name: Build Distributable and Validate Metadata
+        run: |
+          python -m flit build
+          python -m twine check dist/*
 
   test-pypi:
     name: Test with Python${{ matrix.python-version }} (tox, ${{ matrix.os }}, eigen3=${{ matrix.eigen3 }})
