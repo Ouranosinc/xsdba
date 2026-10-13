@@ -657,6 +657,5 @@ class TestProperties:
         sim = convert_units_to(pint_multiply(sim, water_density_inverse), ref)
         sim_var = properties.var(sim)
         ref_var = properties.var(ref)
-
         meas = properties.var.get_measure()(sim_var, ref_var)
         np.testing.assert_allclose(meas, [0.408327], rtol=1e-3)

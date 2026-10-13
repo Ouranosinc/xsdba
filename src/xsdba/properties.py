@@ -59,7 +59,7 @@ class StatisticalProperty(Indicator):
     aspect = None
     """The aspect the statistical property studies: marginal, temporal, multivariate or spatial."""
 
-    measure = "bias"
+    measure = "measure.bias"
     """The default measure to use when comparing the properties of two datasets.
     This gives the registry id. See :py:meth:`get_measure`."""
 
@@ -223,8 +223,8 @@ def _get_simple_statisticalproperty(
 mean = _get_simple_statisticalproperty("mean")
 mininimum = _get_simple_statisticalproperty("min", long_name="Minimum of the variable.")
 maximum = _get_simple_statisticalproperty("max", long_name="Maximum of the variable.")
-var = _get_simple_statisticalproperty("var", long_name="Variance of the variable.", measure="ratio")
-std = _get_simple_statisticalproperty("std", long_name="Standard deviation of the variable.", measure="ratio")
+var = _get_simple_statisticalproperty("var", long_name="Variance of the variable.", measure="measure.ratio")
+std = _get_simple_statisticalproperty("std", long_name="Standard deviation of the variable.", measure="measure.ratio")
 summation = _get_simple_statisticalproperty("sum", long_name="Summation of the variable.")
 
 # TODO: Add thresholded_stattistics
@@ -675,7 +675,7 @@ relative_annual_cycle_amplitude = StatisticalProperty(
     parameters={"statistic": "relamp"},
     allowed_groups=["group"],
     cell_methods="time: mean time: range",
-    measure="xsdba.measures.RATIO",
+    measure="measure.ratio",
 )
 
 annual_cycle_phase = StatisticalProperty(
@@ -686,7 +686,7 @@ annual_cycle_phase = StatisticalProperty(
     parameters={"statistic": "phase"},
     cell_methods="time: range",
     allowed_groups=["group"],
-    measure="xsdba.measures.CIRCULAR_BIAS",
+    measure="measure.circular_bias",
 )
 
 annual_cycle_asymmetry = StatisticalProperty(
@@ -784,7 +784,7 @@ mean_annual_relative_range = StatisticalProperty(
     parameters={"statistic": "relamp"},
     allowed_groups=["group"],
     units="%",
-    measure="xsdba.measures.RATIO",
+    measure="measure.ratio",
 )
 
 mean_annual_phase = StatisticalProperty(
@@ -794,7 +794,7 @@ mean_annual_phase = StatisticalProperty(
     parameters={"statistic": "phase"},
     allowed_groups=["group"],
     units="",
-    measure="xsdba.measures.CIRCULAR_BIAS",
+    measure="measure.circular_bias",
 )
 
 
