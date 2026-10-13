@@ -309,7 +309,7 @@ class TestProperties:
         np.testing.assert_allclose(
             [amp.values, relamp.values, phase.values],
             [16.74645996, 5.802083, 167],
-            rtol=1e-4,
+            decimal=4,
         )
         with pytest.raises(
             ValueError,
@@ -357,7 +357,7 @@ class TestProperties:
         np.testing.assert_array_almost_equal(
             [amp.values, relamp.values, phase.values],
             [18.715261, 6.480101, 181.6666667],
-            rtol=1e-4,
+            decimal=4,
         )
         with pytest.raises(
             ValueError,
