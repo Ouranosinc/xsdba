@@ -8,3 +8,4 @@ pylint==4.0.4
 tomli==2.4.1
 tox-gh==1.7.1
 tox==4.56.0
+twine==7.0.0
