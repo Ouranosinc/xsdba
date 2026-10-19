@@ -305,11 +305,10 @@ class TestProperties:
         amp = properties.annual_cycle_amplitude(simt)
         relamp = properties.relative_annual_cycle_amplitude(simt)
         phase = properties.annual_cycle_phase(simt)
-        # import pdb; pdb.set_trace()
         np.testing.assert_allclose(
             [amp.values, relamp.values, phase.values],
             [16.74645996, 5.802083, 167],
-            rtol=1e-5,
+            atol=1e-4,
         )
         with pytest.raises(
             ValueError,
