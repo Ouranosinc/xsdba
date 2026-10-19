@@ -308,7 +308,7 @@ class TestProperties:
         np.testing.assert_allclose(
             [amp.values, relamp.values, phase.values],
             [16.74645996, 5.802083, 167],
-            atol=1e-4,
+            rtol=1e-4,
         )
         with pytest.raises(
             ValueError,
