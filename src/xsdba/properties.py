@@ -120,7 +120,12 @@ class StatisticalProperty(Indicator):
         """Get the statistical measure indicator that is best used with this statistical property."""
         from xclim.core.indicator import registry
 
-        return registry[self.measure]
+        if self.measure in registry:
+            return registry[self.measure]
+        else:
+            from xclim.core.collection import IndicatorCollection
+
+            return IndicatorCollection._find_base_class(self.measure, {}, {})
 
 
 base_registry["StatisticalProperty"] = StatisticalProperty
@@ -171,21 +176,21 @@ def _thresholded_running_statistics(
 
 # TODO: remove generic everywhere? this would cause conflict with xclim functions
 generic_statistics = StatisticalProperty(
-    identifier="property.generic_statistics.{statistic}",
+    identifier="property.generic_statistics",
     aspect="marginal",
     cell_methods="time: {statistic}",
     compute=_statistics,
 )
 
 generic_thresholded_statistics = StatisticalProperty(
-    identifier="property.generic_thresholded_statistics.{statistic}",
+    identifier="property.generic_thresholded_statistics",
     aspect="marginal",
     cell_methods="time: {statistic}",
     compute=_thresholded_statistics,
 )
 
 generic_thresholded_running_statistics = StatisticalProperty(
-    identifier="property.generic_thresholded_running_statistics.{statistic}",
+    identifier="property.generic_thresholded_running_statistics",
     aspect="marginal",
     cell_methods="time: {statistic}",
     compute=_thresholded_running_statistics,
@@ -204,9 +209,10 @@ def _get_simple_statisticalproperty(
     statistic : str
         Name of the statistic (used as identifier and injected into `_statistics`).
     """
+    _stat = statistic if statistic != "sum" else "summation"
     kwargs = (
         dict(
-            identifier=f"property.{statistic}",
+            identifier=f"property.{_stat}",
             long_name=f"{statistic.replace('_', ' ')} of the variable.",
             aspect="marginal",
             cell_methods=f"time: {statistic}",
