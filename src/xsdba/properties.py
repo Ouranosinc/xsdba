@@ -12,6 +12,7 @@ This module depends on `xclim`. Run `pip install xsdba['extras']` to install it.
 
 from __future__ import annotations
 from collections.abc import Sequence
+from importlib import import_module
 from typing import Literal
 
 import numpy as np
@@ -122,10 +123,11 @@ class StatisticalProperty(Indicator):
 
         if self.measure in registry:
             return registry[self.measure]
-        else:
-            from xclim.core.collection import IndicatorCollection
-
-            return IndicatorCollection._find_base_class(self.measure, {}, {})
+        # If not in registry, allow direct qualified name
+        if "." in self.measure:
+            modname, objname = self.measure.rsplit(".", 1)
+            return getattr(import_module(modname), objname)
+        raise ValueError(f"Can't find measure {self.measure}. Not in the indicator registry and not importable.")
 
 
 base_registry["StatisticalProperty"] = StatisticalProperty

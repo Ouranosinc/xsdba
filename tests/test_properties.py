@@ -658,3 +658,19 @@ class TestProperties:
         ref_var = properties.var(ref)
         meas = properties.var.get_measure()(sim_var, ref_var)
         np.testing.assert_allclose(meas, [0.408327], rtol=1e-3)
+
+    def test_get_measure_not_in_regristry(self, gosset, use_dask):
+        indd = properties.mean
+        # the registry name for measure is 'measure.ratio',
+        # but giving the path in the module will also work
+        indd.measure = "xsdba.measures.ratio"
+        sim = (
+            xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf", chunks={})
+            .sel(time=slice("1981", "2010"), location="Vancouver")
+            .pr
+        )
+
+        if not use_dask:
+            sim = sim.load()
+        sim_var = indd(sim)
+        np.testing.assert_array_equal(indd.get_measure()(sim_var, sim_var).values, 1)
