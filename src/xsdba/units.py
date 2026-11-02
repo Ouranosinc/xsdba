@@ -387,7 +387,7 @@ def harmonize_units(params_to_check):
                 )
             arg_names = inspect.getfullargspec(func).args
             args_dict = dict(zip(arg_names, args, strict=False))
-            params_dict = args_dict | {k: v for k, v in kwargs.items()}
+            params_dict = args_dict | {**kwargs}
             params_dict = {k: v for k, v in params_dict.items() if k in params_to_check}
             params_dict = _add_default_kws(params_dict, params_to_check, func)
             if set(params_dict.keys()) != set(params_to_check):
