@@ -14,15 +14,14 @@ dependencies:
 - numpy >=1.26.0
 - pandas >=2.2
 - pint>=0.24.4
-- scipy>=1.11.0,<1.18 # TODO: remove when SBCK fixed
+- scipy>=1.11.0,<1.18 # TODO: remove when SBCK fixed (it was fixed in code, but not released version)
 - statsmodels >=0.14.2
 - typer >=0.16.0
-- xarray >=2023.11.0
+- xarray >=2026.09.0
 # Extras
 - fastnanquantile >=0.0.2
 - pot >=0.9.4
-- pip:
-  - git+https://github.com/Ouranosinc/xclim.git@main
+- xclim>=1.0.0
 # SBCK
 - eigen ==3.4.0
 - pybind11 >=2.12.0
