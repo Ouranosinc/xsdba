@@ -118,14 +118,14 @@ dependencies = [
   "scipy >=1.11.0, <1.18", # TODO: remove upper bound when SBCK is fixed
   "statsmodels >=0.14.2",
   "typer >=0.24.1",
-  "xarray >=2023.11.0"
+  "xarray>=2023.11.0"
 ]
 
 [project.optional-dependencies]
 extras = [
   "fastnanquantile >=0.0.2",
   "POT >=0.9.4",
-  "xclim >=0.56.0"
+  "xclim >=1.0.0"
 ]
 sbck = [
   # The sbck dependency requires the "eigen3"/"libeigen3-dev" package to be installed on the system.
