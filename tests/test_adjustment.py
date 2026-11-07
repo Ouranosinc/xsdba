@@ -22,7 +22,8 @@ from xsdba.adjustment import (
     Scaling,
     dOTC,
 )
-from xsdba.base import Grouper, stack_periods
+from xsdba.base import Grouper
+from xsdba.calendar import stack_periods
 from xsdba.detrending import PolyDetrend
 from xsdba.options import set_options
 from xsdba.processing import (
