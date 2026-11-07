@@ -941,6 +941,22 @@ class TestQDM:
         scen = qdm.adjust(sim)
         assert scen.isel(time=0, lat=0).values == 300
 
+    @pytest.mark.parametrize("model_dryer", [True, False])
+    def test_wet_dry_discrepancy(self, random, model_dryer):
+        rng = np.random.default_rng(0)
+        t = pd.date_range("1981-01-01", "2010-12-31", freq="D")
+
+        def _synthetic_pr(pwet, k, scale):
+            v = rng.gamma(k, scale, t.size) * (rng.random(t.size) < pwet)
+            return xr.DataArray(v, dims="time", coords={"time": t}, attrs={"units": "mm/d"})
+
+        ref = _synthetic_pr(0.45, 0.7, 8.0)
+        hist = _synthetic_pr(0.30, 0.6, 10.0) if model_dryer else _synthetic_pr(0.60, 0.9, 4.0)
+        kws = dict(nquantiles=np.arange(1, 100) / 100, kind="*", group="time", jitter_under_thresh_value="0.01 mm/d", adapt_freq_thresh="1 mm/d")
+
+        qdm = QuantileDeltaMapping.train(ref, hist, **kws).adjust(hist)
+        np.testing.assert_array_almost_equal(qdm.quantile(q=0.99).values, ref.quantile(q=0.99).values)
+
 
 @pytest.mark.slow
 class TestQM:

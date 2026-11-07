@@ -869,7 +869,7 @@ def qdm_adjust(
                 category=DeprecationWarning,
                 stacklevel=2,
             )
-    sim_q = group.apply(u.rank, ds.sim, main_only=not rank_window, pct=True)
+    sim_q = group.apply(u.rank, ds.sim, main_only=not rank_window, pct=True, use_random_tiebreak=True)
     af = u.interp_on_quantiles(
         sim_q,
         ds.quantiles,
