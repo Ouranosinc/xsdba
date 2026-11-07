@@ -11,6 +11,7 @@ Fixes
 ^^^^^
 * ``xsdba.measures.circular_bias`` was fixed, the previous implementation gave the wrong sign in some cases. (:issue:`307`, :pull:`308`).
 * Fix handling of cases including nan values in ``xsdba.properties.decorrelation_length`` and ``xsdba.properties.spatial_correlogram``. (:pull:`308`).
+* ``xsdba.QuantileDeltaMapping`` was giving erroneous values when the biased simulation was wetter or drier than the reference, even with the use of frequency adaptation. This is fixed by use random tiebreaks in the ranks used in QDM. (:issue:`327`)
 
 .. _changes_0.7.0:
 
