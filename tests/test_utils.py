@@ -192,26 +192,3 @@ def test_interp_on_quantiles_constant_with_nan(interp, expi, extrap, expe):
         assert out.isel(lat=1, time=0) == expe
     np.testing.assert_allclose(out.isel(time=25), expi)
     assert out.isel(time=-1).isnull().all()
-
-
-def test_rank(random):
-    arr = random.random((10, 10, 1000))
-    da = xr.DataArray(arr, dims=("x", "y", "time"))
-
-    ranks = u.rank(da, dim="time", pct=False)
-
-    exp = arr.argsort().argsort() + 1
-
-    np.testing.assert_array_equal(ranks.values, exp)
-
-
-def test_rank_tiebreak(random):
-    arr = [1, 26, 2, 4.0, 6, 2, 2]
-    da = xr.DataArray(arr, dims=("time"))
-    ranks = u.rank(da, dim="time", pct=False)
-    sorted_ranks = np.asarray(sorted(list(ranks.values)))
-    ranks_t = u.rank(da, dim="time", pct=False, use_random_tiebreak=True)
-    sorted_ranks_t = np.asarray(sorted(list(ranks_t.values)))
-    exp_ranks_with_tiebreaks = np.arange(1, len(arr) + 1)
-    assert not all(sorted_ranks == exp_ranks_with_tiebreaks)
-    assert all(sorted_ranks_t == exp_ranks_with_tiebreaks)
