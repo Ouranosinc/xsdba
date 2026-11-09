@@ -135,7 +135,7 @@ jobs:
             python-version: "3.14"
             xclim-pre: true
     env:
-      XCLIM_UPSTREAM: true # FIXME: Remove when xclim v1.0 is released
+      XCLIM_UPSTREAM: false
     defaults:
       run:
         shell: bash -l {0}
