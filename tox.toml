@@ -49,7 +49,7 @@ deps = [
 ]
 install_command = ["python", "-m", "pip", "install", "--no-user", "{opts}", "{packages}"]
 commands_pre = [
-  {replace = "if", condition = "env.XCLIM_PRE", then = ["python", "-m", "pip", "install", "--no-user", "--upgrade", "--pre", "xclim"], extend = false},
+  {replace = "if", condition = "env.XCLIM_PRE", then = ["python", "-m", "pip", "install", "--no-user", "--upgrade", "--pre", "xclim"], extend = true},
   ["pip", "list"],
   ["pip", "check"]
 ]
