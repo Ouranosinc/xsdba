@@ -28,7 +28,7 @@ test = [
   "pytest-cov >=7.0.0",
   "pytest-xdist >=3.2.0",
   "xdoctest >=1.1.5",
-  {include-group = "io"}
+  { include-group = "io" }
 ]
 docs = [
   # Documentation and example support
@@ -47,7 +47,7 @@ docs = [
   "sphinx-intl",
   "sphinx-mdinclude",
   "sphinxcontrib-bibtex",
-  {include-group = "io"}
+  { include-group = "io" }
 ]
 tox = [
   "tox >=4.52.0",
@@ -59,23 +59,23 @@ dev = [
   "pip >=26.0.1",
   "prek >=0.3.0",
   "watchdog >=6.0.0",
-  {include-group = "docs"},
-  {include-group = "lint"},
-  {include-group = "test"},
-  {include-group = "tox"}
+  { include-group = "docs" },
+  { include-group = "lint" },
+  { include-group = "test" },
+  { include-group = "tox" }
 ]
 
 [project]
 name = "xsdba"
 authors = [
-  {name = "Éric Dupuis", email = "dupuis.eric@ouranos.ca"},
-  {name = "Pascal Bourgault", email = "bourgault.pascal@ouranos.ca"}
+  { name = "Éric Dupuis", email = "dupuis.eric@ouranos.ca" },
+  { name = "Pascal Bourgault", email = "bourgault.pascal@ouranos.ca" }
 ]
 maintainers = [
-  {name = "Éric Dupuis", email = "dupuis.eric@ouranos.ca"},
-  {name = "Trevor James Smith", email = "smith.trevorj@ouranos.ca"}
+  { name = "Éric Dupuis", email = "dupuis.eric@ouranos.ca" },
+  { name = "Trevor James Smith", email = "smith.trevorj@ouranos.ca" }
 ]
-readme = {file = "README.rst", content-type = "text/x-rst"}
+readme = { file = "README.rst", content-type = "text/x-rst" }
 requires-python = ">=3.10.0"
 keywords = ["xsdba", "bias adjustment", "statistics", "statistical downscaling", "xarray", "xclim"]
 license = "Apache-2.0"
