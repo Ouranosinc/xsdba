@@ -500,7 +500,6 @@ class TestProperties:
         )
         if not use_dask:
             simt = simt.load()
-
         out_y = properties.return_value(simt)
 
         out_djf = properties.return_value(simt, statistic="min", group="time.season").sel(season="DJF").values
@@ -524,11 +523,13 @@ class TestProperties:
         if use_dask:
             sim = sim.load()
         out = properties.spatial_correlogram(sim.isel(lon=slice(0, 50)), dims=["lon", "lat"], bins=20)
-        np.testing.assert_allclose(out[:5], [0.95099902, 0.83028772, 0.66874473, 0.48893958, 0.30915054], rtol=5e-07)
+        # without bottleneck: [0.950999, 0.830288, 0.668744, 0.488939, 0.30915]
+        # with bottleneck: ([0.950999, 0.830288, 0.668745, 0.48894 , 0.309151]
+        np.testing.assert_allclose(out[:5], [0.95099902, 0.83028772, 0.66874473, 0.48893958, 0.30915054], rtol=5e-06)
         np.testing.assert_allclose(
             out.distance[:5],
             [26.543199, 67.716227, 108.889254, 150.062282, 191.23531],
-            rtol=5e-07,
+            rtol=5e-06,
         )
 
     @pytest.mark.slow

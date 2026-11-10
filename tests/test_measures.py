@@ -87,7 +87,9 @@ def test_scorr(gosset):
     sim = xr.open_dataset(gosset.fetch("NRCANdaily/nrcan_canada_daily_tasmax_1990.nc")).tasmax
     scorr = measures.scorr(sim.isel(lon=slice(0, 50)), ref.isel(lon=slice(0, 50)))
 
-    np.testing.assert_allclose(scorr, [97374.2146243])
+    # w/o bottleneck: 97374.151307
+    # w/ bottleneck: 97374.2146243
+    np.testing.assert_allclose(scorr, [97374.2146243], rtol=1e-06)
 
 
 def test_taylordiagram(gosset):
