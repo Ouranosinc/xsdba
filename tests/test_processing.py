@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 import xarray as xr
-import xclim
+import xclim.core.units
 
 from xsdba._processing import _adapt_freq
 from xsdba.adjustment import EmpiricalQuantileMapping
@@ -350,13 +350,14 @@ def test_to_additive_clipping(timeseries):
 def test_to_additive_clipping_float32(timeseries):
     # log
     pr = timeseries(np.array([0]), units="kg m^-2 s^-1").astype(np.float32)
-    prlog = to_additive_space(pr, lower_bound="0 kg m^-2 s^-1", trans="log", clip_next_to_bounds=True)
+    with pytest.warns(DeprecationWarning):
+        prlog = to_additive_space(pr, lower_bound="0 kg m^-2 s^-1", trans="log", clip_next_to_bounds=True)  # type: ignore
     assert np.isfinite(prlog).all()
 
     with xr.set_options(keep_attrs=True):
         pr1 = pr + 1
     lower_bound = "1 kg m^-2 s^-1"
-    prlog2 = to_additive_space(pr1, trans="log", lower_bound=lower_bound, clip_next_to_bounds=True)
+    prlog2 = to_additive_space(pr1, trans="log", lower_bound=lower_bound, clip_next_to_bounds="permissive")
     assert np.isfinite(prlog2).all()
 
     # logit
@@ -366,7 +367,7 @@ def test_to_additive_clipping_float32(timeseries):
         lower_bound="0 %",
         trans="logit",
         upper_bound="100 %",
-        clip_next_to_bounds=True,
+        clip_next_to_bounds="permissive",
     )
     assert np.isfinite(hurslogit).all()
 
@@ -479,7 +480,7 @@ class TestSpectralUtils:
             lam_long=None,
             lam_short=None,
             delta=None,
-            alpha_low_high=[0.9, 0.99],  # dummy value
+            alpha_low_high=(0.9, 0.99),  # dummy value
         ).isel(lon=0)
         # performing dctn & idctn has a small inherent imprecision
         np.testing.assert_allclose(expected, tx_filt.values[0:10], rtol=1e-5)
@@ -499,7 +500,7 @@ class TestSpectralUtils:
             lam_long=None,
             lam_short=None,
             delta=None,
-            alpha_low_high=[0.9, 0.99],  # dummy value
+            alpha_low_high=(0.9, 0.99),  # dummy value
         )
         tx_filt_lam = spectral_filter(
             tx,
@@ -525,7 +526,7 @@ class TestSpectralUtils:
             lam_long=None,
             lam_short=None,
             delta=None,
-            alpha_low_high=[0.9, 0.99],  # dummy value
+            alpha_low_high=(0.9, 0.99),  # dummy value
             mask_func=lambda da, _1, _2: 0 * da + 1,  # identity function, mask =1
         )
         # performing dctn & idctn has a small inherent imprecision
@@ -543,7 +544,7 @@ class TestSpectralUtils:
             lam_long=None,
             lam_short=None,
             delta=None,
-            alpha_low_high=[0.9, 0.99],  # dummy value
+            alpha_low_high=(0.9, 0.99),  # dummy value
             mask_func=lambda da, _1, _2: 0 * da,  # mask =0
         )
         assert ((0 * tx).values == tx_filt.values).all()
