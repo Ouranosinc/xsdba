@@ -76,7 +76,6 @@ jobs:
           - os: "ubuntu-latest"
             python-version: "3.13"
             eigen3: false
-            min-versions: true
             xarray-version: "2024.11.0"
             xclim-version: "1.0.0"
     steps:
