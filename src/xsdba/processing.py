@@ -351,7 +351,7 @@ def standardize(
 
 
 @update_xsdba_history
-def unstandardize(da: xr.DataArray, mean: xr.DataArray, std: xr.DataArray):
+def unstandardize(da: xr.DataArray, mean: xr.DataArray | int | float, std: xr.DataArray | int | float):
     """Rescale a standardized array by performing the inverse operation of `standardize`."""
     out = (std * da) + mean
     copy_all_attrs(out, da)
@@ -359,7 +359,7 @@ def unstandardize(da: xr.DataArray, mean: xr.DataArray, std: xr.DataArray):
 
 
 @update_xsdba_history
-def reordering(ref: xr.DataArray, sim: xr.DataArray, group: str = "time") -> xr.Dataset:
+def reordering(ref: xr.DataArray, sim: xr.DataArray, group: str | Grouper = "time") -> xr.Dataset:
     """
     Reorder data in `sim` following the order of ref.
 

@@ -108,24 +108,24 @@ dependencies = [
   "dask[array] >=2024.8.1",
   "filelock >=3.14.0",
   "jsonpickle >=3.1.0",
-  "matplotlib >=3.8.0",
-  "numba >=0.58.1",
-  "numpy >=1.26.0",
+  "matplotlib >=3.10.0",
+  "numba >=0.61.2",
+  "numpy >=2.2",
   "packaging",
-  "pandas >=2.2.0",
+  "pandas >=2.3.0",
   "pint>=0.24.4",
   "rich >=13.7.0",
-  "scipy >=1.11.0, <1.18", # TODO: remove upper bound when SBCK is fixed
-  "statsmodels >=0.14.2",
+  "scipy >=1.15.0, <1.18", # TODO: remove upper bound when SBCK is fixed
+  "statsmodels >=0.14.6",
   "typer >=0.24.1",
-  "xarray >=2023.11.0"
+  "xarray>=2024.11.0"
 ]
 
 [project.optional-dependencies]
 extras = [
   "fastnanquantile >=0.0.2",
   "POT >=0.9.4",
-  "xclim >=0.56.0"
+  "xclim >=1.0.0"
 ]
 sbck = [
   # The sbck dependency requires the "eigen3"/"libeigen3-dev" package to be installed on the system.
