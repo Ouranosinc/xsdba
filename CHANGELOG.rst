@@ -26,7 +26,7 @@ Breaking changes
 Internal changes
 ^^^^^^^^^^^^^^^^
 * `scipy` is pinned below 1.18 as ``scipy.stats.rankdata`` with method "max" now outputs float instead of int. The pin will be removed when the problem is handled upstream in SBCK. (:pull:`308`)
-
+* New sub-module ``xsdba.calendar`` which moves code from ``xsdba.base``.  (:pull:`304`).
 
 .. _changes_0.7.0:
 

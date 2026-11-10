@@ -67,20 +67,17 @@ jobs:
     strategy:
       matrix:
         os: [ "ubuntu-latest" ]
-        python-version: [ "3.11", "3.12", "3.13" ]
+        python-version: [ "3.11", "3.12", "3.13", "3.14" ]
         eigen3: [ false ]
-        xclim-pre: [ false ]
         include:
           - os: "ubuntu-latest"
             python-version: "3.12"
             eigen3: true
-            xclim-pre: false
           - os: "ubuntu-latest"
-            python-version: "3.14"
+            python-version: "3.13"
             eigen3: false
-            xclim-pre: true
-    env:
-      XCLIM_UPSTREAM: false # Enabled for all builds; passed to tox
+            xarray-version: "2024.11.0"
+            xclim-version: "1.0.0"
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
@@ -114,7 +111,8 @@ jobs:
           python -m tox
         env:
           EIGEN3: ${{ matrix.eigen3 }}
-          XCLIM_PRE: ${{ matrix.xclim-pre }}
+          XARRAY_VERSION: ${{ matrix.xarray-version}}
+          XCLIM_VERSION: ${{ matrix.xclim-version}}
       - name: Report Coverage
         uses: coverallsapp/github-action@8d6379e14d29928660c4ba802d8e85393440b329 # v2.3.8
         with:
@@ -129,13 +127,12 @@ jobs:
       matrix:
         os: [ "ubuntu-latest" ]
         python-version: [ "3.11", "3.12", "3.13" ]
-        xclim-pre: [ false ]
+        xclim-upstream: [ false ]
         include:
           - os: "ubuntu-latest"
             python-version: "3.14"
-            xclim-pre: true
-    env:
-      XCLIM_UPSTREAM: false
+            xarray-version: "2024.11.0"
+            xclim-upstream: true
     defaults:
       run:
         shell: bash -l {0}
@@ -161,14 +158,14 @@ jobs:
       - name: Install Eigen3 and SBCK
         if: ${{ matrix.python-version == '3.11' }}
         run: |
-          mamba install -y -c conda-forge eigen3
+          micromamba install -y -c conda-forge eigen3
           python -m pip install --require-hashes -r CI/requirements_sbck.txt
-      - name: Install xclim@main
-        if: ${{ matrix.xclim-pre }}
+      - name: Install xarray (minimally supported version)
+        if: ${{ matrix.xarray-version }}
         run: |
-          python -m pip install --no-user --pre xclim
-      - name: Install xclim@main
-        if: ${{ env.XCLIM_UPSTREAM }}
+          micromamba install xarray==${{ matrix.xarray-version }}
+      - name: Install xclim (upstream)
+        if: ${{ matrix.xclim-upstream }}
         run: |
           python -m pip install --no-user "xclim @ git+https://github.com/Ouranosinc/xclim.git@main"
       - name: Install xsdba
