@@ -37,7 +37,7 @@ allowlist_externals = ["make"]
 
 [env_run_base]
 description = "Run tests with pytest under {basepython}"
-setenv = {PYTEST_ADDOPTS = "--color=yes --numprocesses=logical --durations=10 --cov=xsdba --cov-report=lcov", PYTHONPATH = "{toxinidir}"}
+setenv = { PYTEST_ADDOPTS = "--color=yes --numprocesses=logical --durations=10 --cov=xsdba --cov-report=lcov", PYTHONPATH = "{toxinidir}" }
 passenv = ["COVERALLS_*", "EIGEN3", "GITHUB_*", "XARRAY_*", "XCLIM_*"]
 download = true
 dependency_groups = ["test"]
