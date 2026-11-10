@@ -158,12 +158,12 @@ jobs:
       - name: Install Eigen3 and SBCK
         if: ${{ matrix.python-version == '3.11' }}
         run: |
-          mamba install -y -c conda-forge eigen3
+          micromamba install -y -c conda-forge eigen3
           python -m pip install --require-hashes -r CI/requirements_sbck.txt
       - name: Install xarray (minimally supported version)
         if: ${{ matrix.xarray-version }}
         run: |
-          mamba install xarray==${{ matrix.xarray-version }}
+          micromamba install xarray==${{ matrix.xarray-version }}
       - name: Install xclim (upstream)
         if: ${{ matrix.xclim-upstream }}
         run: |
