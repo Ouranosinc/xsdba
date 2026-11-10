@@ -182,7 +182,7 @@ def _normalize(
 
 
 @map_groups(reordered=[Grouper.DIM], main_only=False)
-def _reordering(ds: xr.Dataset, *, dim: str) -> xr.Dataset:
+def _reordering(ds: xr.Dataset, *, dim: str | Grouper) -> xr.Dataset:
     """
     Group-wise reordering.
 
