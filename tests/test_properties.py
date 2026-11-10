@@ -500,7 +500,6 @@ class TestProperties:
         )
         if not use_dask:
             simt = simt.load()
-
         out_y = properties.return_value(simt)
 
         out_djf = properties.return_value(simt, statistic="min", group="time.season").sel(season="DJF").values
