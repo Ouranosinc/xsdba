@@ -10,19 +10,18 @@ dependencies:
 - dask >=2024.8.1
 - importlib-metadata != 8.7.0 # conda-forge version is broken
 - jsonpickle >=3.1.0
-- numba >=0.58.1
-- numpy >=1.26.0
-- pandas >=2.2
+- numba >=0.61.2
+- numpy >=2.2.0
+- pandas >=2.3
 - pint>=0.24.4
-- scipy>=1.11.0,<1.18 # TODO: remove when SBCK fixed
-- statsmodels >=0.14.2
+- scipy>=1.15.0,<1.18 # TODO: remove when SBCK fixed (it was fixed in code, but not released version)
+- statsmodels >=0.14.6
 - typer >=0.16.0
-- xarray >=2023.11.0
+- xarray>=2024.11.0
 # Extras
 - fastnanquantile >=0.0.2
 - pot >=0.9.4
-- pip:
-  - git+https://github.com/Ouranosinc/xclim.git@main
+- xclim>=1.0.0
 # SBCK
 - eigen ==3.4.0
 - pybind11 >=2.12.0
@@ -49,5 +48,5 @@ dependencies:
 - vulture >=2.14
 - watchdog >=6.0.0
 - xdoctest>=1.1.5
-- matplotlib >=3.6.0
+- matplotlib >=3.10.0
 - yamllint >=1.35.1

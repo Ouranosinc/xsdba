@@ -12,6 +12,7 @@ This module depends on `xclim`. Run `pip install xsdba['extras']` to install it.
 
 from __future__ import annotations
 from collections.abc import Sequence
+from importlib import import_module
 from typing import Literal
 
 import numpy as np
@@ -59,7 +60,7 @@ class StatisticalProperty(Indicator):
     aspect = None
     """The aspect the statistical property studies: marginal, temporal, multivariate or spatial."""
 
-    measure = "bias"
+    measure = "measure.bias"
     """The default measure to use when comparing the properties of two datasets.
     This gives the registry id. See :py:meth:`get_measure`."""
 
@@ -120,7 +121,13 @@ class StatisticalProperty(Indicator):
         """Get the statistical measure indicator that is best used with this statistical property."""
         from xclim.core.indicator import registry
 
-        return registry[self.measure]
+        if self.measure in registry:
+            return registry[self.measure]
+        # If not in registry, allow direct qualified name
+        if "." in self.measure:
+            modname, objname = self.measure.rsplit(".", 1)
+            return getattr(import_module(modname), objname)
+        raise ValueError(f"Can't find measure {self.measure}. Not in the indicator registry and not importable.")
 
 
 base_registry["StatisticalProperty"] = StatisticalProperty
@@ -171,21 +178,21 @@ def _thresholded_running_statistics(
 
 # TODO: remove generic everywhere? this would cause conflict with xclim functions
 generic_statistics = StatisticalProperty(
-    identifier="property.generic_statistics.{statistic}",
+    identifier="property.generic_statistics",
     aspect="marginal",
     cell_methods="time: {statistic}",
     compute=_statistics,
 )
 
 generic_thresholded_statistics = StatisticalProperty(
-    identifier="property.generic_thresholded_statistics.{statistic}",
+    identifier="property.generic_thresholded_statistics",
     aspect="marginal",
     cell_methods="time: {statistic}",
     compute=_thresholded_statistics,
 )
 
 generic_thresholded_running_statistics = StatisticalProperty(
-    identifier="property.generic_thresholded_running_statistics.{statistic}",
+    identifier="property.generic_thresholded_running_statistics",
     aspect="marginal",
     cell_methods="time: {statistic}",
     compute=_thresholded_running_statistics,
@@ -204,9 +211,10 @@ def _get_simple_statisticalproperty(
     statistic : str
         Name of the statistic (used as identifier and injected into `_statistics`).
     """
+    _stat = statistic if statistic != "sum" else "summation"
     kwargs = (
         dict(
-            identifier=f"property.{statistic}",
+            identifier=f"property.{_stat}",
             long_name=f"{statistic.replace('_', ' ')} of the variable.",
             aspect="marginal",
             cell_methods=f"time: {statistic}",
@@ -223,8 +231,8 @@ def _get_simple_statisticalproperty(
 mean = _get_simple_statisticalproperty("mean")
 mininimum = _get_simple_statisticalproperty("min", long_name="Minimum of the variable.")
 maximum = _get_simple_statisticalproperty("max", long_name="Maximum of the variable.")
-var = _get_simple_statisticalproperty("var", long_name="Variance of the variable.", measure="ratio")
-std = _get_simple_statisticalproperty("std", long_name="Standard deviation of the variable.", measure="ratio")
+var = _get_simple_statisticalproperty("var", long_name="Variance of the variable.", measure="measure.ratio")
+std = _get_simple_statisticalproperty("std", long_name="Standard deviation of the variable.", measure="measure.ratio")
 summation = _get_simple_statisticalproperty("sum", long_name="Summation of the variable.")
 
 # TODO: Add thresholded_stattistics
@@ -675,7 +683,7 @@ relative_annual_cycle_amplitude = StatisticalProperty(
     parameters={"statistic": "relamp"},
     allowed_groups=["group"],
     cell_methods="time: mean time: range",
-    measure="xsdba.measures.RATIO",
+    measure="measure.ratio",
 )
 
 annual_cycle_phase = StatisticalProperty(
@@ -686,7 +694,7 @@ annual_cycle_phase = StatisticalProperty(
     parameters={"statistic": "phase"},
     cell_methods="time: range",
     allowed_groups=["group"],
-    measure="xsdba.measures.CIRCULAR_BIAS",
+    measure="measure.circular_bias",
 )
 
 annual_cycle_asymmetry = StatisticalProperty(
@@ -784,7 +792,7 @@ mean_annual_relative_range = StatisticalProperty(
     parameters={"statistic": "relamp"},
     allowed_groups=["group"],
     units="%",
-    measure="xsdba.measures.RATIO",
+    measure="measure.ratio",
 )
 
 mean_annual_phase = StatisticalProperty(
@@ -794,7 +802,7 @@ mean_annual_phase = StatisticalProperty(
     parameters={"statistic": "phase"},
     allowed_groups=["group"],
     units="",
-    measure="xsdba.measures.CIRCULAR_BIAS",
+    measure="measure.circular_bias",
 )
 
 
@@ -1340,8 +1348,8 @@ def _return_value(
     def frequency_analysis_method(ds, *, dim, method, statistic, period):
         sub = statistics(ds.x, statistic=statistic, freq="YS")
         params = fit(sub, dist="genextreme", method=method)
-        out = parametric_quantile(params, q=1 - 1.0 / period)
-        return out.isel(quantile=0).drop("quantile").rename("out").to_dataset()
+        out = parametric_quantile(params, q=[1 - 1.0 / period])
+        return out.isel(quantile=0).drop_vars("quantile").rename("out").to_dataset()
 
     out = frequency_analysis_method(da.rename("x").to_dataset(), method=method, group=group, statistic=statistic, period=period).out
     return out.assign_attrs(units=da.units)

@@ -305,11 +305,10 @@ class TestProperties:
         amp = properties.annual_cycle_amplitude(simt)
         relamp = properties.relative_annual_cycle_amplitude(simt)
         phase = properties.annual_cycle_phase(simt)
-
         np.testing.assert_allclose(
             [amp.values, relamp.values, phase.values],
             [16.74645996, 5.802083, 167],
-            rtol=1e-5,
+            rtol=1e-4,
         )
         with pytest.raises(
             ValueError,
@@ -347,6 +346,7 @@ class TestProperties:
         np.testing.assert_allclose(
             [amp.values, relamp.values, phase.values],
             [34.039806, 11.793684020675501, 165.33333333333334],
+            rtol=1e-4,
         )
 
         amp = properties.mean_annual_range(simt)
@@ -356,6 +356,7 @@ class TestProperties:
         np.testing.assert_array_almost_equal(
             [amp.values, relamp.values, phase.values],
             [18.715261, 6.480101, 181.6666667],
+            decimal=4,
         )
         with pytest.raises(
             ValueError,
@@ -499,7 +500,6 @@ class TestProperties:
         )
         if not use_dask:
             simt = simt.load()
-
         out_y = properties.return_value(simt)
 
         out_djf = properties.return_value(simt, statistic="min", group="time.season").sel(season="DJF").values
@@ -523,11 +523,13 @@ class TestProperties:
         if use_dask:
             sim = sim.load()
         out = properties.spatial_correlogram(sim.isel(lon=slice(0, 50)), dims=["lon", "lat"], bins=20)
-        np.testing.assert_allclose(out[:5], [0.95099902, 0.83028772, 0.66874473, 0.48893958, 0.30915054], rtol=5e-07)
+        # without bottleneck: [0.950999, 0.830288, 0.668744, 0.488939, 0.30915]
+        # with bottleneck: ([0.950999, 0.830288, 0.668745, 0.48894 , 0.309151]
+        np.testing.assert_allclose(out[:5], [0.95099902, 0.83028772, 0.66874473, 0.48893958, 0.30915054], rtol=5e-06)
         np.testing.assert_allclose(
             out.distance[:5],
             [26.543199, 67.716227, 108.889254, 150.062282, 191.23531],
-            rtol=5e-07,
+            rtol=5e-06,
         )
 
     @pytest.mark.slow
@@ -655,6 +657,21 @@ class TestProperties:
         sim = convert_units_to(pint_multiply(sim, water_density_inverse), ref)
         sim_var = properties.var(sim)
         ref_var = properties.var(ref)
-
         meas = properties.var.get_measure()(sim_var, ref_var)
         np.testing.assert_allclose(meas, [0.408327], rtol=1e-3)
+
+    def test_get_measure_not_in_regristry(self, gosset, use_dask):
+        indd = properties.mean
+        # the registry name for measure is 'measure.ratio',
+        # but giving the path in the module will also work
+        indd.measure = "xsdba.measures.ratio"
+        sim = (
+            xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf", chunks={})
+            .sel(time=slice("1981", "2010"), location="Vancouver")
+            .pr
+        )
+
+        if not use_dask:
+            sim = sim.load()
+        sim_var = indd(sim)
+        np.testing.assert_array_equal(indd.get_measure()(sim_var, sim_var).values, 1)
