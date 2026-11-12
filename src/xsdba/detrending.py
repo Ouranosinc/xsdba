@@ -52,7 +52,6 @@ class BaseDetrend(ParametrizableWithDataset):
         super().__init__(group=group, kind=kind, mult_skip_zeros=mult_skip_zeros, **kwargs)
 
     @property
-
     def fitted(self):
         """State indicating whether instance is fitted."""
         return hasattr(self, "ds")
