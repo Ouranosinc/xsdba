@@ -9,7 +9,6 @@ from collections.abc import Callable
 from typing import Any
 from warnings import warn
 
-import bottleneck as bn
 import numpy as np
 import xarray as xr
 from boltons.funcutils import wraps
@@ -568,82 +567,6 @@ def random_tiebreak(da, dim):
     min_diff = sort_along_dim(da, tmp_dim).diff(dim=tmp_dim).where(lambda x: x > 0).min()
     da = da + da.copy(data=np.random.uniform(low=0.1 * min_diff, high=0.25 * min_diff, size=da.shape))
     return da
-
-
-def rank(da: xr.DataArray, dim: str | list[str] = "time", pct: bool = False, use_random_tiebreak: bool = False) -> xr.DataArray:
-    """
-    Rank data along a dimension.
-
-    Replicates `xr.DataArray.rank` but as a function usable in a Grouper.apply(). Xarray's docstring is below:
-
-    Equal values are assigned a rank that is the average of the ranks that would have been otherwise assigned to all the
-    values within that set. Ranks begin at 1, not 0. If pct, computes percentage ranks, ranging from 0 to 1.
-
-    A list of dimensions can be provided and the ranks are then computed separately for each dimension.
-
-    Parameters
-    ----------
-    da : xr.DataArray
-        Source array.
-    dim : str | list[str], hashable
-        Dimension(s) over which to compute rank.
-    pct : bool
-        If `True`, compute percentage ranks, otherwise compute integer ranks.
-        Percentage ranks range from 0 to 1, in opposition to xarray's implementation,
-        where they range from 1/N to 1.
-    use_random_tiebreak: bool
-        If `True`, small random values are added to the input dataset to avoid equal values. The scale of the noise
-        added is chosen according to the input data, such that the ranks are only modified to equal values and not
-        between unequal values. Default value is `False`.
-
-    Returns
-    -------
-    DataArray
-        DataArray with the same coordinates and dtype 'float64'.
-
-    See Also
-    --------
-    xarray.DataArray.rank
-
-    Notes
-    -----
-    The `bottleneck` library is required. nans in the input array are returned as nans.
-    """
-    da_dims, da_coords = da.dims, da.coords
-    dims = dim if isinstance(dim, list) else [dim]
-    rnk_dim = dims[0] if len(dims) == 1 else get_temp_dimname(da_dims, "temp")
-
-    # multi-dimensional ranking through stacking
-    if len(dims) > 1:
-        da = da.stack(**{rnk_dim: dims})
-    if use_random_tiebreak:
-        # this implementation below breaks the ties on the ranks rather than the values, like in the function
-        # `random_tiebreak` but it's equivalent
-        rnk = da.rank(rnk_dim, pct=False)
-        # add noise on the rank to remove ties. Ranks are integers, so values below 0.25 are enough and will not cause
-        # changes in the rank structure outside of ties.
-        rnk = rnk + da.copy(data=np.random.uniform(low=0.1, high=0.25, size=da.shape))
-        # re-rank
-        rnk = rnk.rank(rnk_dim, pct=pct)
-    else:
-        rnk = da.rank(rnk_dim, pct=pct)
-
-    if pct:
-        mn = rnk.min(rnk_dim)
-        mx = rnk.max(rnk_dim)
-        rnk = mx * (rnk - mn) / (mx - mn)
-
-    if len(dims) > 1:
-        rnk = rnk.unstack(rnk_dim).transpose(*da_dims).drop_vars([d for d in dims if d not in da_coords])
-    return rnk
-
-
-def _rank_bn(arr, axis=None):
-    """Ranking on a specific axis"""
-    rnk = bn.nanrankdata(arr, axis=axis)
-    rnk = rnk / np.nanmax(rnk, axis=axis, keepdims=True)
-    mx, mn = 1, np.nanmin(rnk, axis=axis, keepdims=True)
-    return mx * (rnk - mn) / (mx - mn)
 
 
 def pc_matrix(arr: np.ndarray | dsk.Array) -> np.ndarray | dsk.Array:

@@ -14,7 +14,8 @@ import xarray as xr
 
 from xsdba import nbutils as nbu
 from xsdba.base import Grouper, map_groups
-from xsdba.utils import ADDITIVE, apply_correction, ecdf, invert, rank
+from xsdba.nbutils import rank
+from xsdba.utils import ADDITIVE, apply_correction, ecdf, invert
 
 
 @map_groups(
