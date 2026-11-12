@@ -33,7 +33,8 @@ if xclim_installed:
     )
 
 from xsdba.adjustment import *
-from xsdba.base import Grouper, stack_periods, unstack_periods
+from xsdba.base import Grouper
+from xsdba.calendar import stack_periods, unstack_periods
 from xsdba.options import set_options
 from xsdba.processing import stack_variables, unstack_variables
 
@@ -48,4 +49,4 @@ if hasattr(adjustment, "_generate_SBCK_classes"):
 
 __author__ = """Éric Dupuis"""
 __email__ = "dupuis.eric@ouranos.ca"
-__version__ = "0.7.0"
+__version__ = "0.7.1-dev.4"

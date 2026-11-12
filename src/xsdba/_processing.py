@@ -14,7 +14,8 @@ import xarray as xr
 
 from xsdba import nbutils as nbu
 from xsdba.base import Grouper, map_groups
-from xsdba.utils import ADDITIVE, apply_correction, ecdf, invert, rank
+from xsdba.nbutils import rank
+from xsdba.utils import ADDITIVE, apply_correction, ecdf, invert
 
 
 @map_groups(
@@ -182,7 +183,7 @@ def _normalize(
 
 
 @map_groups(reordered=[Grouper.DIM], main_only=False)
-def _reordering(ds: xr.Dataset, *, dim: str) -> xr.Dataset:
+def _reordering(ds: xr.Dataset, *, dim: str | Grouper) -> xr.Dataset:
     """
     Group-wise reordering.
 

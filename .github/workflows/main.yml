@@ -30,7 +30,7 @@ jobs:
         python-version: [ "3.14" ]
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@20cf305ff2072d973412fa9b1e3a4f227bda3c76 # v2.14.0
+        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
         with:
           disable-sudo: true
           egress-policy: block
@@ -39,11 +39,11 @@ jobs:
             github.com:443
             pypi.org:443
       - name: Checkout Repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Set up Python${{ matrix.python-version }}
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ matrix.python-version }}
           cache: "pip"
@@ -51,10 +51,10 @@ jobs:
         run: |
           python -m pip install --require-hashes -r CI/requirements_ci.txt
       - name: Environment Caching
-        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
-           .tox
+            .tox
           key: ${{ hashFiles('pyproject.toml', 'tox.toml') }}-lint
       - name: Run linting suite
         run: |
@@ -66,21 +66,26 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ 'ubuntu-latest' ]
-        python-version: [ "3.10", "3.11", "3.12", "3.13", "3.14" ]
+        os: [ "ubuntu-latest" ]
+        python-version: [ "3.11", "3.12", "3.13", "3.14" ]
         eigen3: [ false ]
         include:
-          - os: 'ubuntu-latest'
+          - os: "ubuntu-latest"
             python-version: "3.12"
             eigen3: true
+          - os: "ubuntu-latest"
+            python-version: "3.13"
+            eigen3: false
+            xarray-version: "2024.11.0"
+            xclim-version: "1.0.0"
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@20cf305ff2072d973412fa9b1e3a4f227bda3c76 # v2.14.0
+        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
         with:
           disable-sudo: false
           egress-policy: audit
       - name: Checkout Repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Install Eigen3 (SBCK)
@@ -89,7 +94,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install libeigen3-dev
       - name: Set up Python${{ matrix.python-version }}
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ matrix.python-version }}
           cache: "pip"
@@ -97,7 +102,7 @@ jobs:
         run: |
           python -m pip install --require-hashes -r CI/requirements_ci.txt
       - name: Environment Caching
-        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .tox
           key: ${{ matrix.os }}-Python${{ matrix.python-version }}-${{ hashFiles('pyproject.toml', 'tox.toml') }}
@@ -106,8 +111,10 @@ jobs:
           python -m tox
         env:
           EIGEN3: ${{ matrix.eigen3 }}
+          XARRAY_VERSION: ${{ matrix.xarray-version}}
+          XCLIM_VERSION: ${{ matrix.xclim-version}}
       - name: Report Coverage
-        uses: coverallsapp/github-action@648a8eb78e6d50909eff900e4ec85cab4524a45b # v2.3.6
+        uses: coverallsapp/github-action@8d6379e14d29928660c4ba802d8e85393440b329 # v2.3.8
         with:
           flag-name: run-${{ matrix.python-version }}-pypi-eigen=${{ matrix.eigen3 }}
           parallel: true
@@ -118,23 +125,29 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ 'ubuntu-latest' ]
-        python-version: [ "3.10", "3.11", "3.12", "3.13", "3.14" ]
+        os: [ "ubuntu-latest" ]
+        python-version: [ "3.11", "3.12", "3.13" ]
+        xclim-upstream: [ false ]
+        include:
+          - os: "ubuntu-latest"
+            python-version: "3.14"
+            xarray-version: "2024.11.0"
+            xclim-upstream: true
     defaults:
       run:
         shell: bash -l {0}
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@20cf305ff2072d973412fa9b1e3a4f227bda3c76 # v2.14.0
+        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
         with:
           disable-sudo: true
           egress-policy: audit
       - name: Checkout Repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Setup Conda (Micromamba) with Python${{ matrix.python-version }}
-        uses: mamba-org/setup-micromamba@add3a49764cedee8ee24e82dfde87f5bc2914462 # v2.0.7
+        uses: mamba-org/setup-micromamba@f457c30a868e4760d3a6fcea5f25dc655b8edf39 # v3.2.1
         with:
           cache-downloads: true
           cache-environment: true
@@ -145,11 +158,19 @@ jobs:
       - name: Install Eigen3 and SBCK
         if: ${{ matrix.python-version == '3.11' }}
         run: |
-          mamba install -y -c conda-forge eigen3
+          micromamba install -y -c conda-forge eigen3
           python -m pip install --require-hashes -r CI/requirements_sbck.txt
+      - name: Install xarray (minimally supported version)
+        if: ${{ matrix.xarray-version }}
+        run: |
+          micromamba install xarray==${{ matrix.xarray-version }}
+      - name: Install xclim (upstream)
+        if: ${{ matrix.xclim-upstream }}
+        run: |
+          python -m pip install --no-user "xclim @ git+https://github.com/Ouranosinc/xclim.git@main"
       - name: Install xsdba
         run: |
-          python -m pip install --no-deps .
+          python -m pip install --no-deps --no-user .
       - name: Check versions
         run: |
           micromamba list
@@ -158,7 +179,7 @@ jobs:
         run: |
           python -m pytest --numprocesses=logical --durations=10 --cov=xsdba --cov-report=lcov
       - name: Report Coverage
-        uses: coverallsapp/github-action@648a8eb78e6d50909eff900e4ec85cab4524a45b # v2.3.6
+        uses: coverallsapp/github-action@8d6379e14d29928660c4ba802d8e85393440b329 # v2.3.8
         with:
           flag-name: run-Python${{ matrix.python-version }}-conda
           parallel: true
@@ -171,11 +192,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@20cf305ff2072d973412fa9b1e3a4f227bda3c76 # v2.14.0
+        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
         with:
           disable-sudo: true
           egress-policy: audit
       - name: Coveralls Finished
-        uses: coverallsapp/github-action@648a8eb78e6d50909eff900e4ec85cab4524a45b # v2.3.6
+        uses: coverallsapp/github-action@8d6379e14d29928660c4ba802d8e85393440b329 # v2.3.8
         with:
           parallel-finished: true

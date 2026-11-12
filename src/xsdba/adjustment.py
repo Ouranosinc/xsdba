@@ -907,10 +907,10 @@ class ExtremeValues(TrainAdjust):
     ):
         if frac is None or power is None:
             warn(
-                "No value was provided for the `frac` and/or `power` parameters. Be aware that from v.0.6.1-dev.1, the default values have "
-                "been changed 0.70 and 3, respectively (from 0.25 and 1). If you were relying on the previous defaults, please set these "
-                "parameters explicitly to avoid unexpected results.",
-                FutureWarning,
+                "No value was provided for the `frac` and/or `power` parameters. Be aware that from xsdba v0.6.1, the default values have "
+                "been changed to `0.70` and `3`, respectively (from `0.25` and `1`)."
+                "If you were relying on the previous defaults, please set these parameters explicitly to avoid unexpected results.",
+                UserWarning,
                 stacklevel=2,
             )
             frac = frac or 0.70

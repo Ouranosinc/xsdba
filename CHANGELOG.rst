@@ -2,19 +2,31 @@
 Changelog
 =========
 
-..
-    `Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
-    ------------------------------------------------------------
+`Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
+------------------------------------------------------------
 
-    Contributors:
+Contributors: Gabriel Rondeau-Genesse (:user:`RondeauG`), Éric Dupuis (:user:`coxipi`), Mark Morrissey (:user:`klemmeri`).
 
-    Changes
-    ^^^^^^^
-    * No change.
+Changes
+^^^^^^^
+* New property: ``xsdba.properties.thresholded_quantile``. (:pull:`304`).
+* Make ``xsdba.properties`` compatible with `xclim-v1`.  (:pull:`304`).
+* New groups that generalize seasons (season starting at any possible month, or with a duration of six months can now be given in properties and measures. (:pull:`304`).
 
-    Fixes
-    ^^^^^
-    * No change.
+Fixes
+^^^^^
+* ``xsdba.measures.circular_bias`` was fixed, the previous implementation gave the wrong sign in some cases. (:issue:`307`, :pull:`308`).
+* Fix handling of cases including nan values in ``xsdba.properties.decorrelation_length`` and ``xsdba.properties.spatial_correlogram``. (:pull:`308`).
+
+Breaking changes
+^^^^^^^^^^^^^^^^
+* Many arguments name in ``xsdba.properties`` have been changed to reflect the nomenclature in `xclim-v1`. This includes changes where `op` is either renamed as `statistic` or `condition`, depending on the context.  (:pull:`304`).
+
+Internal changes
+^^^^^^^^^^^^^^^^
+* `scipy` is pinned below 1.18 as ``scipy.stats.rankdata`` with method "max" now outputs float instead of int. The pin will be removed when the problem is handled upstream in SBCK. (:pull:`308`)
+* New sub-module ``xsdba.calendar`` which moves code from ``xsdba.base``.  (:pull:`304`).
+* Ranking functions using `bottleneck` were rewritten with a custom numba function to avoid dependency on bottleneck. (:issue:`288`, :issue:`326`, :issue:`327`, :pull:`329`).
 
 .. _changes_0.7.0:
 

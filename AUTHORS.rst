@@ -27,5 +27,6 @@ Contributors [*]_
 * Juliette Lavoie <lavoie.juliette@ouranos.ca> `@juliettelavoie <https://github.com/juliettelavoie>`_
 * Gabriel Rondeau-Genesse <rondeau-genesse.gabriel@ouranos.ca> `@RondeauG <https://github.com/RondeauG>`_
 * Philippe Roy `@Balinus <https://github.com/Balinus>`_
+* Mark Morrissey `@klemmeri <https://github.com/klemmeri>`_
 
-.. [*] The contributors list was ported from the `xclim` project. Some names might not correspond to any commit in the current repository.
+.. [*] The contributors list was partially ported from the `xclim` project. Some names might not correspond to any commit in the current repository.
