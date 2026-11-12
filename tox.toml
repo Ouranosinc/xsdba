@@ -1,6 +1,6 @@
 envlist = [
   "lint",
-  {product = [{prefix = "py3.", start = 11, stop = 14}]},
+  { product = [{ prefix = "py3.", start = 11, stop = 14 }] },
   "docs"
 ]
 skip_missing_interpreters = true
@@ -37,19 +37,19 @@ allowlist_externals = ["make"]
 
 [env_run_base]
 description = "Run tests with pytest under {basepython}"
-setenv = {PYTEST_ADDOPTS = "--color=yes --numprocesses=logical --durations=10 --cov=xsdba --cov-report=lcov", PYTHONPATH = "{toxinidir}"}
+setenv = { PYTEST_ADDOPTS = "--color=yes --numprocesses=logical --durations=10 --cov=xsdba --cov-report=lcov", PYTHONPATH = "{toxinidir}" }
 passenv = ["COVERALLS_*", "EIGEN3", "GITHUB_*", "XARRAY_*", "XCLIM_*"]
 download = true
 dependency_groups = ["test"]
 extras = ["extras"]
 deps = [
-  {replace = "if", condition = "env.EIGEN3  == 'true'", then = ["sbck>=1.4.2"], extend = true},
-  {replace = "if", condition = "env.XARRAY_VERSION", then = ["xarray=={env:XARRAY_VERSION}"], extend = true},
-  {replace = "if", condition = "env.XCLIM_VERSION", then = ["xclim=={env:XCLIM_VERSION}"], extend = true}
+  { replace = "if", condition = "env.EIGEN3  == 'true'", then = ["sbck>=1.4.2"], extend = true },
+  { replace = "if", condition = "env.XARRAY_VERSION", then = ["xarray=={env:XARRAY_VERSION}"], extend = true },
+  { replace = "if", condition = "env.XCLIM_VERSION", then = ["xclim=={env:XCLIM_VERSION}"], extend = true }
 ]
 install_command = ["python", "-m", "pip", "install", "--no-user", "{opts}", "{packages}"]
 commands_pre = [
-  {replace = "if", condition = "env.XCLIM_PRE", then = ["python", "-m", "pip", "install", "--no-user", "--upgrade", "--pre", "xclim"], extend = true},
+  { replace = "if", condition = "env.XCLIM_PRE", then = ["python", "-m", "pip", "install", "--no-user", "--upgrade", "--pre", "xclim"], extend = true },
   ["pip", "list"],
   ["pip", "check"]
 ]
