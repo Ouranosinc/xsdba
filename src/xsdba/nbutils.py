@@ -395,7 +395,9 @@ def rank(da: DataArray, dim: str | list[str] = "time", pct: bool = False, use_ra
         rnk = _rank(rnk, rnk_dim)
     if pct:
         n = rnk.count(dim=rnk_dim)
-        # if only one count, don't normalize and rnk -> 0
+        # da.rank(dim=dim, pct=True) would be in the range: [1/n, 1]
+        # We change the range to [0,1], i.e.  like a quantile
+        # If only one count, don't normalize and rnk -> 0
         rnk = (rnk - 1) / (n - 1).where(n > 1, 1)
     if len(dims) > 1:
         rnk = rnk.unstack(rnk_dim).transpose(*da_dims).drop_vars([d for d in dims if d not in da_coords])
