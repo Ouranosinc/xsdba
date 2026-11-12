@@ -868,8 +868,8 @@ class TestQDM:
             v = rng.gamma(k, scale, t.size) * (rng.random(t.size) < pwet)
             return xr.DataArray(v, dims="time", coords={"time": t}, attrs={"units": "mm/d"})
 
-        ref, hist = pr(0.45, 0.7, 8.0, "2001-01-01", 365 * 2), pr(0.30, 0.6, 10.0, "2001-01-01", 365 * 2)
-        sim = pr(0.30, 0.6, 10.0, "2003-01-01", 365 * 1)
+        ref, hist = pr(1, 0.7, 8.0, "2001-01-01", 365 * 2), pr(1, 0.6, 10.0, "2001-01-01", 365 * 2)
+        sim = pr(1, 0.6, 10.0, "2003-01-01", 365 * 1)
         group = Grouper("time.dayofyear", window=31)
         QDM = QuantileDeltaMapping.train(ref, hist, kind="*", group=group, nquantiles=10)
 
@@ -879,7 +879,7 @@ class TestQDM:
         scen_window = QDM.adjust(sim, rank_window=True)
 
         # but this gives different values
-        assert (scen_window.values != scen_default.values).any()
+        assert not np.allclose(scen_window, scen_default)
 
         with set_options(extra_output=True):
             out = QDM.adjust(sim, rank_window=True)
