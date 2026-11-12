@@ -1058,9 +1058,7 @@ class VarianceScaling(TrainAdjust):
     """
     Variance scaling bias-adjustment.
 
-    Bias-adjustment method scaling the mean and the variance of variables in an additive or multiplicative way. With the
-    additive version, the mean and variance of `hist` match those of `ref`, while in the multiplicative, it is the
-    log-transformed variables that have the same first and second moments.
+    Bias-adjustment method scaling the mean and the variance of variables.
 
     Parameters
     ----------
