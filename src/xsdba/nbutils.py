@@ -394,7 +394,7 @@ def rank(da: DataArray, dim: str | list[str] = "time", pct: bool = False, use_ra
         rnk = rnk + da.copy(data=np.random.uniform(low=0.1, high=0.25, size=da.shape))
         rnk = _rank(rnk, rnk_dim)
     if pct:
-        n = rnk.count(dim=dim)
+        n = rnk.count(dim=rnk_dim)
         # if only one count, don't normalize and rnk -> 0
         rnk = (rnk - 1) / (n - 1).where(n > 1, 1)
     if len(dims) > 1:
