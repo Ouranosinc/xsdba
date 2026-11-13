@@ -271,6 +271,139 @@ def quantile(da: DataArray, q: np.ndarray, dim: str | Sequence[Hashable]) -> Dat
     return res
 
 
+# TODO: Merge codes related to nanrank and nanquantile
+@njit(nogil=True, cache=True)
+def _nanrank_2d(arr):
+    nrows, ncols = arr.shape
+    out = np.full(arr.shape, np.nan)
+    idx = np.empty(ncols, dtype=np.int64)
+    vals = np.empty(ncols, dtype=arr.dtype)
+    for i in range(nrows):
+        k = 0
+        for j in range(ncols):
+            v = arr[i, j]
+            # not NaN
+            if v == v:
+                idx[k] = j
+                vals[k] = v
+                k += 1
+        # return the NaN output if no valid values are present
+        nvalid = k
+        if nvalid == 0:
+            continue
+        order = np.argsort(vals[:nvalid])
+        start = 0
+        while start < nvalid:
+            end = start + 1
+            v = vals[order[start]]
+            while end < nvalid and vals[order[end]] == v:
+                end += 1
+            rnk = 0.5 * (start + end + 1)  # mean of 1-based ranks start+1..end
+            for t in range(start, end):
+                out[i, idx[order[t]]] = rnk
+            start = end
+    return out
+
+
+def nanrank(arr, axis=-1):
+    """
+    Rank the values of an array along an axis, ignoring NaNs.
+
+    Ties are assigned the average of the ranks they would otherwise occupy (the "average" method of
+    :py:func:`scipy.stats.rankdata`). Ranks are 1-based and computed independently for each 1D slice along `axis`.
+
+    Parameters
+    ----------
+    arr : array-like
+        Input data.
+    axis : int
+        Axis along which to rank. Default is the last axis.
+
+    Returns
+    -------
+    np.ndarray
+        Array with the same shape as `arr`, holding ranks in [1, N], where N is the number of non-NaN values in
+        the slice. NaNs in the input are NaNs in the output. Slices with no valid value are all-NaN.
+    """
+    # 1. move axis to be reduced to the end
+    moved = np.moveaxis(arr, axis, -1)
+    shape = moved.shape
+
+    # 2. send this as a 2d array
+    ranked = _nanrank_2d(np.ascontiguousarray(moved).reshape(-1, shape[-1]))
+    # undo 2. & 1.
+    return np.moveaxis(ranked.reshape(shape), -1, axis)
+
+
+def _rank(da: DataArray, dim: str) -> DataArray:
+    return apply_ufunc(
+        nanrank,
+        da,
+        input_core_dims=[[dim]],
+        output_core_dims=[[dim]],
+        kwargs={"axis": -1},
+        dask="parallelized",
+        output_dtypes=[np.float64],
+    ).transpose(*da.dims)
+
+
+def rank(da: DataArray, dim: str | list[str] = "time", pct: bool = False, use_random_tiebreak: bool = False) -> DataArray:
+    """
+    Rank data along a dimension.
+
+    Replicates `xr.DataArray.rank` but as a function usable in a Grouper.apply(). Xarray's docstring is below:
+
+    Equal values are assigned a rank that is the average of the ranks that would have been otherwise assigned to all the
+    values within that set. Ranks begin at 1, not 0. If pct, computes percentage ranks, ranging from 0 to 1.
+
+    A list of dimensions can be provided and the ranks are then computed separately for each dimension.
+
+    Parameters
+    ----------
+    da : xr.DataArray
+        Source array.
+    dim : str | list[str], hashable
+        Dimension(s) over which to compute rank.
+    pct : bool
+        If `True`, compute percentage ranks, otherwise compute integer ranks.
+        Percentage ranks range from 0 to 1, in opposition to xarray's implementation,
+        where they range from 1/N to 1.
+    use_random_tiebreak: bool
+        If `True`, small random values are added to the input dataset to avoid equal values. The scale of the noise
+        added is chosen according to the input data, such that the ranks are only modified to equal values and not
+        between unequal values. Default value is `False`.
+
+    Returns
+    -------
+    DataArray
+        DataArray with the same coordinates and dtype 'float64'.
+
+    See Also
+    --------
+    xarray.DataArray.rank
+    """
+    da_dims, da_coords = da.dims, da.coords
+    dims = dim if isinstance(dim, list) else [dim]
+    rnk_dim = dims[0] if len(dims) == 1 else utils.get_temp_dimname(da_dims, "temp")
+    # multi-dimensional ranking through stacking
+    if len(dims) > 1:
+        da = da.stack(**{rnk_dim: dims})
+    rnk = _rank(da, rnk_dim)
+    # small perturbation on the ranks, and find the rank of the perturbed ranks!
+    if use_random_tiebreak:
+        rnk = rnk + da.copy(data=np.random.uniform(low=0.1, high=0.25, size=da.shape))
+        rnk = _rank(rnk, rnk_dim)
+    if pct:
+        n = rnk.count(dim=rnk_dim)
+        # da.rank(dim=dim, pct=True) would be in the range: [1/n, 1]
+        # We change the range to [0,1], i.e.  like a quantile
+        # If only one count, don't normalize and rnk -> 0
+        rnk = (rnk - 1) / (n - 1).where(n > 1, 1)
+    if len(dims) > 1:
+        rnk = rnk.unstack(rnk_dim).transpose(*da_dims).drop_vars([d for d in dims if d not in da_coords])
+    return rnk
+
+
 @njit(
     [
         float32[:, :](float32[:, :]),
