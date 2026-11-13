@@ -974,6 +974,51 @@ def scaling_adjust(ds: xr.Dataset, *, group, interp, kind) -> xr.Dataset:
     return out
 
 
+@map_groups(scaling=[Grouper.PROP], offset=[Grouper.PROP])
+def variance_train(ds: xr.Dataset, *, dim) -> xr.Dataset:
+    """
+    VarianceScaling: Train on one group.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        Dataset variables:
+            ref : training target
+            hist : training data
+    """
+    ref_dim = Grouper.filter_dim(ds.ref, dim)
+    sim_dim = Grouper.filter_dim(ds.hist, dim)
+    mref = ds.ref.mean(ref_dim)
+    mhist = ds.hist.mean(sim_dim)
+    sref = ds.ref.std(ref_dim)
+    shist = ds.hist.std(sim_dim)
+    # X' = (X-<X>)*σy/σx + <Y> = X*σy/σx + (<Y> - <X>*σy/σx)
+    # scaling  = σy/σx
+    # offset  = (<Y> - <X>*σy/σx)
+    scaling = (sref / shist).rename("scaling")
+    offset = (mref - scaling * mhist).rename("offset")
+    return xr.merge([scaling, offset])
+
+
+@map_blocks(reduces=[Grouper.PROP], scen=[])
+def variance_adjust(ds: xr.Dataset, *, group, interp) -> xr.Dataset:
+    """
+    VarianceScaling: Adjust on one block.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        Dataset variables:
+            af : Adjustment factors.
+            sim : Data to adjust.
+    """
+    scaling = u.broadcast(ds.scaling, ds.sim, group=group, interp=interp)
+    offset = u.broadcast(ds.offset, ds.sim, group=group, interp=interp)
+    scen = (scaling * ds.sim + offset).rename("scen")
+    out = scen.to_dataset()
+    return out
+
+
 def npdf_transform(ds: xr.Dataset, **kwargs) -> xr.Dataset:
     r"""
     N-pdf transform : Iterative univariate adjustment in random rotated spaces.

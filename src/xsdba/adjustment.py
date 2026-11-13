@@ -32,6 +32,8 @@ from xsdba._adjustment import (
     qm_adjust,
     scaling_adjust,
     scaling_train,
+    variance_adjust,
+    variance_train,
 )
 from xsdba.base import Grouper, ParametrizableWithDataset, parse_group, uses_dask
 from xsdba.formatting import gen_call_string, update_history
@@ -61,6 +63,7 @@ __all__ = [
     "PrincipalComponents",
     "QuantileDeltaMapping",
     "Scaling",
+    "VarianceScaling",
     "dOTC",
 ]
 
@@ -1048,6 +1051,53 @@ class Scaling(TrainAdjust):
             interp=interp,
             kind=self.kind,
         ).scen
+
+
+# TODO: Implement Power Transformation for precipitations? Similar
+class VarianceScaling(TrainAdjust):
+    """
+    Variance scaling bias-adjustment.
+
+    Bias-adjustment method scaling the mean and the variance of variables.
+
+    Parameters
+    ----------
+    Train step:
+
+    group : str or Grouper
+        The grouping information. See :py:class:`xsdba.base.Grouper` for details.
+        Default is "time", meaning a single adjustment group along dimension "time".
+
+    Adjust step:
+
+    interp : {'nearest', 'linear', 'cubic'}
+        The interpolation method to use then interpolating the adjustment factors. Defaults to "nearest".
+
+    References
+    ----------
+    :cite:cts:`teutschbein_bias_2012`
+    """
+
+    _allow_diff_calendars = False
+    _allow_diff_training_times = False
+
+    @classmethod
+    def _train(
+        cls,
+        ref: xr.DataArray,
+        hist: xr.DataArray,
+        *,
+        group: str | Grouper = "time",
+    ):
+        ds = variance_train(xr.Dataset({"ref": ref, "hist": hist}), group=group)
+
+        ds.scaling.attrs.update(long_name="Variance Scaling adjustment factors")
+        ds.offset.attrs.update(long_name="Offset adjustment factors")
+
+        return ds, {"group": group}
+
+    def _adjust(self, sim, interp="nearest"):
+        return variance_adjust(xr.Dataset({"sim": sim, "scaling": self.ds.scaling, "offset": self.ds.offset}), group=self.group, interp=interp).scen
 
 
 class PrincipalComponents(TrainAdjust):

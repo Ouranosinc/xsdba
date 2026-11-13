@@ -17,10 +17,12 @@ Fixes
 ^^^^^
 * ``xsdba.measures.circular_bias`` was fixed, the previous implementation gave the wrong sign in some cases. (:issue:`307`, :pull:`308`).
 * Fix handling of cases including nan values in ``xsdba.properties.decorrelation_length`` and ``xsdba.properties.spatial_correlogram``. (:pull:`308`).
+* ``xsdba.QuantileDeltaMapping`` now correctly handles the computation of ranks where there are tied values. (:issue:`326`, :pull:`329`).
 
 Breaking changes
 ^^^^^^^^^^^^^^^^
 * Many arguments name in ``xsdba.properties`` have been changed to reflect the nomenclature in `xclim` v1.0; This includes changes where ``op`` is either renamed as `statistic` or `condition`, depending on the context. (:pull:`304`).
+
 
 Internal changes
 ^^^^^^^^^^^^^^^^
@@ -43,6 +45,7 @@ Changes
 * New example in notebook `advanced_example.ipynb` showing how to use spectral utils (``xsdba.processing.spectral_filter`` and ``xsdba.properties.spectral_variance``). (:issue:`247`, :pull:`259`, :pull:`282`).
 * `QuantileDeltaMapping.adjust` now allows using training grouper by setting `rank_window` to `True`. (:issue:`287`, :pull:`288`).
 * ``xsdba.utils.rank`` accepts a new argument: `random_tiebreaking`. If set to `True`, equal values are now ranked with distinct ranks. (:issue:`182`, :pull:`183`).
+* New `VarianceScaling` adjustment method. (:pull:`285`).
 
 Breaking changes
 ^^^^^^^^^^^^^^^^
