@@ -5,12 +5,12 @@ Changelog
 `Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
 ------------------------------------------------------------
 
-Contributors: Gabriel Rondeau-Genesse (:user:`RondeauG`), Éric Dupuis (:user:`coxipi`), Mark Morrissey (:user:`klemmeri`).
+Contributors: Gabriel Rondeau-Genesse (:user:`RondeauG`), Éric Dupuis (:user:`coxipi`), Mark Morrissey (:user:`klemmeri`), Trevor James Smith (:user:`Zeitsperre`).
 
 Changes
 ^^^^^^^
 * New property: ``xsdba.properties.thresholded_quantile``. (:pull:`304`).
-* Make ``xsdba.properties`` compatible with `xclim-v1`.  (:pull:`304`).
+* Make ``xsdba.properties`` compatible with `xclim >=1.0`. (:pull:`304`).
 * New groups that generalize seasons (season starting at any possible month, or with a duration of six months can now be given in properties and measures. (:pull:`304`).
 
 Fixes
@@ -21,14 +21,15 @@ Fixes
 
 Breaking changes
 ^^^^^^^^^^^^^^^^
-* Many arguments name in ``xsdba.properties`` have been changed to reflect the nomenclature in `xclim-v1`. This includes changes where `op` is either renamed as `statistic` or `condition`, depending on the context.  (:pull:`304`).
+* Many arguments name in ``xsdba.properties`` have been changed to reflect the nomenclature in `xclim` v1.0; This includes changes where ``op`` is either renamed as `statistic` or `condition`, depending on the context. (:pull:`304`).
 
 
 Internal changes
 ^^^^^^^^^^^^^^^^
-* `scipy` is pinned below 1.18 as ``scipy.stats.rankdata`` with method "max" now outputs float instead of int. The pin will be removed when the problem is handled upstream in SBCK. (:pull:`308`)
+* `scipy` is pinned below 1.18 as ``scipy.stats.rankdata`` with method "max" now outputs float instead of int. The pin will be removed when the problem is handled upstream in SBCK. (:pull:`308`).
 * New sub-module ``xsdba.calendar`` which moves code from ``xsdba.base``.  (:pull:`304`).
 * Ranking functions using `bottleneck` were rewritten with a custom numba function to avoid dependency on bottleneck. (:issue:`288`, :issue:`326`, :issue:`327`, :pull:`329`).
+* Linting and deployment workflows now run `dist` file metadata checks using `twine`. (:pull:`309`).
 
 .. _changes_0.7.0:
 
