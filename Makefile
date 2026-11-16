@@ -70,7 +70,7 @@ lint: install-lint ## check style
 	python -m numpydoc lint src/xsdba/**.py
 	python -m vulture src/xsdba tests
 	codespell src/xsdba tests docs
-	python -m deptry src
+	python -m deptry src/xsdba
 	python -m yamllint --config-file=.yamllint.yaml src/xsdba
 
 test: install-test ## run tests quickly with the default Python

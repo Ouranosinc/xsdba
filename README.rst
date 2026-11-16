@@ -9,7 +9,7 @@ xsdba: Statistical Downscaling and Bias Adjustment library
 +----------------------------+-----------------------------------------------------+
 | Open Source                | |license| |ossf-score| |zenodo|                     |
 +----------------------------+-----------------------------------------------------+
-| Coding Standards           | |ruff| |prek| |pre-commit-ci| |ossf-bp|             |
++| Coding Standards          | |ruff| |prek| |pre-commit-ci| |zizmor| |ossf-bp|    |
 +----------------------------+-----------------------------------------------------+
 | Development Status         | |status| |build| |coveralls|                        |
 +----------------------------+-----------------------------------------------------+
@@ -88,6 +88,10 @@ This package was created with Cookiecutter_ and the `Ouranosinc/cookiecutter-pyp
 .. |license| image:: https://img.shields.io/github/license/Ouranosinc/xsdba.svg
         :target: https://github.com/Ouranosinc/xsdba/blob/main/LICENSE
         :alt: License
+..
+    .. |mypy| image:: https://www.mypy-lang.org/static/mypy_badge.svg
+        :target: https://mypy-lang.org/
+        :alt: mypy
 
 .. |ossf-bp| image:: https://bestpractices.coreinfrastructure.org/projects/10045/badge
         :target: https://bestpractices.coreinfrastructure.org/projects/10045
@@ -124,6 +128,10 @@ This package was created with Cookiecutter_ and the `Ouranosinc/cookiecutter-pyp
 .. |zenodo| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.14983948.svg
         :target: https://doi.org/10.5281/zenodo.14983948
         :alt: DOI
+
+.. |zizmor| image:: https://img.shields.io/badge/%F0%9F%8C%88-zizmor-white?labelColor=white
+        :target: https://zizmor.sh/
+        :alt: zizmor
 
 .. |logo| image:: https://raw.githubusercontent.com/Ouranosinc/xsdba/main/docs/logos/xsdba-logo-small-light.png
         :target: https://github.com/Ouranosinc/xsdba

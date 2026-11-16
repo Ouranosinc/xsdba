@@ -70,113 +70,139 @@ Ready to contribute? Here's how to set up ``xsdba`` for local development.
 
 #. First, clone the ``xsdba`` repo locally.
 
-    * If you are not a ``xsdba`` collaborator, first fork the ``xsdba`` repo on GitHub, then clone your fork locally.
+   * If you are not a ``xsdba`` collaborator, first fork the ``xsdba`` repo on GitHub, then clone your fork locally.
 
-        .. code-block:: console
+   .. code-block:: console
 
-            git clone git@github.com:your_name_here/xsdba.git
+       $ git clone git@github.com:your_name_here/xsdba.git
 
-    * If you are a ``xsdba`` collaborator, clone the ``xsdba`` repo directly.
+   * If you are a ``xsdba`` collaborator, clone the ``xsdba`` repo directly.
 
-        .. code-block:: console
+   .. code-block:: console
 
-            git clone git@github.com:Ouranosinc/xsdba.git
+       $ git clone git@github.com:Ouranosinc/xsdba.git
 
 #. Install your local copy into a development environment. You can create a new Anaconda development environment with:
 
-    .. code-block:: console
+   .. code-block:: console
 
-        conda env create -f environment-dev.yml
-        conda activate xsdba-dev
-        make dev
+       $ conda env create -f environment-dev.yml
+       $ conda activate xsdba-dev
+       $ make dev
 
-    If you are on Windows, replace the ``make dev`` command with the following:
+   If you are on Windows, replace the ``make dev`` command with the following:
 
-    .. code-block:: console
+   .. code-block:: console
 
-        python -m pip install --group dev
-        python -m pip install --editable .
-        prek install
+       $ python -m pip install --group dev
+       $ python -m pip install --editable .
+       $ prek install
 
-    This installs ``xsdba`` in an "editable" state, meaning that changes to the code are immediately seen by the environment. To ensure a consistent coding style, `make dev` also installs the ``pre-commit`` hooks to your local clone.
+   This installs ``xsdba`` in an "editable" state, meaning that changes to the code are immediately seen by the environment. To ensure a consistent coding style, `make dev` also installs the ``pre-commit`` hooks to your local clone.
 
-    On commit, ``prek`` will will run ``pre-commit`` checks that ensure code quality checks are passing, perform automatic fixes if possible, and warn of violations that require intervention. If your commit fails the checks initially, simply fix the errors, re-add the files, and re-commit.
+   On commit, ``prek`` will run ``pre-commit`` checks that ensure code quality checks are passing, perform automatic fixes if possible, and warn of violations that require intervention. If your commit fails the checks initially, simply fix the errors, re-add the files, and re-commit.
 
-    You can also run the hooks manually with:
+   You can also run the hooks manually with:
 
-    .. code-block:: console
+   .. code-block:: console
 
-        prek run -a
+       $ prek run -a
 
-    If you want to skip the ``pre-commit`` hooks temporarily, you can pass the `--no-verify` flag to `git commit`.
+   If you want to skip the ``pre-commit`` hooks temporarily, you can pass the `--no-verify` flag to `git commit`.
+
+   Or, alternatively, you can check individual hooks manually with  `ruff`, `flake8`, `flake8-rst-docstrings`, `vulture`, `codespell`, `numpydoc`, `deptry`, and `yamllint`:
+
+   .. code-block:: console
+
+       # To install the necessary dependencies:
+       $ python -m pip install --group lint
+       # To run individual checks
+       $ python -m ruff check --quiet .
+       $ python -m flake8 --config=.flake8 src/ tests
+       $ python -m vulture src/xsdba tests
+       $ codespell src/xsdba tests docs
+       $ python -m numpydoc lint src/xsdba/*.py
+       $ python -m deptry src
+       $ python -m yamllint --config-file=.yamllint.yaml src/xsdba
+
+   .. note::
+
+       `xsdba` is fully type-checked with `mypy`_ (`ty`_).
+       If your contributions are failing this check, it means that the type definitions could be better defined.
+       For some guidance on how to do this, check the `mypy cheat sheet <https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html#cheat-sheet-py3>`_ for examples.
+       If you are adding a new but similar compute function or indicator, following typing conventions of other similar objects will usually address these issues.
+
+.. _`mypy`: https://www.mypy-lang.org/
+.. _`ty`: https://docs.astral.sh/ty/
+
 
 #. Create a branch for local development:
 
-    .. code-block:: console
+   .. code-block:: console
 
-        git checkout -b name-of-your-bugfix-or-feature
+       $ git checkout -b name-of-your-bugfix-or-feature
 
-    Now you can make your changes locally.
+   Now you can make your changes locally.
 
 #. When you're done making changes, we **strongly** suggest running the tests in your environment or with the help of ``tox``:
 
-    .. code-block:: console
+   .. code-block:: console
 
-        make lint
-        python -m pytest
-        # Or, to run multiple build tests
-        python -m tox
+       $ make lint
+       $ python -m pytest
+       # Or, to run multiple build tests
+       $ python -m tox
 
 #. Commit your changes and push your branch to GitHub:
 
-    .. code-block:: console
+   .. code-block:: console
 
-        git add .
-        git commit -s -m "Your detailed description of your changes."
-        git push origin name-of-your-bugfix-or-feature
+       $ git add .
+       $ git commit -s -m "Your detailed description of your changes."
+       $ git push origin name-of-your-bugfix-or-feature
 
-    If ``pre-commit`` hooks fail, try fixing the issues, re-staging the files to be committed, and re-committing your changes (or, if need be, you can skip them with `--no-verify` flag).
+   If ``pre-commit`` hooks fail, try fixing the issues, re-staging the files to be committed, and re-committing your changes (or, if need be, you can skip them with `--no-verify` flag).
 
 #. Submit a `Pull Request <https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request>`_ through the GitHub website.
 
 #. When pushing your changes to your branch on GitHub, the documentation will automatically be tested to reflect the changes in your Pull Request. This build process can take several minutes at times. If you are actively making changes that affect the documentation and wish to save time, you can compile and test your changes beforehand locally with:
 
-    .. code-block:: console
+   .. code-block:: console
 
-        # To generate the html and open it in your browser
-        make docs
-        # To only generate the html
-        make autodoc
-        make -C docs html
-        # To simply test that the docs pass build checks
-        python -m tox -e docs
+       # To generate the html and open it in your browser
+       $ make docs
+       # To only generate the html
+       $ make autodoc
+       $ make -C docs html
+       # To simply test that the docs pass build checks
+       $ python -m tox -e docs
 
 #. If changes to your branch are made on GitHub, you can update your local branch with:
 
-    .. code-block:: console
+   .. code-block:: console
 
-        git checkout name-of-your-bugfix-or-feature
-        git fetch
-        git pull origin name-of-your-bugfix-or-feature
+       $ git checkout name-of-your-bugfix-or-feature
+       $ git fetch
+       $ git pull origin name-of-your-bugfix-or-feature
 
-    If you have merge conflicts, you might need to replace `git pull` with `git merge` and resolve the conflicts manually.
-    Resolving conflicts from the command line can be tricky. If you are not comfortable with this, you can ignore the last command and instead use a GUI like PyCharm or Visual Studio Code to merge the remote changes and resolve the conflicts.
+   If you have merge conflicts, you might need to replace `git pull` with `git merge` and resolve the conflicts manually.
+   Resolving conflicts from the command line can be tricky. If you are not comfortable with this, you can ignore the last command and instead use a GUI like PyCharm or Visual Studio Code to merge the remote changes and resolve the conflicts.
 
 #. Before merging, your Pull Request will need to be based on the `main` branch of the ``xsdba`` repository. If your branch is not up-to-date with the `main` branch, you can perform similar steps as above to update your branch:
 
-    .. code-block:: console
+   .. code-block:: console
 
-        git checkout name-of-your-bugfix-or-feature
-        git fetch
-        git pull origin main
+       $ git checkout name-of-your-bugfix-or-feature
+       $ git fetch
+       $ git pull origin main
 
-    See the previous step for more information on resolving conflicts.
+   See the previous step for more information on resolving conflicts.
 
 #. Once your Pull Request has been accepted and merged to the `main` branch, several automated workflows will be triggered:
 
-    - The ``bump-version.yml`` workflow will automatically bump the patch version when pull requests are pushed to the `main` branch on GitHub. **It is not recommended to manually bump the version in your branch when merging (non-release) pull requests (this will cause the version to be bumped twice).**
-    - `ReadTheDocs` will automatically build the documentation and publish it to the `latest` branch of `xsdba` documentation website.
-    - If your branch is not a fork (i.e. you are a maintainer), your branch will be automatically deleted.
+   - The ``bump-version.yml`` workflow will automatically bump the patch version when pull requests are pushed to the `main` branch on GitHub. **It is not recommended to manually bump the version in your branch when merging (non-release) pull requests (this will cause the version to be bumped twice).**
+   - `ReadTheDocs` will automatically build the documentation and publish it to the `latest` branch of `xsdba` documentation website.
+   - If your branch is not a fork (i.e. you are a maintainer), your branch will be automatically deleted.
 
 You will have contributed to ``xsdba``!
 
@@ -191,15 +217,23 @@ Before you submit a pull request, check that it meets these guidelines:
 
 #. If the pull request adds functionality, either update the documentation or create a new notebook that demonstrates the feature. Library-defining features should also be listed in ``README.rst``.
 
-#. The pull request should work for all currently supported Python versions. Check the `pyproject.toml` or `tox.ini` files for the list of supported versions.
+#. The pull request should work for all currently supported Python versions. Check the `pyproject.toml` or `tox.toml` files for the list of supported versions.
 
 #. If you haven't already, ensure that you have read and agreed to the `Developer Certificate of Origin (DCO) <https://developercertificate.org/>`_, and that you have signed off on your commits using:
 
-    .. code-block:: bash
+   .. code-block:: console
 
-          git commit -s/--signoff
+       $ git commit -s/--signoff
 
-    This will add a `Signed-off-by:` line to your commit message, which indicates that you agree to the DCO.
+This will add a `Signed-off-by:` line to your commit message, which indicates that you agree to the DCO.
+
+.. warning::
+
+    Try to keep your contributions within the scope of the issue that you are addressing.
+    While it might be tempting to fix other aspects of the library as it comes up,
+    it's better to simply to flag the problems in case others are already working on it.
+
+    Consider adding a "**# TODO:**" or "**# FIXME:**" comment if the need arises.
 
 AI Assistance Notice
 --------------------
@@ -284,13 +318,13 @@ To run a subset of tests:
 
 .. code-block:: console
 
-    python -m pytest tests/test_xsdba.py
+    $ python -m pytest tests/test_xsdba.py
 
 You can also directly call a specific test class or test function using:
 
 .. code-block:: console
 
-    python -m pytest tests/test_xsdba.py::TestClassName::test_function_name
+    $ python -m pytest tests/test_xsdba.py::TestClassName::test_function_name
 
 For more information on running tests, see the `pytest documentation <https://docs.pytest.org/en/latest/usage.html>`_.
 
@@ -298,9 +332,9 @@ To run specific code style checks:
 
 .. code-block:: console
 
-    python -m ruff check src/xsdba tests
-    python -m flake8 src/xsdba tests
-    python -m numpydoc lint src/xsdba/**.py
+    $ python -m ruff check src/xsdba tests
+    $ python -m flake8 src/xsdba tests
+    $ python -m numpydoc lint src/xsdba/**.py
 
 To get ``ruff``, ``flake8`` (with the ``flake8-rst-docstrings`` plugin), and ``numpydoc``, simply install them with ``pip`` (or ``conda``) into your environment.
 

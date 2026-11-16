@@ -16,25 +16,27 @@ A reminder for the **maintainers** on how to deploy. This section is only releva
     Before beginning, it is a good idea to practice `commit signing`_ at the very least for _tags_ and _releases_. This is a method of cryptographically signing your work to ensure that packages can verifiably be traced to a known and trusted developer.
     Once a GPG key has been `created`_ and `added`_ to your GitHub profile, you can enable GPG signing for all commits by launching `$ git config --local/--global commit.gpgsign true` within a shell running in your local clone (or anywhere if `--global`).
 
+Before beginning, maintainers must have already configured `Trusted Publisher`_ on GitHub_ with TestPyPI_ and PyPI_ and have also added the necessary tokens to their CI secrets (this requires active accounts on both indexes as well as GitHub).
+
 For creating tags and releases, we **strongly recommend** enabling the "release immutability" option in the repository settings. This prevents _tags_ and _releases_ from being modified of GitHub after they have been published.
 
-#. Create a new branch from `main` (e.g. `release-0.2.0`).
-#. Update the `CHANGELOG.rst` file to change the `Unreleased` section to the current date.
-#. Bump the version in your branch to the next version (e.g. `v0.1.0 -> v0.2.0`):
+When a new version has been minted (features have been successfully integrated test coverage and stability is adequate), maintainers should update the pip-installable package (wheel and source release) on PyPI as well as the binary on conda-forge.
 
-    .. code-block:: console
+From a new branch (e.g. `prepare-v123`), open a Pull Request and make sure all your changes to support a new version are committed (**update the entry for newest version in CHANGELOG.rst**), then run:
 
-        bump-my-version bump minor # In most cases, we will be releasing a minor version
-        bump-my-version bump release # This will update the version strings to drop the `dev` suffix
-        git push
+   .. code-block:: console
+
+       $ bump-my-version bump <option>  # Possible options: major / minor / patch
+       $ bump-my-version bump release # This will update the version strings to drop the `-dev` suffix
+       $ git push
 
 #. Create a pull request from your branch to `main`.
 #. Once the pull request is merged, create a new release on GitHub. On the `main` branch, run:
 
-    .. code-block:: console
+   .. code-block:: console
 
-        git tag -s/--sign "v0.2.0" -m "Release v0.2.0"
-        git push --tags
+       $ git tag -s/--sign "v0.2.0" -m "Release v0.2.0"
+       $ git push --tags
 
    This will trigger a GitHub workflow to build the package and upload it to TestPyPI. At the same time, the GitHub workflow will create a draft release on GitHub. Assuming that the workflow passes, the final release can then be published on GitHub by finalizing the draft release.
 
@@ -45,34 +47,45 @@ For creating tags and releases, we **strongly recommend** enabling the "release 
     Uploads to PyPI (and releases on GitHub if using release immutability) can **never** be overwritten. If you make a mistake, you will need to bump the version and re-release the package. If the package uploaded to GitHub and PyPI is broken, you should modify the GitHub release to mark the package as broken, as well as yank the package (mark the version "broken") on PyPI.
 
 .. _`commit signing`: https://git-scm.com/book/en/v2/Git-Tools-Signing-Your-Work
-.. _created: https://docs.github.com/en/authentication/managing-commit-signature-verification/generating-a-new-gpg-key
+.. _GitHub: https://github.com/
+.. _`Trusted Publisher`: https://docs.pypi.org/trusted-publishers/
 .. _added: https://docs.github.com/en/authentication/managing-commit-signature-verification/adding-a-gpg-key-to-your-github-account
+.. _created: https://docs.github.com/en/authentication/managing-commit-signature-verification/generating-a-new-gpg-key
+.. _PyPI: https://pypi.org/
+.. _TestPyPI: https://test.pypi.org/
 
 Packaging
 ---------
 
 When a new version has been minted (features have been successfully integrated test coverage and stability is adequate), maintainers should update the pip-installable package (wheel and source release) on PyPI as well as the binary on conda-forge.
 
-The simple approach
-~~~~~~~~~~~~~~~~~~~
+The manual approach (deprecated)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The simplest approach to packaging for general support (pip wheels) requires that `flit` be installed:
+.. warning::
 
-    .. code-block:: console
+    This approach is documented for reference only.
+    `Trusted Publisher`_ is the suggested method for deploying new and existing packages.
 
-        python -m pip install flit
+The manual approach to packaging for general support (pip wheels) requires that `flit`_ be installed:
+
+.. code-block:: console
+
+    $ python -m pip install flit
 
 From the command line on your Linux distribution, simply run the following from the clone's main dev branch:
 
-    .. code-block:: console
+.. code-block:: console
 
-        # To build the packages (sources and wheel)
-        make dist
+    # To build the packages (sources and wheel)
+    $ make dist
 
-        # To upload to PyPI
-        make release
+    # To upload to PyPI
+    $ make release
 
 The new version based off of the version checked out will now be available via `pip` (`pip install xsdba`).
+
+.. _`flit`: https://flit.pypa.io/en/stable/index.html
 
 Releasing on conda-forge
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -100,7 +113,12 @@ Before updating the main conda-forge recipe, we echo the conda-forge documentati
 Subsequent releases
 ^^^^^^^^^^^^^^^^^^^
 
-If the conda-forge feedstock recipe is built from PyPI, then when a new release is published on PyPI, `regro-cf-autotick-bot` will open Pull Requests automatically on the conda-forge feedstock. It is up to the conda-forge feedstock maintainers to verify that the package is building properly before merging the Pull Request to the main branch.
+If the conda-forge feedstock recipe is built from PyPI, then when a new release is published on PyPI, `regro-cf-autotick-bot` will open Pull Requests automatically on the conda-forge feedstock.
+It is up to the conda-forge feedstock maintainers to verify that the package is building properly before merging the Pull Request to the main branch.
+
+Before updating the main conda-forge recipe, we *strongly* suggest performing the following checks:
+ * Ensure that dependencies and dependency versions correspond with those of the tagged version, with open or pinned versions for the `host` requirements.
+ * If possible, configure tests within the conda-forge build CI (e.g. `imports: xsdba`, `commands: pytest { cookiecutter.project_name | replace(' ', '-') }}`)
 
 Building sources for wide support with `manylinux` image
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
