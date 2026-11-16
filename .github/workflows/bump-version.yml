@@ -13,11 +13,12 @@ on:
     paths-ignore:
       - .cruft.json
       - .editorconfig
-      - .github/**.yml
+      - .github/**/*.yml
       - .github/*.txt
-      - .github/.in
+      - .github/*.in
       - .gitignore
       - .pre-commit-config.yaml
+      - .readthedocs.yml
       - .yamllint.yaml
       - .zenodo.json
       - AUTHORS.rst
@@ -26,13 +27,12 @@ on:
       - CODE_OF_CONDUCT.md
       - CONTRIBUTING.rst
       - Makefile
-      - .readthedocs.yml
       - docs/*.py
       - docs/*.rst
       - environment-docs.yml
       - environment-dev.yml
       - pyproject.toml
-      - tests/**.py
+      - tests/**/*.py
       - tox.toml
       - src/xsdba/__init__.py
   workflow_dispatch:
