@@ -76,6 +76,9 @@ lint: install-lint ## check style
 test: install-test ## run tests quickly with the default Python
 	python -m pytest
 
+test-doctests: install-test ## run doctests
+	python -m pytest --numprocesses=auto --doctest-modules src/xsdba
+
 test-all: install-tox ## run tests on every Python version with tox
 	python -m tox
 

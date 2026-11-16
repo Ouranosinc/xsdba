@@ -11,12 +11,15 @@ import warnings
 from datetime import datetime as dt
 from pathlib import Path
 from shutil import copytree
+from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import urlretrieve
 
 from filelock import FileLock
 from packaging.version import Version
+from xarray import Dataset
+from xarray import open_dataset as _open_dataset
 
 import xsdba
 from xsdba import __version__ as __xsdba_version__
@@ -40,6 +43,7 @@ __all__ = [
     "gather_testing_data",
     "gosset",
     "load_registry",
+    "open_dataset",
     "populate_testing_data",
     "testing_setup_warnings",
 ]
@@ -237,6 +241,36 @@ def gosset(
         allow_updates=data_updates,
         registry=load_registry(branch=branch, repo=repo),
     )
+
+
+def open_dataset(name: str, gosset_kwargs: dict[str, Any] | None = None, **xr_kwargs: Any) -> Dataset:
+    r"""
+    Convenience function to open a dataset from the xclim testing data using the `gosset` class.
+
+    This is a thin wrapper around the `gosset` class to make it easier to open xclim testing datasets.
+
+    Parameters
+    ----------
+    name : str
+        Name of the file containing the dataset.
+    gosset_kwargs : dict, optional
+        Keyword arguments passed to the gosset function.
+    **xr_kwargs : Any
+        Keyword arguments passed to xarray.open_dataset.
+
+    Returns
+    -------
+    xarray.Dataset
+        The dataset.
+
+    See Also
+    --------
+    gosset : Pooch wrapper for accessing the xclim testing data.
+    xarray.open_dataset : Open and read a dataset from a file or file-like object.
+    """
+    if gosset_kwargs is None:
+        gosset_kwargs = {}
+    return _open_dataset(gosset(**gosset_kwargs).fetch(name), **xr_kwargs)
 
 
 def populate_testing_data(
