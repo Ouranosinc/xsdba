@@ -19,7 +19,8 @@
      - '.github/workflows/*'
      - 'docs/Makefile'
      - 'tox.toml'
-     - 'CI/**/*'
+     - '.github/*.in'
+     - '.github/*.txt'
      - 'Makefile'
 # label 'docs' all documentation-related steps and files
 'docs':

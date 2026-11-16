@@ -1,19 +1,95 @@
 [build-system]
-requires = ["flit_core >=3.12.0,<4"]
+requires = ["flit_core >=4.0,<5.0"]
 build-backend = "flit_core.buildapi"
+
+[project]
+name = "xsdba"
+authors = [
+  { name = "Éric Dupuis", email = "dupuis.eric@ouranos.ca" },
+  { name = "Pascal Bourgault", email = "bourgault.pascal@ouranos.ca" }
+]
+maintainers = [
+  { name = "Éric Dupuis", email = "dupuis.eric@ouranos.ca" },
+  { name = "Trevor James Smith", email = "smith.trevorj@ouranos.ca" }
+]
+readme = { file = "README.rst", content-type = "text/x-rst" }
+requires-python = ">=3.11.0"
+keywords = ["xsdba", "bias adjustment", "statistics", "statistical downscaling", "xarray", "xclim"]
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "Natural Language :: English",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Topic :: Scientific/Engineering :: Atmospheric Science",
+  "Topic :: Scientific/Engineering :: Information Analysis",
+  "Topic :: Scientific/Engineering :: Mathematics",
+  "Typing :: Typed"
+]
+dynamic = ["description", "version"]
+dependencies = [
+  "boltons >=20.1",
+  "cf_xarray>=0.10.0",
+  "cftime >=1.4.1",
+  "dask[array] >=2024.8.1",
+  "filelock >=3.14.0",
+  "jsonpickle >=3.1.0",
+  "matplotlib >=3.10.0",
+  "numba >=0.61.2",
+  "numpy >=2.2",
+  "packaging",
+  "pandas >=2.3.0",
+  "pint>=0.24.4",
+  "rich >=14.3.0",
+  "scipy >=1.15.0, <1.18", # TODO: remove upper bound when SBCK is fixed
+  "statsmodels >=0.14.6",
+  "typer >=0.24.1",
+  "xarray>=2024.11.0"
+]
+
+[project.optional-dependencies]
+extras = [
+  "fastnanquantile >=0.0.2",
+  "POT >=0.9.4",
+  "xclim >=1.0.0"
+]
+sbck = [
+  # The sbck dependency requires the "eigen3"/"libeigen3-dev" package to be installed on the system.
+  "sbck >=1.4.2"
+]
+all = ["xsdba[extras]", "xsdba[sbck]"]
+
+[project.scripts]
+xsdba = "xsdba.cli:app"
+
+[project.urls]
+"Homepage" = "https://xsdba.readthedocs.io/"
+"Changelog" = "https://xsdba.readthedocs.io/en/stable/changelog.html"
+"About Ouranos" = "https://ouranos.ca/en/"
+"Issue tracker" = "https://github.com/Ouranosinc/xsdba/issues"
+"Source" = "https://github.com/Ouranosinc/xsdba"
 
 [dependency-groups]
 lint = [
   # Linting tools
-  "codespell >=2.4.2",
+  "codespell >=2.4.3",
   "deptry >=0.25.1",
   "flake8 >=7.3.0",
   "flake8-rst-docstrings >=0.4.0",
-  "mypy >=1.20.0",
+  "mypy >=2.3.0",
   "numpydoc >=1.10.0",
   "pylint >=4.0.4",
-  "ruff >=0.15.9",
-  "vulture >=2.14",
+  "ruff >=0.16.3",
+  "vulture >=2.16",
   "yamllint >=1.38.0"
 ]
 io = [
@@ -55,92 +131,16 @@ tox = [
 ]
 dev = [
   # Development and testing tools
-  "bump-my-version >=1.3.0",
+  "bump-my-version >=1.5.1",
+  "flit >=4.0,<5.0",
   "pip >=26.0.1",
-  "prek >=0.3.0",
+  "prek >=0.4.0",
   "watchdog >=6.0.0",
   { include-group = "docs" },
   { include-group = "lint" },
   { include-group = "test" },
   { include-group = "tox" }
 ]
-
-[project]
-name = "xsdba"
-authors = [
-  { name = "Éric Dupuis", email = "dupuis.eric@ouranos.ca" },
-  { name = "Pascal Bourgault", email = "bourgault.pascal@ouranos.ca" }
-]
-maintainers = [
-  { name = "Éric Dupuis", email = "dupuis.eric@ouranos.ca" },
-  { name = "Trevor James Smith", email = "smith.trevorj@ouranos.ca" }
-]
-readme = { file = "README.rst", content-type = "text/x-rst" }
-requires-python = ">=3.10.0"
-keywords = ["xsdba", "bias adjustment", "statistics", "statistical downscaling", "xarray", "xclim"]
-license = "Apache-2.0"
-license-files = ["LICENSE"]
-classifiers = [
-  "Development Status :: 4 - Beta",
-  "Intended Audience :: Developers",
-  "Intended Audience :: Science/Research",
-  "Natural Language :: English",
-  "Operating System :: OS Independent",
-  "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.10",
-  "Programming Language :: Python :: 3.11",
-  "Programming Language :: Python :: 3.12",
-  "Programming Language :: Python :: 3.13",
-  "Programming Language :: Python :: 3.14",
-  "Programming Language :: Python :: Implementation :: CPython",
-  "Topic :: Scientific/Engineering :: Atmospheric Science",
-  "Topic :: Scientific/Engineering :: Information Analysis",
-  "Topic :: Scientific/Engineering :: Mathematics",
-  "Typing :: Typed"
-]
-dynamic = ["description", "version"]
-dependencies = [
-  "boltons >=20.1",
-  "cf_xarray>=0.10.0",
-  "cftime >=1.4.1",
-  "dask[array] >=2024.8.1",
-  "filelock >=3.14.0",
-  "jsonpickle >=3.1.0",
-  "matplotlib >=3.10.0",
-  "numba >=0.61.2",
-  "numpy >=2.2",
-  "packaging",
-  "pandas >=2.3.0",
-  "pint>=0.24.4",
-  "rich >=13.7.0",
-  "scipy >=1.15.0, <1.18", # TODO: remove upper bound when SBCK is fixed
-  "statsmodels >=0.14.6",
-  "typer >=0.24.1",
-  "xarray>=2024.11.0"
-]
-
-[project.optional-dependencies]
-extras = [
-  "fastnanquantile >=0.0.2",
-  "POT >=0.9.4",
-  "xclim >=1.0.0"
-]
-sbck = [
-  # The sbck dependency requires the "eigen3"/"libeigen3-dev" package to be installed on the system.
-  "sbck >=1.4.2"
-]
-all = ["xsdba[extras]", "xsdba[sbck]"]
-
-[project.scripts]
-xsdba = "xsdba.cli:app"
-
-[project.urls]
-"Homepage" = "https://xsdba.readthedocs.io/"
-"Changelog" = "https://xsdba.readthedocs.io/en/stable/changelog.html"
-"About Ouranos" = "https://ouranos.ca/en/"
-"Issue tracker" = "https://github.com/Ouranosinc/xsdba/issues"
-"Source" = "https://github.com/Ouranosinc/xsdba"
 
 [tool]
 
@@ -278,7 +278,6 @@ exclude = [
   ".readthedocs.yml",
   ".yamllint.yaml",
   ".zizmor.yml",
-  "CI/requirements_ci.*",
   "docs/_*",
   "docs/apidoc/modules.rst",
   "docs/apidoc/xsdba*.rst"
@@ -286,7 +285,7 @@ exclude = [
 
 [tool.mypy]
 files = "."
-python_version = "3.10"
+python_version = "3.11"
 show_error_codes = true
 strict = true
 warn_no_return = true
@@ -446,6 +445,9 @@ max-doc-length = 180
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
+
+[tool.tomlsort]
+sort_first = ["build-system", "project"]
 
 [tool.vulture]
 exclude = []
