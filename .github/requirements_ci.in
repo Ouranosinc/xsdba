@@ -4,7 +4,7 @@ exceptiongroup==1.3.1
 filelock==4.2.9
 flit==4.2.0
 pip==26.3
-pydantic==2.13.5
+pydantic==2.14.3
 pylint==4.1.3
 tomli==2.4.1
 tox-gh==1.9.3
