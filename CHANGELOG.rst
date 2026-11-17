@@ -2,8 +2,24 @@
 Changelog
 =========
 
-`Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
-------------------------------------------------------------
+..
+    `Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
+    ------------------------------------------------------------
+
+    Contributors:
+
+    Changes
+    ^^^^^^^
+    * No change.
+
+    Fixes
+    ^^^^^
+    * No change.
+
+.. _changes_0.8.0:
+
+`v0.8.0 <https://github.com/Ouranosinc/xsdba/tree/0.8.0>`_ (2026-11-16)
+-----------------------------------------------------------------------
 
 Contributors: Gabriel Rondeau-Genesse (:user:`RondeauG`), Éric Dupuis (:user:`coxipi`), Mark Morrissey (:user:`klemmeri`), Trevor James Smith (:user:`Zeitsperre`).
 
