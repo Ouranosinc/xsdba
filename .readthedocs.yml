@@ -29,4 +29,5 @@ python:
     - method: pip
       path: .
       extra_requirements:
-        - extras
+        - optimization
+        - xclim
