@@ -103,7 +103,6 @@ test = [
   "pytest >=9.0.2",
   "pytest-cov >=7.0.0",
   "pytest-xdist >=3.2.0",
-  "xdoctest >=1.1.5",
   { include-group = "io" }
 ]
 docs = [
@@ -352,7 +351,6 @@ norecursedirs = ["docs/notebooks/*"]
 filterwarnings = ["ignore::UserWarning"]
 strict_markers = true
 testpaths = ["tests"]
-usefixtures = ["xdoctest_namespace"]
 markers = [
   "slow: mark test as slow",
   "requires_internet: mark test as requiring network access"
