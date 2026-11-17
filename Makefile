@@ -115,7 +115,7 @@ release: dist ## package and upload a release
 install: clean ## install the package to the active Python's site-packages
 	python -m pip install --no-user .
 
-development: clean ## install the package to the active Python's site-packages
+dev: clean ## install the package to the active Python's site-packages
 	python -m pip install --group dev
 	python -m pip install --no-user --editable .[extras]
 	prek install
