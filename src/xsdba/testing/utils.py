@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 import importlib.resources as ilr
+import importlib.util as ilu
 import logging
 import os
 import platform
@@ -13,7 +14,7 @@ from pathlib import Path
 from shutil import copytree
 from typing import Any
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 from urllib.request import urlretrieve
 
 from filelock import FileLock
@@ -23,13 +24,6 @@ from xarray import open_dataset as _open_dataset
 
 import xsdba
 from xsdba import __version__ as __xsdba_version__
-
-
-try:
-    import pooch
-except ImportError:
-    warnings.warn("The `pooch` library is not installed. The default cache directory for testing data will not be set.", stacklevel=2)
-    pooch = None
 
 
 logger = logging.getLogger("xclim")
@@ -54,10 +48,16 @@ default_testdata_repo_url = "https://raw.githubusercontent.com/Ouranosinc/xclim-
 default_testdata_version = "v2024.8.23"
 """Default version of the testing data to use when fetching datasets."""
 
-try:
+
+HAS_POOCH = bool(ilu.find_spec("pooch"))
+default_testdata_cache: Path | None
+if HAS_POOCH:
+    import pooch
+
     default_testdata_cache = Path(pooch.os_cache("xclim-testdata"))
     """Default location for the testing data cache."""
-except AttributeError:
+else:
+    warnings.warn("The `pooch` library is not installed. The default cache directory for testing data will not be set.", stacklevel=2)
     default_testdata_cache = None
 
 
@@ -181,7 +181,7 @@ def load_registry(branch: str = TESTDATA_BRANCH, repo: str = TESTDATA_REPO_URL) 
 def gosset(
     repo: str = TESTDATA_REPO_URL,
     branch: str = TESTDATA_BRANCH,
-    cache_dir: str | Path = TESTDATA_CACHE_DIR,
+    cache_dir: str | Path | None = TESTDATA_CACHE_DIR,
     data_updates: bool = True,
 ):
     """
@@ -193,7 +193,7 @@ def gosset(
         URL of the repository to use when fetching testing datasets.
     branch : str
         Branch of repository to use when fetching testing datasets.
-    cache_dir : str or Path
+    cache_dir : str or Path, optional
         The path to the directory where the data files are stored.
     data_updates : bool
         If True, allow updates to the data files. Default is True.
@@ -226,13 +226,20 @@ def gosset(
         example_file = gosset().fetch("example.nc")
         data = xr.open_dataset(example_file)
     """
-    if pooch is None:
+    if not HAS_POOCH:
         raise ImportError(
-            "The `pooch` package is required to fetch the xsdba testing data. "
-            "You can install it with `pip install pooch` or `pip install xsdba[dev]`."
+            "The `pooch` package is required to fetch the xclim testing data. "
+            "You can install it with `pip install pooch` or `pip install xclim[dev]`."
         )
+    import pooch  # pylint: disable=import-outside-toplevel
 
-    remote = audit_url(f"{repo}/{branch}/data")
+    if cache_dir is None:
+        cache_dir = Path().cwd()
+        warnings.warn(f"cache_dir is not set. Using `{cache_dir}`.", stacklevel=2)
+    if not repo.endswith("/"):
+        repo = f"{repo}/"
+    remote = audit_url(urljoin(urljoin(repo, branch if branch.endswith("/") else f"{branch}/"), "data"))
+
     return pooch.create(
         path=cache_dir,
         base_url=remote,
@@ -277,7 +284,7 @@ def populate_testing_data(
     temp_folder: Path | None = None,
     repo: str = TESTDATA_REPO_URL,
     branch: str = TESTDATA_BRANCH,
-    local_cache: Path = TESTDATA_CACHE_DIR,
+    local_cache: str | Path | None = TESTDATA_CACHE_DIR,
 ) -> None:
     """
     Populate the local cache with the testing data.
@@ -290,13 +297,9 @@ def populate_testing_data(
         URL of the repository to use when fetching testing datasets.
     branch : str, optional
         Branch of xclim-testdata to use when fetching testing datasets.
-    local_cache : Path
+    local_cache : str or Path, optional
         The path to the local cache. Defaults to the location set by the platformdirs library.
         The testing data will be downloaded to this local cache.
-
-    Returns
-    -------
-    None
     """
     # Create the Pooch instance
     n = gosset(repo=repo, branch=branch, cache_dir=temp_folder or local_cache)
