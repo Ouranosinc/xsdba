@@ -38,11 +38,11 @@ from xsdba.units import (
 from xsdba.utils import _pairwise_spearman, copy_all_attrs
 
 
+__all__ = []
 HAS_XCLIM = bool(ilu.find_spec("xclim"))
 if not HAS_XCLIM:
     warnings.warn("This module depends on `xclim`. Run `pip install xsdba['xclim']` to install it.", stacklevel=2)
     Indicator = None
-    __all__ = []
 else:
     import xclim.compute.run_length as rl
     from xclim import set_options as xc_set_options

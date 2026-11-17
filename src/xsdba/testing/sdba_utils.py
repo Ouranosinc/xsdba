@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 import collections
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
@@ -9,6 +10,10 @@ import xarray as xr
 from scipy.stats import gamma
 
 from xsdba.utils import equally_spaced_nodes
+
+
+if TYPE_CHECKING:
+    from scipy.stats import rv_frozen
 
 
 __all__ = ["cannon_2015_dist", "cannon_2015_rvs", "timelonlatseries"]
@@ -65,13 +70,13 @@ def timelonlatseries(values: np.ndarray, name: str, start: str = "2000-01-01"):
     )
 
 
-def cannon_2015_dist() -> (gamma, gamma, gamma):  # noqa: D103
+def cannon_2015_dist() -> tuple[rv_frozen, rv_frozen, rv_frozen]:
     """
     Generate the distributions used in Cannon et al. 2015.
 
     Returns
     -------
-    tuple[gamma, gamma, gamma]
+    tuple[rv_frozen, rv_frozen, rv_frozen]
         The reference, historical and simulated distributions.
     """
     # ref ~ gamma(k=4, theta=7.5)  mu: 30, sigma: 15

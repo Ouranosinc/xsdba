@@ -20,7 +20,6 @@
 
 from __future__ import annotations
 import importlib.util
-import warnings
 
 from xsdba import adjustment, base, detrending, processing, units, utils
 
