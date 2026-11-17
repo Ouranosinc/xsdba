@@ -9,15 +9,12 @@ skip_missing_interpreters = true
 description = "Build the documentation with makefile under {basepython}"
 labels = ["docs"]
 dependency_groups = ["docs"]
+extras = ["optimization", "xclim"]
 commands = [
   ["make", "build-docs"]
 ]
 commands_post = []
 allowlist_externals = ["make"]
-
-[env.extras]
-description = "Run tests with extras under {basepython}"
-extras = ["extras"]
 
 [env.lint]
 description = "Run code quality compliance tests under {basepython}"
@@ -35,21 +32,36 @@ commands = [
 commands_post = []
 allowlist_externals = ["make"]
 
+[env.xclim]
+description = "Run tests with pytest under {basepython} with xclim support"
+extras = [
+  "optimization",
+  "xclim"
+]
+deps = [
+  { replace = "if", condition = "env.EIGEN3  == 'true'", then = ["sbck>=1.4.2"], extend = true },
+  { replace = "if", condition = "env.XARRAY_VERSION", then = ["xarray=={env:XARRAY_VERSION}"], extend = true },
+  { replace = "if", condition = "env.XCLIM_VERSION", then = ["xclim=={env:XCLIM_VERSION}"], extend = true }
+]
+commands_pre = [
+  { replace = "if", condition = "env.XCLIM_PRE", then = ["python", "-m", "pip", "install", "--no-user", "--upgrade", "--pre", "xclim"], extend = true },
+  ["pip", "list"],
+  ["pip", "check"]
+]
+
 [env_run_base]
 description = "Run tests with pytest under {basepython}"
 setenv = { PYTEST_ADDOPTS = "--color=yes --numprocesses=logical --durations=10 --cov=xsdba --cov-report=lcov", PYTHONPATH = "{toxinidir}" }
 passenv = ["COVERALLS_*", "EIGEN3", "GITHUB_*", "XARRAY_*", "XCLIM_*"]
 download = true
 dependency_groups = ["test"]
-extras = ["extras"]
+extras = ["optimization"]
 deps = [
   { replace = "if", condition = "env.EIGEN3  == 'true'", then = ["sbck>=1.4.2"], extend = true },
-  { replace = "if", condition = "env.XARRAY_VERSION", then = ["xarray=={env:XARRAY_VERSION}"], extend = true },
-  { replace = "if", condition = "env.XCLIM_VERSION", then = ["xclim=={env:XCLIM_VERSION}"], extend = true }
+  { replace = "if", condition = "env.XARRAY_VERSION", then = ["xarray=={env:XARRAY_VERSION}"], extend = true }
 ]
 install_command = ["python", "-m", "pip", "install", "--no-user", "{opts}", "{packages}"]
 commands_pre = [
-  { replace = "if", condition = "env.XCLIM_PRE", then = ["python", "-m", "pip", "install", "--no-user", "--upgrade", "--pre", "xclim"], extend = true },
   ["pip", "list"],
   ["pip", "check"]
 ]
@@ -63,5 +75,5 @@ commands_post = [
 [gh.python]
 "3.11" = ["py3.11"]
 "3.12" = ["py3.12"]
-"3.13" = ["py3.13"]
+"3.13" = ["xclim"]
 "3.14" = ["py3.14"]

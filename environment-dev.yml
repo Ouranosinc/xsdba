@@ -16,13 +16,14 @@ dependencies:
 - scipy>=1.15.0,<1.18 # TODO: remove when SBCK fixed (it was fixed in code, but not released version)
 - statsmodels >=0.14.6
 - xarray>=2024.11.0
-# Extras
+# Optimization
 - fastnanquantile >=0.0.2
 - pot >=0.9.4
-- xclim>=1.0.0
 # SBCK
 - eigen ==3.4.0
 - pybind11 >=2.12.0
+# Xclim
+- xclim>=1.0.0
 # Dev tools and testing
 - bump-my-version >=1.5.1
 - codespell >=2.4.3
