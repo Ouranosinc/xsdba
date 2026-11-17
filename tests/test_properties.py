@@ -6,7 +6,6 @@ import pytest
 import xarray as xr
 from xarray import set_options
 
-from xsdba import properties
 from xsdba.units import convert_units_to, pint_multiply
 
 
@@ -15,7 +14,12 @@ def use_dask(request):
     return request.param
 
 
+@pytest.mark.requires_xclim
 class TestProperties:
+    pytest.importorskip("xclim")
+
+    from xsdba import properties
+
     def test_mean(self, gosset, use_dask):
         sim = (
             xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc"), engine="h5netcdf", chunks={})
@@ -25,9 +29,9 @@ class TestProperties:
         if not use_dask:
             sim = sim.load()
 
-        out_year = properties.mean(sim)
+        out_year = self.properties.mean(sim)
         np.testing.assert_array_almost_equal(out_year.values, [3.0016028e-05])
-        out_season = properties.mean(sim, group="time.season")
+        out_season = self.properties.mean(sim, group="time.season")
         np.testing.assert_array_almost_equal(
             out_season.values,
             [4.6115547e-05, 2.8805329e-05, 1.7220482e-05, 2.825359e-05],
@@ -44,7 +48,7 @@ class TestProperties:
         if not use_dask:
             sim = sim.load()
 
-        out_season = properties.mean(sim, group="time.2QS-JAN")
+        out_season = self.properties.mean(sim, group="time.2QS-JAN")
         np.testing.assert_array_almost_equal(
             out_season.values,
             [3.169884e-05, 2.836053e-05],
@@ -61,10 +65,10 @@ class TestProperties:
         if not use_dask:
             sim = sim.load()
 
-        out_year = properties.generic_statistics(sim, statistic="mean")
+        out_year = self.properties.generic_statistics(sim, statistic="mean")
         np.testing.assert_array_almost_equal(out_year.values, [3.0016028e-05])
 
-        out_season = properties.generic_statistics(sim, statistic="mean", group="time.season")
+        out_season = self.properties.generic_statistics(sim, statistic="mean", group="time.season")
         np.testing.assert_array_almost_equal(
             out_season.values,
             [4.6115547e-05, 2.8805329e-05, 1.7220482e-05, 2.825359e-05],
@@ -79,10 +83,10 @@ class TestProperties:
         if not use_dask:
             sim = sim.load()
 
-        out_year = properties.var(sim)
+        out_year = self.properties.var(sim)
         np.testing.assert_array_almost_equal(out_year.values, [2.5884779e-09])
 
-        out_season = properties.var(sim, group="time.season")
+        out_season = self.properties.var(sim, group="time.season")
         np.testing.assert_array_almost_equal(
             out_season.values,
             [3.9270796e-09, 1.2538864e-09, 1.9057025e-09, 2.8776632e-09],
@@ -99,10 +103,10 @@ class TestProperties:
         if not use_dask:
             sim = sim.load()
 
-        out_year = properties.std(sim)
+        out_year = self.properties.std(sim)
         np.testing.assert_array_almost_equal(out_year.values, [5.08770208398345e-05])
 
-        out_season = properties.std(sim, group="time.season")
+        out_season = self.properties.std(sim, group="time.season")
         np.testing.assert_array_almost_equal(
             out_season.values,
             [6.2666411e-05, 4.3654352e-05, 3.5410259e-05, 5.3643853e-05],
@@ -119,10 +123,10 @@ class TestProperties:
         if not use_dask:
             sim = sim.load()
 
-        out_year = properties.skewness(sim)
+        out_year = self.properties.skewness(sim)
         np.testing.assert_array_almost_equal(out_year.values, [2.8497460898513745])
 
-        out_season = properties.skewness(sim, group="time.season")
+        out_season = self.properties.skewness(sim, group="time.season")
         np.testing.assert_array_almost_equal(
             out_season.values,
             [
@@ -144,11 +148,11 @@ class TestProperties:
         if not use_dask:
             sim = sim.load()
 
-        out_year = properties.quantile(sim, q=0.2)
+        out_year = self.properties.quantile(sim, q=0.2)
         expected = sim.quantile(dim="time", q=0.2)
         np.testing.assert_array_almost_equal(out_year.values, expected.values)
 
-        out_season = properties.quantile(sim, group="time.season", q=0.2)
+        out_season = self.properties.quantile(sim, group="time.season", q=0.2)
         expected = sim.groupby("time.season").quantile(dim="time", q=0.2)
         np.testing.assert_array_almost_equal(out_season.values, expected.values)
         assert out_season.long_name.startswith("Quantile 0.2")
@@ -162,12 +166,12 @@ class TestProperties:
         if not use_dask:
             sim = sim.load()
 
-        out_year = properties.thresholded_quantile(sim, thresh="1 kg m-2 d-1", condition=">=", q=0.2)
+        out_year = self.properties.thresholded_quantile(sim, thresh="1 kg m-2 d-1", condition=">=", q=0.2)
         filtered_sim = sim.where(sim >= 1 / 86400)
         expected = filtered_sim.quantile(dim="time", q=0.2)
         np.testing.assert_array_almost_equal(out_year.values, expected.values)
 
-        out_season = properties.thresholded_quantile(sim, thresh="1 kg m-2 d-1", condition=">=", group="time.season", q=0.2)
+        out_season = self.properties.thresholded_quantile(sim, thresh="1 kg m-2 d-1", condition=">=", group="time.season", q=0.2)
         expected = filtered_sim.groupby("time.season").quantile(dim="time", q=0.2)
         np.testing.assert_array_almost_equal(out_season.values, expected.sel(season=["DJF", "MAM", "JJA", "SON"]).values)
         assert out_season.long_name.startswith("Quantile 0.2")
@@ -182,13 +186,13 @@ class TestProperties:
         # test pr, with amount method
         sim = ds.pr
         kws = {"condition": "<", "group": "time.month", "thresh": "1.157e-05 kg/m/m/s"}
-        outd = {stat: properties.spell_length_distribution(da=sim, **kws, statistic=stat).sel(month=1).values for stat in ["mean", "max", "min"]}
+        outd = {stat: self.properties.spell_length_distribution(da=sim, **kws, statistic=stat).sel(month=1).values for stat in ["mean", "max", "min"]}
         np.testing.assert_array_almost_equal([outd[k] for k in ["mean", "max", "min"]], [2.44127, 10, 1])
 
         # test tasmax, with quantile method
         simt = ds.tasmax
         kws = {"thresh": 0.9, "condition": ">=", "method": "quantile", "group": "time.month"}
-        outd = {stat: properties.spell_length_distribution(da=simt, **kws, statistic=stat).sel(month=6) for stat in ["mean", "max", "min"]}
+        outd = {stat: self.properties.spell_length_distribution(da=simt, **kws, statistic=stat).sel(month=6) for stat in ["mean", "max", "min"]}
         np.testing.assert_array_almost_equal([outd[k].values for k in ["mean", "max", "min"]], [3.0, 6, 1])
 
         assert outd["mean"].long_name == "Average of spell length distribution when the variable is >= the quantile 0.9 for 1 consecutive day(s)."
@@ -203,7 +207,7 @@ class TestProperties:
         # test pr, with amount method
         sim = ds.pr
         kws = {"condition": "<", "group": "time.2QS-JAN", "thresh": "1.157e-05 kg/m/m/s"}
-        {stat: properties.spell_length_distribution(da=sim, **kws, statistic=stat).isel(gen_season=0).values for stat in ["mean", "max", "min"]}
+        {stat: self.properties.spell_length_distribution(da=sim, **kws, statistic=stat).isel(gen_season=0).values for stat in ["mean", "max", "min"]}
 
     def test_spell_length_distribution_mixed_stat(self, use_dask):
         time = pd.date_range("2000-01-01", periods=2 * 365, freq="D")
@@ -217,9 +221,9 @@ class TestProperties:
             tas = tas.chunk(time=-1)
 
         kws_sum = dict(thresh="30 degC", condition=">=", statistic="sum", resample_statistic="sum", group="time")
-        out_sum = properties.spell_length_distribution(tas, **kws_sum).values
+        out_sum = self.properties.spell_length_distribution(tas, **kws_sum).values
         kws_mixed = dict(thresh="30 degC", condition=">=", statistic="mean", resample_statistic="sum", group="time")
-        out_mixed = properties.spell_length_distribution(tas, **kws_mixed).values
+        out_mixed = self.properties.spell_length_distribution(tas, **kws_mixed).values
 
         assert out_sum == 365
         assert out_mixed == 182.5
@@ -252,7 +256,7 @@ class TestProperties:
             "window": window,
         }
         outd = {
-            stat: properties.bivariate_spell_length_distribution(da1=tx, da2=tn, **kws, statistic=stat).sel(month=1).values
+            stat: self.properties.bivariate_spell_length_distribution(da1=tx, da2=tn, **kws, statistic=stat).sel(month=1).values
             for stat in ["mean", "max", "min"]
         }
         np.testing.assert_array_almost_equal([outd[k] for k in ["mean", "max", "min"]], expected_amount)
@@ -269,7 +273,7 @@ class TestProperties:
             "window": window,
         }
         outd = {
-            stat: properties.bivariate_spell_length_distribution(da1=tx, da2=tn, **kws, statistic=stat).sel(month=6).values
+            stat: self.properties.bivariate_spell_length_distribution(da1=tx, da2=tn, **kws, statistic=stat).sel(month=6).values
             for stat in ["mean", "max", "min"]
         }
         np.testing.assert_array_almost_equal([outd[k] for k in ["mean", "max", "min"]], expected_quantile)
@@ -283,12 +287,12 @@ class TestProperties:
         if not use_dask:
             sim = sim.load()
 
-        out = properties.acf(sim, lag=1, group="time.month").sel(month=1)
+        out = self.properties.acf(sim, lag=1, group="time.month").sel(month=1)
         np.testing.assert_array_almost_equal(out.values, [0.11242357313756905])
 
         # FIXME
         # with pytest.raises(ValueError, match="Grouping period year is not allowed for"):
-        #     properties.acf(sim, group="time")
+        #     self.properties.acf(sim, group="time")
 
         assert out.long_name.startswith("Lag-1 autocorrelation")
         assert out.units == ""
@@ -302,9 +306,9 @@ class TestProperties:
         if not use_dask:
             simt = simt.load()
 
-        amp = properties.annual_cycle_amplitude(simt)
-        relamp = properties.relative_annual_cycle_amplitude(simt)
-        phase = properties.annual_cycle_phase(simt)
+        amp = self.properties.annual_cycle_amplitude(simt)
+        relamp = self.properties.relative_annual_cycle_amplitude(simt)
+        phase = self.properties.annual_cycle_phase(simt)
         np.testing.assert_allclose(
             [amp.values, relamp.values, phase.values],
             [16.74645996, 5.802083, 167],
@@ -314,13 +318,13 @@ class TestProperties:
             ValueError,
             match="Grouping period season is not allowed for property",
         ):
-            properties.annual_cycle_amplitude(simt, group="time.season")
+            self.properties.annual_cycle_amplitude(simt, group="time.season")
 
         with pytest.raises(
             ValueError,
             match="Grouping period month is not allowed for property",
         ):
-            properties.annual_cycle_phase(simt, group="time.month")
+            self.properties.annual_cycle_phase(simt, group="time.month")
 
         assert amp.long_name.startswith("Absolute amplitude of the annual cycle")
         assert phase.long_name.startswith("Phase of the annual cycle")
@@ -339,9 +343,9 @@ class TestProperties:
             simt = simt.load()
 
         # Initial annual cycle was this with window = 1
-        amp = properties.mean_annual_range(simt, window=1)
-        relamp = properties.mean_annual_relative_range(simt, window=1)
-        phase = properties.mean_annual_phase(simt, window=1)
+        amp = self.properties.mean_annual_range(simt, window=1)
+        relamp = self.properties.mean_annual_relative_range(simt, window=1)
+        phase = self.properties.mean_annual_phase(simt, window=1)
 
         np.testing.assert_allclose(
             [amp.values, relamp.values, phase.values],
@@ -349,9 +353,9 @@ class TestProperties:
             rtol=1e-4,
         )
 
-        amp = properties.mean_annual_range(simt)
-        relamp = properties.mean_annual_relative_range(simt)
-        phase = properties.mean_annual_phase(simt)
+        amp = self.properties.mean_annual_range(simt)
+        relamp = self.properties.mean_annual_relative_range(simt)
+        phase = self.properties.mean_annual_phase(simt)
 
         np.testing.assert_array_almost_equal(
             [amp.values, relamp.values, phase.values],
@@ -362,13 +366,13 @@ class TestProperties:
             ValueError,
             match="Grouping period season is not allowed for property",
         ):
-            properties.mean_annual_range(simt, group="time.season")
+            self.properties.mean_annual_range(simt, group="time.season")
 
         with pytest.raises(
             ValueError,
             match="Grouping period month is not allowed for property",
         ):
-            properties.mean_annual_phase(simt, group="time.month")
+            self.properties.mean_annual_phase(simt, group="time.month")
 
         assert amp.long_name.startswith("Average annual absolute amplitude")
         assert phase.long_name.startswith("Average annual phase")
@@ -388,13 +392,13 @@ class TestProperties:
 
         sim = (xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc")).sel(time=slice("1950", "1952"), location="Vancouver").pr).load()
 
-        pc = properties.corr_btw_var(simt, sim, corr_type="Pearson")
-        pp = properties.corr_btw_var(simt, sim, corr_type="Pearson", output="pvalue").values
-        sc = properties.corr_btw_var(simt, sim).values
-        sp = properties.corr_btw_var(simt, sim, output="pvalue").values
-        sc_jan = properties.corr_btw_var(simt, sim, group="time.month").sel(month=1).values
+        pc = self.properties.corr_btw_var(simt, sim, corr_type="Pearson")
+        pp = self.properties.corr_btw_var(simt, sim, corr_type="Pearson", output="pvalue").values
+        sc = self.properties.corr_btw_var(simt, sim).values
+        sp = self.properties.corr_btw_var(simt, sim, output="pvalue").values
+        sc_jan = self.properties.corr_btw_var(simt, sim, group="time.month").sel(month=1).values
         sim[0] = np.nan
-        pc_nan = properties.corr_btw_var(sim, simt, corr_type="Pearson").values
+        pc_nan = self.properties.corr_btw_var(sim, simt, corr_type="Pearson").values
 
         np.testing.assert_array_almost_equal(
             [pc.values, pp, sc, sp, sc_jan, pc_nan],
@@ -419,8 +423,8 @@ class TestProperties:
         if not use_dask:
             sim = sim.load()
 
-        test = properties.relative_frequency(sim, thresh="2.8925e-04 kg/m^2/s", condition=">=")
-        testjan = properties.relative_frequency(sim, thresh="2.8925e-04 kg/m^2/s", condition=">=", group="time.month").sel(month=1).values
+        test = self.properties.relative_frequency(sim, thresh="2.8925e-04 kg/m^2/s", condition=">=")
+        testjan = self.properties.relative_frequency(sim, thresh="2.8925e-04 kg/m^2/s", condition=">=", group="time.month").sel(month=1).values
         np.testing.assert_array_almost_equal([test.values, testjan], [0.0045662100456621, 0.010752688172043012])
         assert test.long_name == "Relative frequency of values >= 2.8925e-04 kg/m^2/s."
         assert test.units == ""
@@ -434,7 +438,7 @@ class TestProperties:
         if not use_dask:
             sim = sim.load()
 
-        test = properties.transition_probability(da=sim, initial_condition="<", final_condition=">=", thresh="1.157e-05 kg/m^2/s")
+        test = self.properties.transition_probability(da=sim, initial_condition="<", final_condition=">=", thresh="1.157e-05 kg/m^2/s")
 
         np.testing.assert_array_almost_equal([test.values], [0.14076782449725778])
         assert test.long_name == "Transition probability of values < 1.157e-05 kg/m^2/s to values >= 1.157e-05 kg/m^2/s."
@@ -449,12 +453,12 @@ class TestProperties:
         if not use_dask:
             simt = simt.load()
 
-        slope = properties.trend(simt).values
-        intercept = properties.trend(simt, output="intercept").values
-        rvalue = properties.trend(simt, output="rvalue").values
-        pvalue = properties.trend(simt, output="pvalue").values
-        stderr = properties.trend(simt, output="stderr").values
-        intercept_stderr = properties.trend(simt, output="intercept_stderr").values
+        slope = self.properties.trend(simt).values
+        intercept = self.properties.trend(simt, output="intercept").values
+        rvalue = self.properties.trend(simt, output="rvalue").values
+        pvalue = self.properties.trend(simt, output="pvalue").values
+        stderr = self.properties.trend(simt, output="stderr").values
+        intercept_stderr = self.properties.trend(simt, output="intercept_stderr").values
 
         np.testing.assert_array_almost_equal(
             [slope, intercept, rvalue, pvalue, stderr, intercept_stderr],
@@ -469,12 +473,12 @@ class TestProperties:
             4,
         )
 
-        slope = properties.trend(simt, group="time.month").sel(month=1)
-        intercept = properties.trend(simt, output="intercept", group="time.month").sel(month=1).values
-        rvalue = properties.trend(simt, output="rvalue", group="time.month").sel(month=1).values
-        pvalue = properties.trend(simt, output="pvalue", group="time.month").sel(month=1).values
-        stderr = properties.trend(simt, output="stderr", group="time.month").sel(month=1).values
-        intercept_stderr = properties.trend(simt, output="intercept_stderr", group="time.month").sel(month=1).values
+        slope = self.properties.trend(simt, group="time.month").sel(month=1)
+        intercept = self.properties.trend(simt, output="intercept", group="time.month").sel(month=1).values
+        rvalue = self.properties.trend(simt, output="rvalue", group="time.month").sel(month=1).values
+        pvalue = self.properties.trend(simt, output="pvalue", group="time.month").sel(month=1).values
+        stderr = self.properties.trend(simt, output="stderr", group="time.month").sel(month=1).values
+        intercept_stderr = self.properties.trend(simt, output="intercept_stderr", group="time.month").sel(month=1).values
 
         np.testing.assert_array_almost_equal(
             [slope.values, intercept, rvalue, pvalue, stderr, intercept_stderr],
@@ -500,9 +504,9 @@ class TestProperties:
         )
         if not use_dask:
             simt = simt.load()
-        out_y = properties.return_value(simt)
+        out_y = self.properties.return_value(simt)
 
-        out_djf = properties.return_value(simt, statistic="min", group="time.season").sel(season="DJF").values
+        out_djf = self.properties.return_value(simt, statistic="min", group="time.season").sel(season="DJF").values
 
         np.testing.assert_array_almost_equal([out_y.values, out_djf], [313.154, 278.072], 3)
         assert out_y.long_name.startswith("20-year maximal return level")
@@ -515,14 +519,14 @@ class TestProperties:
         if not use_dask:
             sim = sim.load()
 
-        out = properties.spatial_correlogram(sim, dims=["location"], bins=3)
+        out = self.properties.spatial_correlogram(sim, dims=["location"], bins=3)
         np.testing.assert_allclose(out, [-1, np.nan, 0], atol=1e-6)
 
         # Test 2, not very exhaustive, this is more of a detect-if-we-break-it test.
         sim = xr.open_dataset(gosset.fetch("NRCANdaily/nrcan_canada_daily_tasmax_1990.nc"), chunks={}, engine="h5netcdf").tasmax
         if use_dask:
             sim = sim.load()
-        out = properties.spatial_correlogram(sim.isel(lon=slice(0, 50)), dims=["lon", "lat"], bins=20)
+        out = self.properties.spatial_correlogram(sim.isel(lon=slice(0, 50)), dims=["lon", "lat"], bins=20)
         # without bottleneck: [0.950999, 0.830288, 0.668744, 0.488939, 0.30915]
         # with bottleneck: ([0.950999, 0.830288, 0.668745, 0.48894 , 0.309151]
         np.testing.assert_allclose(out[:5], [0.95099902, 0.83028772, 0.66874473, 0.48893958, 0.30915054], rtol=5e-06)
@@ -542,7 +546,7 @@ class TestProperties:
         if use_dask:
             sim = sim.chunk({"lon": 1})
 
-        out = properties.decorrelation_length(sim, dims=["lat", "lon"], bins=10, radius=30)
+        out = self.properties.decorrelation_length(sim, dims=["lat", "lon"], bins=10, radius=30)
         np.testing.assert_allclose(
             out[0],
             [4.5, 4.5, 4.5, 4.5, 10.5],
@@ -560,7 +564,7 @@ class TestProperties:
         )
         # sim = np.nan*sim
         sim = sim.where(sim.lon == sim.lon.values[0], np.nan)
-        out = properties.decorrelation_length(sim, dims=["lat", "lon"], bins=10, radius=30)
+        out = self.properties.decorrelation_length(sim, dims=["lat", "lon"], bins=10, radius=30)
 
         np.testing.assert_allclose(
             out[0],
@@ -605,7 +609,7 @@ class TestProperties:
         if not use_dask:
             sim = sim.load()
 
-        var = properties.spectral_variance(
+        var = self.properties.spectral_variance(
             sim,
             dims=["lat", "lon"],
             delta=delta,
@@ -621,13 +625,13 @@ class TestProperties:
         if not use_dask:
             sim = sim.load()
 
-        var_km = properties.spectral_variance(
+        var_km = self.properties.spectral_variance(
             sim,
             dims=["lat", "lon"],
             delta="55 km",
         )
 
-        var = properties.spectral_variance(
+        var = self.properties.spectral_variance(
             sim,
             dims=["lat", "lon"],
             delta=None,
@@ -655,13 +659,13 @@ class TestProperties:
 
         water_density_inverse = "1e-03 m^3/kg"
         sim = convert_units_to(pint_multiply(sim, water_density_inverse), ref)
-        sim_var = properties.var(sim)
-        ref_var = properties.var(ref)
-        meas = properties.var.get_measure()(sim_var, ref_var)
+        sim_var = self.properties.var(sim)
+        ref_var = self.properties.var(ref)
+        meas = self.properties.var.get_measure()(sim_var, ref_var)
         np.testing.assert_allclose(meas, [0.408327], rtol=1e-3)
 
     def test_get_measure_not_in_regristry(self, gosset, use_dask):
-        indd = properties.mean
+        indd = self.properties.mean
         # the registry name for measure is 'measure.ratio',
         # but giving the path in the module will also work
         indd.measure = "xsdba.measures.ratio"

@@ -5,7 +5,6 @@ import numpy as np
 import pandas as pd
 import pytest
 import xarray as xr
-import xclim
 from scipy.stats import genpareto, norm, uniform
 
 from xsdba import adjustment
@@ -44,13 +43,6 @@ from xsdba.utils import (
     get_correction,
     invert,
 )
-
-
-# Remove when `numpy` v1.x support is dropped
-try:
-    from numpy import trapezoid
-except ImportError:
-    from numpy import trapz as trapezoid  # type: ignore[attr-defined,no-redef]
 
 
 def nancov(X):
@@ -879,8 +871,8 @@ class TestQDM:
         pu1 = ref.ppf(u1) * sim.ppf(u1) / hist.ppf(u1)
         pdf = np.diff(u1) / np.diff(pu1)
 
-        mean = trapezoid(pdf * pu, pu)
-        mom2 = trapezoid(pdf * pu**2, pu)
+        mean = np.trapezoid(pdf * pu, pu)
+        mom2 = np.trapezoid(pdf * pu**2, pu)
         _std = np.sqrt(mom2 - mean**2)  # noqa: F841 # FIXME: Not used
         bc_sim = scends.scen
         np.testing.assert_almost_equal(bc_sim.mean(), 41.5, 1)
@@ -1106,7 +1098,10 @@ class TestQM:
         EmpiricalQuantileMapping._allow_diff_training_times = False
         assert (ds.af == ds_fut.af).all()
 
+    @pytest.mark.requires_xclim
     def test_jitter_under_thresh(self, gosset):
+        xcu = pytest.importorskip("xclim.core.units")
+
         thr = "0.01 mm/d"
         ref, hist = (
             xr.open_dataset(
@@ -1117,7 +1112,7 @@ class TestQM:
             .pr
             for file in ["ahccd_1950-2013.nc", "CanESM2_1950-2100.nc"]
         )
-        with xclim.core.units.units.context("hydro"):
+        with xcu.units.context("hydro"):
             np.random.seed(42)
             af_jit_inside = EmpiricalQuantileMapping.train(ref, hist, jitter_under_thresh_value=thr, group="time").ds.af
 

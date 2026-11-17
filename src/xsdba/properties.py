@@ -7,24 +7,21 @@ and reference datasets. They collapse the time dimension to one value.
 This framework for the diagnostic tests was inspired by the `VALUE <http://www.value-cost.eu/>`_ project.
 Statistical Properties is the xclim term for 'indices' in the VALUE project.
 
-This module depends on `xclim`. Run `pip install xsdba['extras']` to install it.
+This module depends on `xclim`. Run `pip install xsdba['xclim']` to install it.
 """
 
 from __future__ import annotations
+import importlib.util as ilu
+import warnings
 from collections.abc import Sequence
 from importlib import import_module
 from typing import Literal
 
 import numpy as np
 import xarray as xr
-import xclim.compute.run_length as rl
 from scipy import stats
 from scipy.fft import dctn
 from statsmodels.tsa import stattools
-from xclim import set_options as xc_set_options
-from xclim.compute.generic import compare, percentile, statistics, thresholded_percentile, thresholded_running_statistics, thresholded_statistics
-from xclim.compute.stats import fit, parametric_quantile
-from xclim.core.indicator import Indicator, base_registry
 
 from xsdba.base import Grouper, map_groups, parse_group, uses_dask
 from xsdba.nbutils import _pairwise_haversine_and_bins
@@ -39,6 +36,58 @@ from xsdba.units import (
     units2pint,
 )
 from xsdba.utils import _pairwise_spearman, copy_all_attrs
+
+
+HAS_XCLIM = bool(ilu.find_spec("xclim"))
+if not HAS_XCLIM:
+    warnings.warn("This module depends on `xclim`. Run `pip install xsdba['xclim']` to install it.", stacklevel=2)
+    Indicator = None
+    __all__ = []
+else:
+    import xclim.compute.run_length as rl
+    from xclim import set_options as xc_set_options
+    from xclim.compute.generic import compare, percentile, statistics, thresholded_percentile, thresholded_running_statistics, thresholded_statistics
+    from xclim.compute.stats import fit, parametric_quantile
+    from xclim.core.indicator import Indicator, base_registry
+
+    __all__ = [
+        "StatisticalProperty",
+        "acf",
+        "annual_cycle_amplitude",
+        "annual_cycle_asymmetry",
+        "annual_cycle_maximum",
+        "annual_cycle_minimum",
+        "annual_cycle_phase",
+        "base_registry",
+        "bivariate_spell_length_distribution",
+        "bivariate_threshold_count",
+        "corr_btw_var",
+        "decorrelation_length",
+        "first_eof",
+        "generic_statistics",
+        "generic_thresholded_running_statistics",
+        "generic_thresholded_statistics",
+        "maximum",
+        "mean",
+        "mean_annual_phase",
+        "mean_annual_range",
+        "mean_annual_relative_range",
+        "minimum",
+        "quantile",
+        "relative_annual_cycle_amplitude",
+        "relative_frequency",
+        "return_value",
+        "skewness",
+        "spatial_correlogram",
+        "spectral_variance",
+        "spell_length_distribution",
+        "std",
+        "summation",
+        "thresholded_quantile",
+        "transition_probability",
+        "trend",
+        "var",
+    ]
 
 
 class StatisticalProperty(Indicator):
@@ -229,7 +278,7 @@ def _get_simple_statisticalproperty(
 
 
 mean = _get_simple_statisticalproperty("mean")
-mininimum = _get_simple_statisticalproperty("min", long_name="Minimum of the variable.")
+minimum = _get_simple_statisticalproperty("min", long_name="Minimum of the variable.")
 maximum = _get_simple_statisticalproperty("max", long_name="Maximum of the variable.")
 var = _get_simple_statisticalproperty("var", long_name="Variance of the variable.", measure="measure.ratio")
 std = _get_simple_statisticalproperty("std", long_name="Standard deviation of the variable.", measure="measure.ratio")

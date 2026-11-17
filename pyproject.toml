@@ -353,7 +353,8 @@ strict_markers = true
 testpaths = ["tests"]
 markers = [
   "slow: mark test as slow",
-  "requires_internet: mark test as requiring network access"
+  "requires_internet: mark test as requiring network access",
+  "requires_xclim: mark test are requiring xclim library"
 ]
 
 [tool.ruff]

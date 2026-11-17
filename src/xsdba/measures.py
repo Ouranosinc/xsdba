@@ -7,21 +7,44 @@ SDBA diagnostic tests are made up of properties and measures. Measures compare a
 through statistical properties or directly. This framework for the diagnostic tests was inspired by the
 `VALUE <http://www.value-cost.eu/>`_ project.
 
-This module depends on `xclim`. Run `pip install xsdba['extras']` to install it.
+This module depends on `xclim`. Run `pip install xsdba['xclim']` to install it.
 """
 
 from __future__ import annotations
+import importlib.util as ilu
+import warnings
 from collections.abc import Sequence
 
 import numpy as np
 import xarray as xr
-from xclim import set_options as xc_set_options
-from xclim.core.indicator import Indicator, base_registry
 
 from xsdba.base import Grouper
 from xsdba.typing import InputKind
 from xsdba.units import convert_units_to, pint2cfattrs, units2pint
 from xsdba.utils import _pairwise_spearman
+
+
+__all__ = []
+if not bool(ilu.find_spec("xclim")):
+    warnings.warn("This module depends on `xclim`. Run `pip install xsdba['xclim']` to install it.", stacklevel=2)
+else:
+    from xclim import set_options as xc_set_options
+    from xclim.core.indicator import Indicator, base_registry
+
+    __all__ = [
+        "StatisticalMeasure",
+        "StatisticalPropertyMeasure",
+        "annual_cycle_correlation",
+        "base_registry",
+        "bias",
+        "circular_bias",
+        "mae",
+        "ratio",
+        "relative_bias",
+        "rmse",
+        "scorr",
+        "taylordiagram",
+    ]
 
 
 class StatisticalMeasure(Indicator):

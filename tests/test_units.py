@@ -1,10 +1,14 @@
 from __future__ import annotations
+import importlib.util as ilu
 
 import numpy as np
 import pytest
 import xarray as xr
 
 from xsdba.units import harmonize_units, str2pint, units, units2pint
+
+
+HAS_XCLIM = bool(ilu.find_spec("xclim"))
 
 
 class TestUnits:
@@ -30,12 +34,40 @@ class TestConvertUnitsTo:
 class TestUnitConversion:
     def test_pint2str(self):
         u = units("mm/d")
-        assert str(u.units) == "mm d-1"
+
+        if HAS_XCLIM:
+            assert str(u.units) == "mm d-1"
+        else:
+            assert str(u.units) == "millimeter / day"
 
         u = units("percent")
-        assert str(u.units) == "%"
 
-    def test_units2pint(self, timelonlatseries):
+        if HAS_XCLIM:
+            assert str(u.units) == "%"
+        else:
+            assert str(u.units) == "percent"
+
+    @pytest.mark.skipif(HAS_XCLIM, reason="xclim unit definitions will override pint unit definitions.")
+    def test_units2pint_standard(self, timelonlatseries):
+        # FIXME: Can we test for functionality that disables xclim unit definitions?
+
+        u = units2pint(timelonlatseries(np.asarray([1, 2]), attrs={"units": "kg m-2 s-1"}))
+        assert str(u) == "kilogram / meter ** 2 / second"
+
+        u = units2pint("m^3 s-1")
+        assert str(u) == "meter ** 3 / second"
+
+        u = units2pint("%")
+        assert str(u) == "percent"
+
+        u = units2pint("1")
+        assert str(u) == "dimensionless"
+
+    @pytest.mark.requires_xclim
+    def test_units2pint_xclim(self, timelonlatseries):
+        if not HAS_XCLIM:
+            pytest.skip(reason="'xclim' required for alternative unit definitions")
+
         u = units2pint(timelonlatseries(np.asarray([1, 2]), attrs={"units": "kg m-2 s-1"}))
         assert str(u) == "kg m-2 s-1"
 

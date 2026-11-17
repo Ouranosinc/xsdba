@@ -4,7 +4,6 @@ import numpy as np
 import pandas as pd
 import pytest
 import xarray as xr
-import xclim.core.units
 
 from xsdba._processing import _adapt_freq
 from xsdba.adjustment import EmpiricalQuantileMapping
@@ -131,14 +130,17 @@ def test_adapt_freq(use_dask, random):
     assert pth.units == "mm d-1"
 
 
+@pytest.mark.requires_xclim
 @pytest.mark.parametrize("use_dask", [True, False])
 def test_adapt_freq_adjust(gosset, use_dask):
+    xcu = pytest.importorskip("xclim.core.units")
+
     past = {"time": slice("1950", "1969")}
     future = {"time": slice("1970", "1989")}
     all_time = {"time": slice("1950", "1989")}
     ref = xr.open_dataset(gosset.fetch("sdba/ahccd_1950-2013.nc")).loc[past].pr.fillna(0)
     sim = xr.open_dataset(gosset.fetch("sdba/CanESM2_1950-2100.nc")).loc[all_time].pr.fillna(0)
-    sim = xclim.core.units.convert_units_to(sim, ref)  # mm/d
+    sim = xcu.convert_units_to(sim, ref)  # mm/d
     sim.loc[{"time": slice("1950", "1965")}] = 0
     sim.loc[{"time": slice("1970", "1980")}] = 0
     sim = jitter_under_thresh(sim, "1 mm/d")
