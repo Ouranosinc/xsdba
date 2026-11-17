@@ -1,10 +1,10 @@
 Welcome to xsdba's documentation!
 =================================
 
-+**xsdba**: Statistical correction and bias adjustment tools for xarray.
+**xsdba**: Statistical correction and bias adjustment tools for xarray.
 
 `xsdba` is a Python library for statistical downscaling and bias adjustment.
-Leveraging `xarray`` and `dask`, users can easily bias-adjust large datasets.
+Leveraging `xarray` and `dask`, users can easily bias-adjust large datasets.
 
 Need help?
 ^^^^^^^^^^
