@@ -23,7 +23,7 @@ Internal changes
 ^^^^^^^^^^^^^^^^
 * The testing suite can now be run without `xclim`. Affected tests are now guarded with `pytest.importorskip("xclim")` and `pytest.mark.requires_xclim`. (:pull:`340`).
 * `tox.toml` has been adjusted to run build tests without `xclim` by default. (:pull:`340`).
-* ``xsdba.testing.utils`` has been adjusted to more closely alitgn with safer conventions used in `xclim`. (:pull:`340`):
+* ``xsdba.testing.utils`` has been adjusted to more closely align with safer conventions used in `xclim`. (:pull:`340`):
     * `pooch` is now only imported if a function requiring it is called.
     * Typing of functions is now more accurate.
     * A new convenience function ``open_dataset`` (for opening testing datasets) has been added for example scripts.
