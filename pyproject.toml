@@ -55,9 +55,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-optimization = [
-  "fastnanquantile >=0.0.2",
+dotc = [
   "POT >=0.9.4"
+]
+optimization = [
+  "fastnanquantile >=0.0.2"
 ]
 sbck = [
   # The sbck dependency requires the "eigen3"/"libeigen3-dev" package to be installed on the system.
@@ -66,7 +68,7 @@ sbck = [
 xclim = [
   "xclim >=1.0.0"
 ]
-all = ["xsdba[optimization]", "xsdba[sbck]", "xsdba[xclim]"]
+all = ["xsdba[dotc]", "xsdba[optimization]", "xsdba[sbck]", "xsdba[xclim]"]
 
 [project.scripts]
 xsdba = "xsdba.cli:app"

@@ -9,7 +9,7 @@ skip_missing_interpreters = true
 description = "Build the documentation with makefile under {basepython}"
 labels = ["docs"]
 dependency_groups = ["docs"]
-extras = ["optimization", "xclim"]
+extras = ["dotc", "optimization", "xclim"]
 commands = [
   ["make", "build-docs"]
 ]
@@ -35,6 +35,7 @@ allowlist_externals = ["make"]
 [env.xclim]
 description = "Run tests with pytest under {basepython} with xclim support"
 extras = [
+  "dotc",
   "optimization",
   "xclim"
 ]
@@ -55,7 +56,7 @@ setenv = { PYTEST_ADDOPTS = "--color=yes --numprocesses=logical --durations=10 -
 passenv = ["COVERALLS_*", "EIGEN3", "GITHUB_*", "XARRAY_*", "XCLIM_*"]
 download = true
 dependency_groups = ["test"]
-extras = ["optimization"]
+extras = ["dotc", "optimization"]
 deps = [
   { replace = "if", condition = "env.EIGEN3  == 'true'", then = ["sbck>=1.4.2"], extend = true },
   { replace = "if", condition = "env.XARRAY_VERSION", then = ["xarray=={env:XARRAY_VERSION}"], extend = true }
