@@ -31,40 +31,19 @@ class TestConvertUnitsTo:
         assert alias == units("celsius")
 
 
-class TestUnitConversion:
+@pytest.mark.requires_xclim
+class TestXclimUnitConversion:
     def test_pint2str(self):
-        u = units("mm/d")
+        if not HAS_XCLIM:
+            pytest.skip(reason="'xclim' required for alternative unit definitions")
 
-        if HAS_XCLIM:
-            assert str(u.units) == "mm d-1"
-        else:
-            assert str(u.units) == "millimeter / day"
+        u = units("mm/d")
+        assert str(u.units) == "mm d-1"
 
         u = units("percent")
+        assert str(u.units) == "%"
 
-        if HAS_XCLIM:
-            assert str(u.units) == "%"
-        else:
-            assert str(u.units) == "percent"
-
-    @pytest.mark.skipif(HAS_XCLIM, reason="xclim unit definitions will override pint unit definitions.")
-    def test_units2pint_standard(self, timelonlatseries):
-        # FIXME: Can we test for functionality that disables xclim unit definitions?
-
-        u = units2pint(timelonlatseries(np.asarray([1, 2]), attrs={"units": "kg m-2 s-1"}))
-        assert str(u) == "kilogram / meter ** 2 / second"
-
-        u = units2pint("m^3 s-1")
-        assert str(u) == "meter ** 3 / second"
-
-        u = units2pint("%")
-        assert str(u) == "percent"
-
-        u = units2pint("1")
-        assert str(u) == "dimensionless"
-
-    @pytest.mark.requires_xclim
-    def test_units2pint_xclim(self, timelonlatseries):
+    def test_units2pint(self, timelonlatseries):
         if not HAS_XCLIM:
             pytest.skip(reason="'xclim' required for alternative unit definitions")
 
@@ -79,6 +58,34 @@ class TestUnitConversion:
 
         u = units2pint("1")
         assert str(u) == "1"
+
+
+class TestStandardUnitConversion:
+    def test_pint2str(self):
+        if HAS_XCLIM:
+            pytest.skip(reason="'xclim' must not be available for standard unit definitions")
+
+        u = units("mm/d")
+        assert str(u.units) == "millimeter / day"
+
+        u = units("percent")
+        assert str(u.units) == "percent"
+
+    def test_units2pint(self, timelonlatseries):
+        if HAS_XCLIM:
+            pytest.skip(reason="'xclim' must not be available for standard unit definitions")
+
+        u = units2pint(timelonlatseries(np.asarray([1, 2]), attrs={"units": "kg m-2 s-1"}))
+        assert str(u) == "kilogram / meter ** 2 / second"
+
+        u = units2pint("m^3 s-1")
+        assert str(u) == "meter ** 3 / second"
+
+        u = units2pint("%")
+        assert str(u) == "percent"
+
+        u = units2pint("1")
+        assert str(u) == "dimensionless"
 
     def test_str2pint(self):
         Q_ = units.Quantity
