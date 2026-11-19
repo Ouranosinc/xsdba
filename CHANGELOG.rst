@@ -9,14 +9,15 @@ Contributors: Trevor James Smith (:user:`Zeitsperre`).
 
 Changes
 ^^^^^^^
-* `xsdba` no longer has the `extras` recipe (`xsdba[extras]`). Instead, it now offers two new recipes (both are installed when using `xsdba[all]`). (:pull:`340`):
-    * `optimization`: For optional mathematical optmimization libraries.
-    * `xclim`: For compatible version of `xclim`.
-* The unused CLI entrypoint and module (`cli.py`) has been removed. Additionally, dependencies `rich` and `typer` have been made redundant and are no longer required. (:pull:`340`).
+* `xsdba` no longer has the `extras` recipe (``xsdba[extras]``). Instead, it now offers three new recipes (all are installed when using ``xsdba[all]``). (:pull:`340`):
+    * ``dotc``: For 'dOTC' functionality support.
+    * ``optimization``: For optional mathematical optmimization libraries.
+    * ``xclim``: For compatible version of `xclim`.
+* The unused CLI entrypoint and module (`cli.py`) has been removed. Additionally, dependencies `rich` and `typer` have been made redundant and are no longer core dependencies. (:pull:`340`).
 
 Fixes
 ^^^^^
-* When attempting to star import or call functions from modules dependent on `xclim`, instead of erroring, warnings will be emitted and loaded functions will be empty. (:pull:`340`).
+* When attempting to star import or call functions from modules dependent on `xclim`, `xsdba` will now raise an ``ImportError`` with a specific descriptive message. (:pull:`340`).
 * ``xsdba.properties.mininimum`` has been renamed to ``xsdba.properties.minimum``. (:pull:`340`).
 
 Internal changes
@@ -27,6 +28,7 @@ Internal changes
     * `pooch` is now only imported if a function requiring it is called.
     * Typing of functions is now more accurate.
     * A new convenience function ``open_dataset`` (for opening testing datasets) has been added for example scripts.
+* The documentation on ReadTheDocs no longer installs the `dev` dependency group (dependencies were unused). (:pull:`340`).
 
 .. _changes_0.8.0:
 
