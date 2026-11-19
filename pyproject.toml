@@ -49,24 +49,26 @@ dependencies = [
   "packaging",
   "pandas >=2.3.0",
   "pint>=0.24.4",
-  "rich >=14.3.0",
   "scipy >=1.15.0, <1.18", # TODO: remove upper bound when SBCK is fixed
   "statsmodels >=0.14.6",
-  "typer >=0.24.1",
   "xarray>=2024.11.0"
 ]
 
 [project.optional-dependencies]
-extras = [
-  "fastnanquantile >=0.0.2",
-  "POT >=0.9.4",
-  "xclim >=1.0.0"
+dotc = [
+  "POT >=0.9.4"
+]
+optimization = [
+  "fastnanquantile >=0.0.2"
 ]
 sbck = [
   # The sbck dependency requires the "eigen3"/"libeigen3-dev" package to be installed on the system.
   "sbck >=1.4.2"
 ]
-all = ["xsdba[extras]", "xsdba[sbck]"]
+xclim = [
+  "xclim >=1.0.0"
+]
+all = ["xsdba[dotc]", "xsdba[optimization]", "xsdba[sbck]", "xsdba[xclim]"]
 
 [project.scripts]
 xsdba = "xsdba.cli:app"
@@ -103,7 +105,6 @@ test = [
   "pytest >=9.0.2",
   "pytest-cov >=7.0.0",
   "pytest-xdist >=3.2.0",
-  "xdoctest >=1.1.5",
   { include-group = "io" }
 ]
 docs = [
@@ -352,10 +353,10 @@ norecursedirs = ["docs/notebooks/*"]
 filterwarnings = ["ignore::UserWarning"]
 strict_markers = true
 testpaths = ["tests"]
-usefixtures = ["xdoctest_namespace"]
 markers = [
   "slow: mark test as slow",
-  "requires_internet: mark test as requiring network access"
+  "requires_internet: mark test as requiring network access",
+  "requires_xclim: mark test are requiring xclim library"
 ]
 
 [tool.ruff]

@@ -76,6 +76,9 @@ lint: install-lint ## check style
 test: install-test ## run tests quickly with the default Python
 	python -m pytest
 
+test-doctests: install-test ## run doctests
+	python -m pytest --numprocesses=auto --doctest-modules src/xsdba
+
 test-all: install-tox ## run tests on every Python version with tox
 	python -m tox
 
@@ -112,7 +115,7 @@ release: dist ## package and upload a release
 install: clean ## install the package to the active Python's site-packages
 	python -m pip install --no-user .
 
-development: clean ## install the package to the active Python's site-packages
+dev: clean ## install the package to the active Python's site-packages
 	python -m pip install --group dev
 	python -m pip install --no-user --editable .[extras]
 	prek install

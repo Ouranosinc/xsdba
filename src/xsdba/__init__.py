@@ -20,13 +20,12 @@
 
 from __future__ import annotations
 import importlib.util
-import warnings
 
 from xsdba import adjustment, base, detrending, processing, units, utils
 
 
-xclim_installed = importlib.util.find_spec("xclim") is not None
-if xclim_installed:
+HAS_XCLIM = bool(importlib.util.find_spec("xclim"))
+if HAS_XCLIM:
     from xsdba import (
         measures,
         properties,

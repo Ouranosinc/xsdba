@@ -163,7 +163,7 @@ jobs:
         if: ${{ matrix.python-version == '3.11' }}
         run: |
           micromamba install -y -c conda-forge eigen3
-          python -m pip install --require-hashes -r CI/requirements_sbck.txt
+          python -m pip install --require-hashes -r .github/requirements_sbck.txt
       - name: Install xarray (minimally supported version)
         if: ${{ matrix.xarray-version }}
         run: |

@@ -42,18 +42,14 @@ class set_options:
     --------
     You can use ``set_options`` either as a context manager:
 
-    >>> import xclim
-    >>> ds = xr.open_dataset(path_to_tas_file).tas
+    >>> import xsdba
+    >>> ds = xsdba.testing.utils.open_dataset("ERA5/daily_surface_cancities_1990-1993.nc").tas
     >>> with xsdba.set_options(extra_output=True):
     ...     out = xsdba.MBCn.train(ref, hist)
 
     Or to set global options:
 
-    .. code-block:: python
-
-        import xsdba
-
-        xsdba.set_options(extra_output=True)
+    >>> xsdba.set_options(extra_output=True)
     """
 
     def __init__(self, **kwargs):

@@ -119,12 +119,6 @@ def areacella() -> xr.DataArray:
 areacello = areacella
 
 
-@pytest.fixture(autouse=True, scope="function")
-def add_example_dataarray(xdoctest_namespace, timeseries) -> None:
-    ns = xdoctest_namespace
-    ns["da"] = timeseries(np.random.rand(365) * 20 + 253.15)
-
-
 @pytest.fixture(scope="session")
 def threadsafe_data_dir(tmp_path_factory):
     return Path(tmp_path_factory.getbasetemp().joinpath("data"))

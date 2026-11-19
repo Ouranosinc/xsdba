@@ -8,6 +8,7 @@ or to aid in creating figures illustrating the behaviour of SDBA methods and uti
 
 from __future__ import annotations
 import warnings
+from typing import Any
 
 import numpy as np
 from scipy.stats import gaussian_kde, scoreatpercentile
@@ -68,7 +69,7 @@ def synth_rainfall(shape: float, scale: float = 1.0, wet_freq: float = 0.25, siz
     return np.where(is_wet, wet_intensity, 0)
 
 
-def cannon_2015_figure_2() -> plt.Figure:
+def cannon_2015_figure_2() -> Any:
     """
     Create a graphic similar to figure 2 of Cannon et al. 2015.
 
@@ -149,7 +150,7 @@ def cannon_2015_figure_2() -> plt.Figure:
     return fig
 
 
-def adapt_freq_graph():
+def adapt_freq_graph() -> Any:
     """
     Create a graphic with the additive adjustment factors estimated after applying the adapt_freq method.
 
@@ -165,7 +166,7 @@ def adapt_freq_graph():
     x = timelonlatseries(synth_rainfall(2, 2, wet_freq=0.25, size=n), "pr")  # sim
     y = timelonlatseries(synth_rainfall(2, 2, wet_freq=0.5, size=n), "pr")  # ref
 
-    xp = adapt_freq(x, y, thresh=0).sim_ad
+    xp = adapt_freq(x, y, thresh=0).sim_ad  # FIXME: missing group variable
 
     fig, (ax1, ax2) = plt.subplots(2, 1)
     sx = x.sortby(x)

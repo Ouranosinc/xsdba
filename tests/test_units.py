@@ -1,10 +1,14 @@
 from __future__ import annotations
+import importlib.util as ilu
 
 import numpy as np
 import pytest
 import xarray as xr
 
 from xsdba.units import harmonize_units, str2pint, units, units2pint
+
+
+HAS_XCLIM = bool(ilu.find_spec("xclim"))
 
 
 class TestUnits:
@@ -27,8 +31,12 @@ class TestConvertUnitsTo:
         assert alias == units("celsius")
 
 
-class TestUnitConversion:
+@pytest.mark.requires_xclim
+class TestXclimUnitConversion:
     def test_pint2str(self):
+        if not HAS_XCLIM:
+            pytest.skip(reason="'xclim' required for alternative unit definitions")
+
         u = units("mm/d")
         assert str(u.units) == "mm d-1"
 
@@ -36,6 +44,9 @@ class TestUnitConversion:
         assert str(u.units) == "%"
 
     def test_units2pint(self, timelonlatseries):
+        if not HAS_XCLIM:
+            pytest.skip(reason="'xclim' required for alternative unit definitions")
+
         u = units2pint(timelonlatseries(np.asarray([1, 2]), attrs={"units": "kg m-2 s-1"}))
         assert str(u) == "kg m-2 s-1"
 
@@ -47,6 +58,34 @@ class TestUnitConversion:
 
         u = units2pint("1")
         assert str(u) == "1"
+
+
+class TestStandardUnitConversion:
+    def test_pint2str(self):
+        if HAS_XCLIM:
+            pytest.skip(reason="'xclim' must not be available for standard unit definitions")
+
+        u = units("mm/d")
+        assert str(u.units) == "millimeter / day"
+
+        u = units("percent")
+        assert str(u.units) == "percent"
+
+    def test_units2pint(self, timelonlatseries):
+        if HAS_XCLIM:
+            pytest.skip(reason="'xclim' must not be available for standard unit definitions")
+
+        u = units2pint(timelonlatseries(np.asarray([1, 2]), attrs={"units": "kg m-2 s-1"}))
+        assert str(u) == "kilogram / meter ** 2 / second"
+
+        u = units2pint("m^3 s-1")
+        assert str(u) == "meter ** 3 / second"
+
+        u = units2pint("%")
+        assert str(u) == "percent"
+
+        u = units2pint("1")
+        assert str(u) == "dimensionless"
 
     def test_str2pint(self):
         Q_ = units.Quantity
@@ -96,4 +135,4 @@ class TestHarmonizeUnits:
             return (d > t).sum().values
 
         with pytest.raises(TypeError, match="were passed but only"):
-            gt(da)
+            gt(da)  # type: ignore

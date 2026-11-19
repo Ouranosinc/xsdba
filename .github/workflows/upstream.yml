@@ -64,7 +64,7 @@ jobs:
       - name: Install upstream versions
         run: |
           # git-based dependencies cannot be installed from hashes
-          python -m pip install -r CI/requirements_upstream.txt
+          python -m pip install -r .github/requirements_upstream.txt
       - name: Install xsdba
         run: |
           python -m pip install --no-user --no-deps --editable .

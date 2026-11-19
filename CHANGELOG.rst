@@ -2,19 +2,33 @@
 Changelog
 =========
 
-..
-    `Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
-    ------------------------------------------------------------
+`Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
+------------------------------------------------------------
 
-    Contributors:
+Contributors: Trevor James Smith (:user:`Zeitsperre`).
 
-    Changes
-    ^^^^^^^
-    * No change.
+Changes
+^^^^^^^
+* `xsdba` no longer has the `extras` recipe (``xsdba[extras]``). Instead, it now offers three new recipes (all are installed when using ``xsdba[all]``). (:pull:`340`):
+    * ``dotc``: For 'dOTC' functionality support.
+    * ``optimization``: For optional mathematical optmimization libraries.
+    * ``xclim``: For compatible version of `xclim`.
+* The unused CLI entrypoint and module (`cli.py`) has been removed. Additionally, dependencies `rich` and `typer` have been made redundant and are no longer core dependencies. (:pull:`340`).
 
-    Fixes
-    ^^^^^
-    * No change.
+Fixes
+^^^^^
+* When attempting to star import or call functions from modules dependent on `xclim`, `xsdba` will now raise an ``ImportError`` with a specific descriptive message. (:pull:`340`).
+* ``xsdba.properties.mininimum`` has been renamed to ``xsdba.properties.minimum``. (:pull:`340`).
+
+Internal changes
+^^^^^^^^^^^^^^^^
+* The testing suite can now be run without `xclim`. Affected tests are now guarded with `pytest.importorskip("xclim")` and `pytest.mark.requires_xclim`. (:pull:`340`).
+* `tox.toml` has been adjusted to run build tests without `xclim` by default. (:pull:`340`).
+* ``xsdba.testing.utils`` has been adjusted to more closely align with safer conventions used in `xclim`. (:pull:`340`):
+    * `pooch` is now only imported if a function requiring it is called.
+    * Typing of functions is now more accurate.
+    * A new convenience function ``open_dataset`` (for opening testing datasets) has been added for example scripts.
+* The documentation on ReadTheDocs no longer installs the `dev` dependency group (dependencies were unused). (:pull:`340`).
 
 .. _changes_0.8.0:
 
@@ -147,7 +161,6 @@ Fixes
 * ``xsdba._processing._adapt_freq`` now avoids inserting nans. This was solved using `(dP0 <= 0)| (dP0.isnull())` and not `dP0 < 0` as a condition. (:pull:`239`, :issue:`248`, :pull:`249`).
 * More edge cases and compatibility with `numpy <2.0` were fixed  to ensure ``xsdba.processing.to_additive_space`` does not yield singular values in the log / logit transforms in relation with the machine resolution. (:pull:`194`).
 * ``xsdba.properties.decorrelation_length`` now handles all-nan slices correctly. (:issue:`255`, :pull:`256`).
-
 
 Internal changes
 ^^^^^^^^^^^^^^^^
