@@ -16,7 +16,7 @@ build:
     python: "miniforge3-25.11"
   jobs:
     post_create_environment:
-      - python -m pip install --group docs --group dev
+      - python -m pip install --group docs
     pre_build:
       - sphinx-apidoc -o docs/apidoc --private --module-first src/xsdba
       - sphinx-build -M gettext docs docs/_build
