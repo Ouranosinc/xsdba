@@ -135,4 +135,4 @@ class TestHarmonizeUnits:
             return (d > t).sum().values
 
         with pytest.raises(TypeError, match="were passed but only"):
-            gt(da)
+            gt(da)  # type: ignore
