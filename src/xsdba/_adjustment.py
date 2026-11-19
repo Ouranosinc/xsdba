@@ -328,6 +328,12 @@ def _npdft_train(ref, hist, rots, quantiles, method, extrap, n_escore, standardi
     return af_q, escores
 
 
+def _get_block_indices(idxs: xr.DataArray, gr_dim: str, ib: int) -> np.ndarray:
+    """Return valid (non-padding) time indices for block `ib`."""
+    raw = idxs[{gr_dim: ib}].fillna(-1).astype(int).values
+    return raw[raw >= 0]
+
+
 def mbcn_train(
     ds: xr.Dataset,
     rot_matrices: xr.DataArray,
@@ -380,12 +386,10 @@ def mbcn_train(
     # npdf training core
     af_q_l = []
     escores_l = []
-
     # loop over time blocks
     for ib in range(gw_idxs[gr_dim].size):
         # indices in a given time block
-        indices = gw_idxs[{gr_dim: ib}].fillna(-1).astype(int).values
-        ind = indices[indices >= 0]
+        ind = _get_block_indices(gw_idxs, gr_dim, ib)
 
         # npdft training : multiple rotations on standardized datasets
         # keep track of adjustment factors in each rotation for later use
@@ -442,8 +446,9 @@ def _npdft_adjust(sim, af_q, rots, quantiles, method, extrap):
         sim = sim[:, np.newaxis, :]
 
     # adjust npdft
+    prev_rot_T = np.eye(rots.shape[-1])
     for ii, _rot in enumerate(rots):
-        rot = _rot if ii == 0 else _rot @ rots[ii - 1].T
+        rot = _rot @ prev_rot_T
         sim = np.einsum("ij,j...->i...", rot, sim)
         # loop over variables
         for iv in range(sim.shape[0]):
@@ -455,9 +460,9 @@ def _npdft_adjust(sim, af_q, rots, quantiles, method, extrap):
                 extrap=extrap,
             )
             sim[iv] = sim[iv] + af
-
-    rot = rots[-1].T
-    sim = np.einsum("ij,j...->i...", rot, sim)
+        prev_rot_T = _rot.T
+    rot_inv = prev_rot_T
+    sim = np.einsum("ij,j...->i...", rot_inv, sim)
     if dummy_dim_added:
         sim = sim[:, 0, :]
 
@@ -469,8 +474,9 @@ def mbcn_adjust(
     hist: xr.DataArray,
     sim: xr.DataArray,
     ds: xr.Dataset,
-    g_idxs: xr.DataArray,
     gw_idxs: xr.DataArray,
+    g_idxs_sim: xr.DataArray,
+    gw_idxs_sim: xr.DataArray,
     pts_dims: tuple[str, str],
     interp: str,
     extrapolation: str,
@@ -494,10 +500,12 @@ def mbcn_adjust(
         training data.
     sim : xr.DataArray
         data to adjust (stacked with multivariate dimension).
-    g_idxs : xr.DataArray
-        Indices of the times in each time group.
     gw_idxs: xr.DataArray
-        Indices of the times in each windowed time group.
+        Indices of the times in each windowed time group (`ref` and `hist`).
+    g_idxs_sim : xr.DataArray
+        Indices of the times in each time group (`sim`).
+    gw_idxs_sim: xr.DataArray
+        Indices of the times in each windowed time group (`sim`).
     ds : xr.Dataset
         Dataset variables:
             rot_matrices : Rotation matrices used in the training step.
@@ -544,24 +552,24 @@ def mbcn_adjust(
     scen_mbcn = xr.zeros_like(sim)
     for ib in range(gw_idxs[gr_dim].size):
         # indices in a given time block (with and without the window)
-        indices_gw = gw_idxs[{gr_dim: ib}].fillna(-1).astype(int).values
-        ind_gw = indices_gw[indices_gw >= 0]
-        indices_g = g_idxs[{gr_dim: ib}].fillna(-1).astype(int).values
-        ind_g = indices_g[indices_g >= 0]
+        ind_gw = _get_block_indices(gw_idxs, gr_dim, ib)
+        ind_gw_sim = _get_block_indices(gw_idxs_sim, gr_dim, ib)
+        ind_g_sim = _get_block_indices(g_idxs_sim, gr_dim, ib)
 
         # 1. univariate adjustment of sim -> scen
         # the kind may differ depending on the variables
-        scen_block = xr.zeros_like(sim[{"time": ind_gw}])
+        scen_block = xr.zeros_like(sim[{"time": ind_gw_sim}])
         for iv, v in enumerate(sim[pts_dims[0]].values):
             sl = {"time": ind_gw, pts_dims[0]: iv}
+            sl_sim = {"time": ind_gw_sim, pts_dims[0]: iv}
             with set_options(extra_output=False):
                 ADJ = base.train(ref[sl], hist[sl], **base_kws_vars[v], skip_input_checks=True)
-                scen_block[{pts_dims[0]: iv}] = ADJ.adjust(sim[sl], **adj_kws, skip_input_checks=True)
+                scen_block[{pts_dims[0]: iv}] = ADJ.adjust(sim[sl_sim], **adj_kws, skip_input_checks=True)
 
         # 2. npdft adjustment of sim
         npdft_block = xr.apply_ufunc(
             _npdft_adjust,
-            standardize(sim[{"time": ind_gw}].copy(), dim="time")[0],
+            standardize(sim[{"time": ind_gw_sim}].copy(), dim="time")[0],
             af_q[{gr_dim: ib}],
             rot_matrices,
             quantiles,
@@ -584,9 +592,9 @@ def mbcn_adjust(
         reordered = reordering(ref=npdft_block, sim=scen_block)
         if win > 1:
             # keep  central value of window (intersecting indices in gw_idxs and g_idxs)
-            scen_mbcn[{"time": ind_g}] = reordered[{"time": np.isin(ind_gw, ind_g)}]
+            scen_mbcn[{"time": ind_g_sim}] = reordered[{"time": np.isin(ind_gw, ind_g_sim)}]
         else:
-            scen_mbcn[{"time": ind_g}] = reordered
+            scen_mbcn[{"time": ind_g_sim}] = reordered
 
     return scen_mbcn.to_dataset(name="scen")
 
