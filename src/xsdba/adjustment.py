@@ -415,7 +415,7 @@ class Adjust(BaseAdjustment):
 
 
 class EmpiricalQuantileMapping(TrainAdjust):
-    """
+    r"""
     Empirical Quantile Mapping bias-adjustment.
 
     Attributes
@@ -453,7 +453,7 @@ class EmpiricalQuantileMapping(TrainAdjust):
 
     .. math::
 
-      F^{-1}_{ref} (F_{hist}(sim))
+      F^{-1}_{\mathrm{ref}} (F_{\mathrm{hist}}(\mathrm{sim}))
 
     where :math:`F` is the cumulative distribution function (CDF) and `mod` stands for model data.
 
@@ -580,7 +580,7 @@ class DetrendedQuantileMapping(TrainAdjust):
 
     .. math::
 
-        F^{-1}_{ref}\left\{F_{hist}\left[\frac{\overline{hist}\cdot sim}{\overline{sim}}\right]\right\}\frac{\overline{sim}}{\overline{hist}}
+        F^{-1}_{\mathrm{ref}}\left\{F_{\mathrm{hist}}\left[\frac{\overline{\mathrm{hist}}\cdot \mathrm{sim}}{\overline{\mathrm{sim}}}\right]\right\}\frac{\overline{\mathrm{sim}}}{\overline{\mathrm{hist}}}
 
     where :math:`F` is the cumulative distribution function (CDF) and :math:`\overline{xyz}` is the linear trend of the data.
     This equation is valid for multiplicative adjustment. Based on the DQM method of :cite:p:`cannon_bias_2015`.
@@ -717,7 +717,7 @@ class QuantileDeltaMapping(EmpiricalQuantileMapping):
 
     .. math::
 
-        sim\frac{F^{-1}_{ref}\left[F_{sim}(sim)\right]}{F^{-1}_{hist}\left[F_{sim}(sim)\right]}
+        \mathrm{sim}\frac{F^{-1}_{\mathrm{ref}}\left[F_{\mathrm{sim}}(\mathrm{sim})\right]}{F^{-1}_{\mathrm{hist}}\left[F_{\mathrm{sim}}(\mathrm{sim})\right]}
 
     where :math:`F` is the cumulative distribution function (CDF). This equation is valid for multiplicative adjustment.
     The algorithm is based on the "QDM" method of :cite:p:`cannon_bias_2015`.
@@ -948,7 +948,7 @@ class LOCI(TrainAdjust):
 
     .. math::
 
-       s = \frac{\left \langle ref: ref \geq t_{ref} \right\rangle - t_{ref}}{\left \langle hist : hist \geq t_{hist} \right\rangle - t_{hist}}
+       s = \frac{\left \langle \mathrm{ref}: \mathrm{ref} \geq t_{\mathrm{ref}} \right\rangle - t_{\mathrm{ref}}}{\left \langle \mathrm{hist} : \mathrm{hist} \geq t_{\mathrm{hist}} \right\rangle - t_{\mathrm{hist}}}
 
     In the case of precipitations, the adjustment factor is the ratio of wet-days intensity.
 
@@ -956,7 +956,7 @@ class LOCI(TrainAdjust):
 
     .. math::
 
-      sim(t) = \max\left(t_{ref} + s \cdot (hist(t) - t_{hist}), 0\right)
+      \mathrm{sim}(t) = \max\left(t_{\mathrm{ref}} + s \cdot (\mathrm{hist}(t) - t_{\mathrm{hist}}), 0\right)
 
     Attributes
     ----------
@@ -1151,7 +1151,7 @@ class PrincipalComponents(TrainAdjust):
 
     .. math::
 
-      scen = e_{R} + \mathrm{\mathbf{T}}(sim - e_{H})
+      \mathrm{scen} = e_{R} + \mathrm{\mathbf{T}}(\mathrm{sim} - e_{H})
 
     Where:
 
