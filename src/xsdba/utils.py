@@ -13,6 +13,7 @@ import numpy as np
 import xarray as xr
 from boltons.funcutils import wraps
 from dask import array as dsk
+from numba import njit
 from scipy.interpolate import griddata, interp1d
 from scipy.spatial import distance
 from scipy.stats import spearmanr
@@ -313,13 +314,13 @@ def add_cyclic_bounds(da: xr.DataArray, att: str, cyclic_coords: bool = True) ->
     return ensure_chunk_size(qmf, **{att: -1})
 
 
-def _interp_on_quantiles_1D_multi(newxs, oldx, oldy, method, extrap):  # noqa: N802
+def _interp_on_quantiles_1d_multi(newxs, oldx, oldy, method, extrap):  # noqa: N802
     # Perform multiple interpolations with a single call of interp1d.
     # This should be used when `oldx` is common for many data arrays (`newxs`)
     # that we want to interpolate on. For instance, with QuantileDeltaMapping, we simply
     # interpolate on quantiles that always remain the same.
     if len(newxs.shape) == 1:
-        return _interp_on_quantiles_1D(newxs, oldx, oldy, method, extrap)
+        return _interp_on_quantiles_1d(newxs, oldx, oldy, method, extrap)
     mask_old = np.isnan(oldy) | np.isnan(oldx)
     if extrap == "constant":
         fill_value = (
@@ -346,7 +347,49 @@ def _interp_on_quantiles_1D_multi(newxs, oldx, oldy, method, extrap):  # noqa: N
     return out
 
 
-def _interp_on_quantiles_1D(newx, oldx, oldy, method, extrap):  # noqa: N802
+@njit
+def _interp_on_quantiles_1d_linear(xn, x, y):
+    return np.interp(xn, x, y)
+
+
+@njit
+def _interp_on_quantiles_1d_nearest(xn, x, y):
+    idx = np.searchsorted(0.5 * (x[:-1] + x[1:]), xn, side="left")
+    return y[idx]
+
+
+def _interp_on_quantiles_1d(newx, oldx, oldy, method, extrap):
+    mask_new = np.isnan(newx)
+    mask_old = np.isnan(oldy) | np.isnan(oldx)
+    out = np.full_like(newx, np.nan, dtype=f"float{oldy.dtype.itemsize * 8}")
+    if method == "nearest" and extrap == "linear":
+        raise ValueError("`extrap = 'linear'` cannot be used with `method = 'nearest'`.")
+    if np.all(mask_new) or np.all(mask_old):
+        warn("All-nan slice encountered in interp_on_quantiles", category=RuntimeWarning, stacklevel=2)
+        return out
+
+    x, y = oldx[~mask_old], oldy[~mask_old]
+    if method == "nearest":
+        out[~mask_new] = _interp_on_quantiles_1d_nearest(newx[~mask_new], x, y)
+    elif method == "linear":
+        out[~mask_new] = _interp_on_quantiles_1d_linear(newx[~mask_new], x, y)
+    else:
+        raise ValueError("`method` must be in ['nearest', 'linear'].")
+
+    left_filter = (newx < x[0]) & (~mask_new)
+    right_filter = (newx > x[-1]) & (~mask_new)
+    if extrap == "linear":
+        out[left_filter] = y[0] + np.diff(y[:2]) / np.diff(x[:2]) * (newx[left_filter] - x[0])
+        out[right_filter] = y[-1] + np.diff(y[-2:]) / np.diff(x[-2:]) * (newx[right_filter] - x[-1])
+    elif extrap == "constant":
+        out[left_filter] = y[0]
+        out[right_filter] = y[-1]
+    else:
+        raise ValueError("`extrap` must be in ['nan', 'constant', 'linear'].")
+    return out
+
+
+def _interp_on_quantiles_1d_old(newx, oldx, oldy, method, extrap):  # noqa: N802
     mask_new = np.isnan(newx)
     mask_old = np.isnan(oldy) | np.isnan(oldx)
     out = np.full_like(newx, np.nan, dtype=f"float{oldy.dtype.itemsize * 8}")
@@ -453,7 +496,10 @@ def interp_on_quantiles(
     """
     dim = group.dim
     prop = group.prop
-
+    if isinstance(dim, str):
+        dims = [dim]
+    else:
+        dims = dim
     if prop == "group":
         if "group" in xq.dims:
             xq = xq.squeeze("group", drop=True)
@@ -461,13 +507,13 @@ def interp_on_quantiles(
             yq = yq.squeeze("group", drop=True)
 
         out = xr.apply_ufunc(
-            _interp_on_quantiles_1D,
+            _interp_on_quantiles_1d,
             newx,
             xq,
             yq,
             kwargs={"method": method, "extrap": extrapolation},
-            input_core_dims=[[dim], ["quantiles"], ["quantiles"]],
-            output_core_dims=[[dim]],
+            input_core_dims=[dims, ["quantiles"], ["quantiles"]],
+            output_core_dims=[dims],
             vectorize=True,
             dask="parallelized",
             output_dtypes=[yq.dtype],
@@ -499,13 +545,13 @@ def interp_on_quantiles(
         oldg,
         kwargs={"method": method, "extrap": extrapolation},
         input_core_dims=[
-            [dim],
-            [dim],
+            dims,
+            dims,
             [prop, "quantiles"],
             [prop, "quantiles"],
             [prop, "quantiles"],
         ],
-        output_core_dims=[[dim]],
+        output_core_dims=[dims],
         vectorize=True,
         dask="parallelized",
         output_dtypes=[yq.dtype],

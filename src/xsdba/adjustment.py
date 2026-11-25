@@ -16,6 +16,8 @@ from scipy import stats
 from xarray.core.dataarray import DataArray
 
 from xsdba._adjustment import (
+    cdft_adjust,
+    cdft_train,
     dotc_adjust,
     dqm_adjust,
     dqm_train,
@@ -55,6 +57,7 @@ __all__ = [
     "LOCI",
     "OTC",
     "BaseAdjustment",
+    "CDFt",
     "DetrendedQuantileMapping",
     "EmpiricalQuantileMapping",
     "ExtremeValues",
@@ -743,6 +746,109 @@ class QuantileDeltaMapping(EmpiricalQuantileMapping):
             return out
 
         return out.scen
+
+
+class CDFt(TrainAdjust):
+    r"""
+    Cumulative Distribution Function transform.
+
+    Attributes
+    ----------
+    Train step:
+
+    nquantiles : int or 1d array of floats
+        The number of quantiles to use. See :py:func:`~xsdba.utils.equally_spaced_nodes`.
+        An array of quantiles [0, 1] can also be passed. Defaults to 20 quantiles.
+    group : str or Grouper
+        The grouping information. See :py:class:`xsdba.base.Grouper` for details.
+        Default is "time", meaning a single adjustment group along dimension "time".
+    adapt_freq_thresh : str, optional
+        Threshold for frequency adaptation. See :py:class:`xsdba.processing.adapt_freq` for details.
+        Default is None, meaning that frequency adaptation is not performed.
+    interp : {'nearest', 'linear', 'cubic'}
+        The interpolation method to use when interpolating the adjustment factors. Defaults to "nearest".
+    extrapolation : {'constant', 'nan', 'extrapolate'}
+        The type of extrapolation to use. Defaults to "constant".
+
+    References
+    ----------
+    :cite:cts:`michelangeli_probabilistic_2009`
+    """
+
+    _allow_diff_calendars = True
+    _allow_diff_time_sizes = True
+
+    @classmethod
+    def _train(
+        cls,
+        ref: xr.DataArray,
+        hist: xr.DataArray,
+        *,
+        nquantiles: int | np.ndarray = 20,
+        normalize_kind: str | None = None,
+        group: str | Grouper = "time",
+        interp="nearest",
+        extrapolation="constant",
+        adapt_freq_thresh: str | None = None,
+        jitter_under_thresh_value: str | None = None,
+        jitter_over_thresh_value: str | None = None,
+        jitter_over_thresh_upper_bnd: str | None = None,
+    ) -> tuple[xr.Dataset, dict[str, Any]]:
+        if np.isscalar(nquantiles):
+            quantiles = equally_spaced_nodes(nquantiles).astype(ref.dtype)
+        else:
+            quantiles = nquantiles.astype(ref.dtype)
+
+        ds = cdft_train(
+            xr.Dataset({"ref": ref, "hist": hist}),
+            group=group,
+            normalize_kind=normalize_kind,
+            quantiles=quantiles,
+            adapt_freq_thresh=adapt_freq_thresh,
+            jitter_under_thresh_value=jitter_under_thresh_value,
+            jitter_over_thresh_value=jitter_over_thresh_value,
+            jitter_over_thresh_upper_bnd=jitter_over_thresh_upper_bnd,
+            interp=interp,
+            extrapolation=extrapolation,
+        )
+
+        ds.ref_to_hist_u.attrs.update(
+            standard_name="Intermediate interpolation in CDFt",
+            long_name="Intermediate interpolation in CDFt",
+        )
+        ds.delta_mean.attrs.update(
+            standard_name="Delta mean",
+            long_name="Delta mean",
+        )
+        ds.scaling.attrs.update(
+            standard_name="Scaling",
+            long_name="Scaling",
+        )
+
+        if adapt_freq_thresh is None:
+            ds = ds.drop_vars(["P0_ref", "P0_hist", "pth"])
+
+        return ds, {
+            "group": group,
+            "normalize_kind": normalize_kind,
+            "adapt_freq_thresh": adapt_freq_thresh,
+            "interp": interp,
+            "extrapolation": extrapolation,
+            # "max_tail_factor": max_tail_factor,
+        }
+
+    # @classmethod
+    def _adjust(self, sim):
+        return cdft_adjust(
+            self.ds.assign(sim=sim),
+            # self.ds.assign(sim=sim),
+            group=self.group,
+            interp=self.interp,
+            extrapolation=self.extrapolation,
+            normalize_kind=self.normalize_kind,
+            adapt_freq_thresh=self.adapt_freq_thresh,
+            # max_tail_factor=self.max_tail_factor,
+        ).scen
 
 
 class ExtremeValues(TrainAdjust):

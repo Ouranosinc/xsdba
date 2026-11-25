@@ -21,6 +21,58 @@ except ImportError:
     USE_FASTNANQUANTILE = False
 
 
+@njit(fastmath={"arcp", "contract", "reassoc", "nsz", "afn"}, nogil=True, cache=True)
+def _mean(arr):
+    return np.nanmean(arr)
+
+
+@njit(fastmath={"arcp", "contract", "reassoc", "nsz", "afn"}, nogil=True, cache=True)
+def _std(arr):
+    return np.nanstd(arr)
+
+
+def statistics(da: DataArray, statistic: str, dim: str | Sequence[Hashable]) -> DataArray:
+    """
+    Compute the quantiles from a fixed list `q`.
+
+    Parameters
+    ----------
+    da : xarray.DataArray
+        The data to compute the mean on.
+    statistic: str
+        Statistic to compute.
+    dim : str or sequence of str
+        The dimension along which to compute the mean.
+
+    Returns
+    -------
+    xarray.DataArray
+        The mean computed along the `dim` dimension.
+    """
+    match statistic:
+        case "mean":
+            func = _mean
+        case "std":
+            func = _std
+        case _:
+            raise NotImplementedError("Implemented statistics are 'mean' and 'std'.")
+
+    dims = [dim] if isinstance(dim, str) else dim
+    res = (
+        apply_ufunc(
+            func,
+            da,
+            input_core_dims=[dims],
+            output_core_dims=[[]],
+            output_dtypes=[da.dtype],
+            dask="parallelized",
+        )
+        .assign_attrs(da.attrs)
+        .assign_attrs({"statistic": statistic})
+    )
+    return res
+
+
 @njit(
     fastmath={"arcp", "contract", "reassoc", "nsz", "afn"},
     nogil=True,

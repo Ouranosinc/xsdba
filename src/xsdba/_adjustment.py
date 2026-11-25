@@ -11,6 +11,7 @@ from collections.abc import Callable, Sequence
 
 import numpy as np
 import xarray as xr
+from numba import njit
 
 from . import nbutils as nbu
 from . import utils as u
@@ -314,7 +315,7 @@ def _npdft_train(ref, hist, rots, quantiles, method, extrap, n_escore, standardi
         for iv in range(ref.shape[0]):
             ref_q, hist_q = nbu._quantile(ref[iv], quantiles), nbu._quantile(hist[iv], quantiles)
             af_q[ii, iv] = ref_q - hist_q
-            af = u._interp_on_quantiles_1D(
+            af = u._interp_on_quantiles_1d(
                 nbu.nanrank(hist[iv]),
                 quantiles,
                 af_q[ii, iv],
@@ -447,7 +448,7 @@ def _npdft_adjust(sim, af_q, rots, quantiles, method, extrap):
         sim = np.einsum("ij,j...->i...", rot, sim)
         # loop over variables
         for iv in range(sim.shape[0]):
-            af = u._interp_on_quantiles_1D_multi(
+            af = u._interp_on_quantiles_1d_multi(
                 nbu.nanrank(sim[iv], axis=-1),
                 quantiles,
                 af_q[ii, iv],
@@ -884,6 +885,195 @@ def qdm_adjust(
         scen = scen.where(~mask, adaptedsim)
 
     return xr.Dataset({"scen": scen, "sim_q": sim_q})
+
+
+@njit
+def _cdft_normalization(ref, hist, q, additive=True):
+    # get quantiles
+    ref_q = np.nanquantile(ref, q)
+    hist_q = np.nanquantile(hist, q)
+    if additive:
+        # get relevant scaling / offsets
+        scaling = np.nanstd(ref)
+        scaling /= np.nanstd(hist)
+        delta_mean = np.nanmean(ref)
+        hist_mean = np.nanmean(hist)
+
+        # normalize hist_q -> [hist_q - hist_mean]_1 * [ref_std/hist_std]_2 + [ref_mean]_3
+        hist_q -= hist_mean
+        hist_q *= scaling
+        hist_q += delta_mean
+
+        # in the future, we add (ref_mean - hist_mea)
+        delta_mean -= hist_mean
+    else:
+        # maybe should use a big quantile, e.g. 0.99
+        scaling = np.nanmean(ref)
+        scaling /= np.nanmean(hist)
+        hist_q *= scaling
+        delta_mean = scaling  # dummy field
+    return ref_q, hist_q, scaling, delta_mean
+
+
+@map_groups(
+    ref_to_hist_u=[Grouper.PROP, "quantiles"],
+    # hist_q_raw=[Grouper.PROP, "quantiles"],
+    P0_ref=[Grouper.PROP, Grouper.ADD_DIMS],
+    P0_hist=[Grouper.PROP, Grouper.ADD_DIMS],
+    pth=[Grouper.PROP, Grouper.ADD_DIMS],
+    delta_mean=[Grouper.PROP, "quantiles"],
+    scaling=[Grouper.PROP, "quantiles"],
+)
+def cdft_train(
+    ds: xr.Dataset,
+    *,
+    dim: str,
+    normalize_kind: str | None = None,
+    # kind: str | None = None,
+    quantiles: np.ndarray,
+    interp: str,
+    extrapolation: str,
+    adapt_freq_thresh: str | None = None,
+    jitter_under_thresh_value: str | None = None,
+    jitter_over_thresh_value: str | None = None,
+    jitter_over_thresh_upper_bnd: str | None = None,
+) -> xr.Dataset:
+    sim_dim = Grouper.filter_dim(ds.hist, dim)
+    ds = _preprocess_dataset(
+        ds,
+        sim_dim,
+        adapt_freq_thresh,
+        jitter_under_thresh_value,
+        jitter_over_thresh_value,
+        jitter_over_thresh_upper_bnd,
+    )
+    # Ensures extra dimensions are only aggregated in datasets that have them
+    ref_dim = Grouper.filter_dim(ds.ref, dim)
+    # ds.hist might have been broadcasted in preprocess, so `sim_dim` must be re-computed
+    sim_dim = Grouper.filter_dim(ds.hist, dim)
+
+    # I use "u" for the quantiles ... "Q_X(u)" below is used to designate the value X* = Q_X(u) s.t. prob(X<=X*) = u
+    u_q = xr.DataArray(quantiles, dims=["quantiles"], coords={"quantiles": quantiles})
+
+    if normalize_kind:
+        ref_q, hist_q, scaling, delta_mean = xr.apply_ufunc(
+            _cdft_normalization,
+            ds.ref,
+            ds.hist,
+            u_q,
+            input_core_dims=[ref_dim, sim_dim, ["quantiles"]],
+            output_core_dims=[["quantiles"], ["quantiles"], [], []],
+            dask="parallelized",
+            vectorize=True,
+            kwargs={"additive": normalize_kind == "+"},
+        )
+    else:
+        ref_q = nbu.quantile(ds.ref, quantiles, ref_dim)
+        hist_q = nbu.quantile(ds.hist, quantiles, sim_dim)
+        # dummy fields
+        scaling = (ref_q.isel(quantiles=0).copy(deep=True)) * np.nan
+        delta_mean = scaling
+    # quantiles of normalized hist
+    kw = {"method": interp, "extrapolation": extrapolation, "group": Grouper("quantiles")}
+    ref_to_hist_u = u.interp_on_quantiles(ref_q, hist_q, u_q, **kw)
+
+    return xr.Dataset(
+        data_vars={
+            "ref_to_hist_u": ref_to_hist_u,
+            "P0_ref": ds.P0_ref,
+            "P0_hist": ds.P0_hist,
+            "pth": ds.pth,
+            "scaling": scaling,
+            "delta_mean": delta_mean,
+            # "hist_q_raw": hist_q_raw,
+        }
+    )
+
+
+@map_blocks(reduces=[Grouper.PROP, "quantiles"], scen=[])
+def cdft_adjust(
+    ds: xr.Dataset,
+    *,
+    group: Grouper,
+    normalize_kind: str,
+    interp: str,
+    extrapolation: str,
+    adapt_freq_thresh: str | None = None,
+    # max_tail_factor: int | None = None,
+) -> xr.Dataset:
+    """
+    QM (DQM and EQM): Adjust step on one block.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        Dataset variables:
+            af : Adjustment factors
+            hist_q : Quantiles over the training data
+            sim : Data to adjust.
+            P0_ref (optional) : Proportion of zeroes in the reference
+            P0_hist (optional) : Proportion of zeroes in the historical period of the simulation
+            pth (optional) : The smallest value of `hist` that was not frequency-adjusted in the training.
+    group : Grouper
+        The grouper object.
+    interp : str
+        The interpolation method to use.
+    extrapolation : str
+        The extrapolation method to use.
+    normalize_kind : str
+        The kind of correction to compute. See :py:func:`xsdba.utils.get_correction`.
+    adapt_freq_thresh : str, optional
+        Threshold for frequency adaptation. See :py:class:`xsdba.processing.adapt_freq` for details.
+        Default is None, meaning that frequency adaptation is not performed.
+    max_tail_factor: float, optional
+        If not None, values to adjust (after preprossing steps) that are above max_tail_factor * the value
+        of the last quantile of hist (before the preprocessing steps) are not adjusted.
+        We keep the input simulation with only the preprocessing steps instead.
+
+    Returns
+    -------
+    xr.Dataset
+        The adjusted data.
+    """
+    if adapt_freq_thresh:
+        ds["sim"] = _adapt_freq_preprocess(
+            ds[["sim", "P0_ref", "P0_hist", "pth"]],
+            adapt_freq_thresh,
+            group=Grouper(group.name),
+            dim=None,
+        ).sim
+
+    kw = {"method": interp, "extrapolation": extrapolation}
+
+    # quantiles of normalized hist
+    sim_q = group.apply(nbu.quantile, ds.sim, q=ds.quantiles.values, main_only=False)
+
+    if normalize_kind:
+        sim_mean = group.apply(nbu.statistics, ds.sim, statistic="mean", main_only=False)
+        if normalize_kind == "+":
+            sim_q -= sim_mean
+            sim_q *= ds.scaling
+            sim_q += ds.delta_mean
+        elif normalize_kind == "*":
+            sim_q *= ds.scaling * (ds.delta_mean / sim_mean)
+
+    # Q_X1(F_X0∘Q_Y0(p))
+    ref_hist_sim_q = u.interp_on_quantiles(ds.ref_to_hist_u, ds.quantiles, sim_q, group=Grouper("quantiles"), **kw)
+    # Q_X1∘F_X0∘Q_Y0(u1) =  Q_X1∘F_X0∘Q_Y0(F_X1(x))
+    sim_u = group.apply(nbu.rank, ds.sim, pct=True, main_only=False)
+    if group.prop == "group":
+        scen = u.interp_on_quantiles(sim_u, ds.quantiles, ref_hist_sim_q, group=group, **kw)
+    else:
+        time_template = sim_u.groupby(group.name).map(lambda ds: ds.isel(time=0)).drop(group.prop).time.values
+        temp = ref_hist_sim_q.rename({group.prop: "time"}).assign_coords(time=time_template)
+        scen = (
+            sim_u.to_dataset(name="sim_u")
+            .assign(temp=temp)
+            .groupby(group.name)
+            .map(lambda ds0: u.interp_on_quantiles(ds0.sim_u, ds.quantiles, ds0.temp.isel(time=0), group=Grouper("time"), **kw))
+        )
+    out = scen.to_dataset(name="scen")
+    return out
 
 
 @map_blocks(
