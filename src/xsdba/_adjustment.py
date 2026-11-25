@@ -929,7 +929,6 @@ def cdft_train(
     *,
     dim: str,
     normalize_kind: str | None = None,
-    # kind: str | None = None,
     quantiles: np.ndarray,
     interp: str,
     extrapolation: str,
@@ -1064,6 +1063,7 @@ def cdft_adjust(
     if group.prop == "group":
         scen = u.interp_on_quantiles(sim_u, ds.quantiles, ref_hist_sim_q, group=group, **kw)
     else:
+        # A bit of sorcery to apply the interpolation on each PROP individually, no interpolation between PROPs
         time_template = sim_u.groupby(group.name).map(lambda ds: ds.isel(time=0)).drop(group.prop).time.values
         temp = ref_hist_sim_q.rename({group.prop: "time"}).assign_coords(time=time_template)
         scen = (
