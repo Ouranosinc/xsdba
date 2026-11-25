@@ -415,7 +415,7 @@ class Adjust(BaseAdjustment):
 
 
 class EmpiricalQuantileMapping(TrainAdjust):
-    """
+    r"""
     Empirical Quantile Mapping bias-adjustment.
 
     Attributes
@@ -821,7 +821,7 @@ class ExtremeValues(TrainAdjust):
 
     .. math::
 
-        \tau = \left(\frac{1}{f}\frac{S - min(S)}{max(S) - min(S)}\right)^p
+        \tau = \left(\frac{1}{f}\frac{S - \min(S)}{\max(S) - \min(S)}\right)^p
 
     Code based on an internal Matlab source and partly ib the `biascorrect_extremes` function of the julia package
     "ClimateTools.jl" :cite:p:`roy_juliaclimateclimatetoolsjl_2021`.
@@ -1506,22 +1506,22 @@ class OTC(Adjust):
     - `normalization = 'standardize'` :
         .. math::
 
-            i_v' = \frac{i_v - mean(i_v)}{std(i_v)} \quad\quad\quad j_v' = \frac{j_v - mean(j_v)}{std(j_v)}
+            i_v' = \frac{i_v - \mathrm{mean}(i_v)}{\mathrm{std}(i_v)} \quad\quad\quad j_v' = \frac{j_v - \mathrm{mean}(j_v)}{\mathrm{std}(j_v)}
 
     - `normalization = 'max_distance'` :
         .. math::
 
-            i_v' = \frac{i_v}{max \{|i_v - j_v|\}} \quad\quad\quad j_v' = \frac{j_v}{max \{|i_v - j_v|\}}
+            i_v' = \frac{i_v}{\max \{|i_v - j_v|\}} \quad\quad\quad j_v' = \frac{j_v}{\max \{|i_v - j_v|\}}
 
         such that
             .. math::
 
-                max \{|i_v' - j_v'|\} = max \{|i_w' - j_w'|\} = 1
+                \max \{|i_v' - j_v'|\} = \max \{|i_w' - j_w'|\} = 1
 
     - `normalization = 'max_value'` :
         .. math::
 
-            i_v' = \frac{i_v}{max\{i_v\}} \quad\quad\quad j_v' = \frac{j_v}{max\{j_v\}}
+            i_v' = \frac{i_v}{\max\{i_v\}} \quad\quad\quad j_v' = \frac{j_v}{\max\{j_v\}}
 
     for variables :math:`v, w`. Default is `'max_distance'`.
 
