@@ -30,7 +30,7 @@ Internal changes
     * A new convenience function ``open_dataset`` (for opening testing datasets) has been added for example scripts.
 * Documentation adjustments:
     * The documentation on ReadTheDocs no longer installs the `dev` dependency group (dependencies were unused). (:pull:`340`).
-    * Uniformize the use of latex mathematical operators in mathematical expressions. ().
+    * Uniformize the use of latex mathematical operators in mathematical expressions. (:pull:`343`).
 
 .. _changes_0.8.0:
 
