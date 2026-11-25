@@ -770,6 +770,10 @@ class CDFt(TrainAdjust):
     extrapolation : {'constant', 'nan', 'extrapolate'}
         The type of extrapolation to use. Defaults to "constant".
 
+    Adjust step:
+        For CDFt, train and adjust both use interpolation / extrapolation. Thus, no additional arguments are needed for the adjusting
+        part in this case.
+
     References
     ----------
     :cite:cts:`michelangeli_probabilistic_2009`
@@ -785,10 +789,10 @@ class CDFt(TrainAdjust):
         hist: xr.DataArray,
         *,
         nquantiles: int | np.ndarray = 20,
-        normalize_kind: str | None = None,
         group: str | Grouper = "time",
         interp="nearest",
         extrapolation="constant",
+        normalization_kind: str | None = None,
         adapt_freq_thresh: str | None = None,
         jitter_under_thresh_value: str | None = None,
         jitter_over_thresh_value: str | None = None,
@@ -802,14 +806,14 @@ class CDFt(TrainAdjust):
         ds = cdft_train(
             xr.Dataset({"ref": ref, "hist": hist}),
             group=group,
-            normalize_kind=normalize_kind,
             quantiles=quantiles,
+            interp=interp,
+            extrapolation=extrapolation,
+            normalization_kind=normalization_kind,
             adapt_freq_thresh=adapt_freq_thresh,
             jitter_under_thresh_value=jitter_under_thresh_value,
             jitter_over_thresh_value=jitter_over_thresh_value,
             jitter_over_thresh_upper_bnd=jitter_over_thresh_upper_bnd,
-            interp=interp,
-            extrapolation=extrapolation,
         )
 
         ds.ref_to_hist_u.attrs.update(
@@ -830,7 +834,7 @@ class CDFt(TrainAdjust):
 
         return ds, {
             "group": group,
-            "normalize_kind": normalize_kind,
+            "normalization_kind": normalization_kind,
             "adapt_freq_thresh": adapt_freq_thresh,
             "interp": interp,
             "extrapolation": extrapolation,
@@ -841,11 +845,10 @@ class CDFt(TrainAdjust):
     def _adjust(self, sim):
         return cdft_adjust(
             self.ds.assign(sim=sim),
-            # self.ds.assign(sim=sim),
             group=self.group,
             interp=self.interp,
             extrapolation=self.extrapolation,
-            normalize_kind=self.normalize_kind,
+            normalization_kind=self.normalization_kind,
             adapt_freq_thresh=self.adapt_freq_thresh,
             # max_tail_factor=self.max_tail_factor,
         ).scen
