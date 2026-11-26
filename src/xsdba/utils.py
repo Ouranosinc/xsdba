@@ -368,10 +368,12 @@ def _interp_on_quantiles_1d(newx, oldx, oldy, method, extrap):
         raise ValueError("`extrap = 'extrapolate'` cannot be used with `method = 'nearest'`.")
 
     x, y = oldx[~mask_old], oldy[~mask_old]
+    order = np.argsort(x)
+    x, y = x[order], y[order]
     if extrap == "constant":
         xn = np.clip(newx[~mask_new], x[0], x[-1])
     elif extrap == "nan":
-        bounds_mask = (newx < x[0]) | (newx > x[1])
+        bounds_mask = (newx < x[0]) | (newx > x[-1])
         mask_new = mask_new & bounds_mask
         xn = newx[~mask_new]
     else:
