@@ -522,7 +522,7 @@ class EmpiricalQuantileMapping(TrainAdjust):
             "max_tail_factor": max_tail_factor,
         }
 
-    def _adjust(self, sim, interp="nearest", extrapolation="constant"):
+    def _adjust(self, sim, interp="nearest", extrapolation="constant", interp_prop=True):
         return qm_adjust(
             self.ds.assign(sim=sim),
             group=self.group,
@@ -531,6 +531,7 @@ class EmpiricalQuantileMapping(TrainAdjust):
             kind=self.kind,
             adapt_freq_thresh=self.adapt_freq_thresh,
             max_tail_factor=self.max_tail_factor,
+            interp_prop=interp_prop,
         ).scen
 
 
@@ -661,6 +662,7 @@ class DetrendedQuantileMapping(TrainAdjust):
         interp="nearest",
         extrapolation="constant",
         detrend=1,
+        interp_prop=True,
     ):
         scen = dqm_adjust(
             self.ds.assign(sim=sim),
@@ -671,6 +673,7 @@ class DetrendedQuantileMapping(TrainAdjust):
             kind=self.kind,
             adapt_freq_thresh=self.adapt_freq_thresh,
             max_tail_factor=self.max_tail_factor,
+            interp_prop=interp_prop,
         ).scen
         # Detrending needs units.
         scen.attrs["units"] = sim.units
@@ -730,7 +733,7 @@ class QuantileDeltaMapping(EmpiricalQuantileMapping):
     :cite:cts:`cannon_bias_2015`
     """
 
-    def _adjust(self, sim, interp="nearest", extrapolation="constant", rank_window=None):
+    def _adjust(self, sim, interp="nearest", extrapolation="constant", rank_window=None, interp_prop=True):
         out = qdm_adjust(
             self.ds.assign(sim=sim),
             group=self.group,
@@ -740,6 +743,7 @@ class QuantileDeltaMapping(EmpiricalQuantileMapping):
             adapt_freq_thresh=self.adapt_freq_thresh,
             rank_window=rank_window,
             max_tail_factor=self.max_tail_factor,
+            interp_prop=interp_prop,
         )
         if OPTIONS[EXTRA_OUTPUT]:
             out.sim_q.attrs.update(long_name="Group-wise quantiles of `sim`.")
@@ -847,7 +851,7 @@ class CDFt(TrainAdjust):
         }
 
     # @classmethod
-    def _adjust(self, sim):
+    def _adjust(self, sim, interp_prop=False):
         return cdft_adjust(
             self.ds.assign(sim=sim),
             group=self.group,
@@ -856,6 +860,7 @@ class CDFt(TrainAdjust):
             normalization=self.normalization,
             adapt_freq_thresh=self.adapt_freq_thresh,
             max_tail_factor=self.max_tail_factor,
+            interp_prop=interp_prop,
         ).scen
 
 

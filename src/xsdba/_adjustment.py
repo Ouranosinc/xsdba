@@ -615,6 +615,7 @@ def qm_adjust(
     kind: str,
     adapt_freq_thresh: str | None = None,
     max_tail_factor: int | None = None,
+    interp_prop: bool = True,
 ) -> xr.Dataset:
     """
     QM (DQM and EQM): Adjust step on one block.
@@ -644,6 +645,8 @@ def qm_adjust(
         If not None, values to adjust (after preprocessing steps) that are above max_tail_factor * the value
         of the last quantile of hist (before the preprocessing steps) are not adjusted.
         We keep the input simulation with only the preprocessing steps instead.
+    interp_prop: bool
+        For grouping other than "time", this controls whether an interpolation is applied on the `prop` dimension or not.
 
     Returns
     -------
@@ -654,14 +657,7 @@ def qm_adjust(
         varss = ["sim", "P0_ref", "P0_hist", "pth"]
         ds["sim"] = _adapt_freq_preprocess(ds[varss], adapt_freq_thresh, group=Grouper(group.name), dim=None).sim
 
-    af = u.interp_on_quantiles(
-        ds.sim,
-        ds.hist_q,
-        ds.af,
-        group=group,
-        method=interp,
-        extrapolation=extrapolation,
-    )
+    af = u.interp_on_quantiles(ds.sim, ds.hist_q, ds.af, group=group, method=interp, extrapolation=extrapolation, interp_prop=interp_prop)
 
     scen: xr.DataArray = u.apply_correction(ds.sim, af, kind).rename("scen")
 
@@ -684,6 +680,7 @@ def dqm_adjust(
     detrend: int | PolyDetrend,
     adapt_freq_thresh: str | None = None,
     max_tail_factor: int | None = None,
+    interp_prop: bool = True,
 ) -> xr.Dataset:
     """
     DQM adjustment on one block.
@@ -716,6 +713,8 @@ def dqm_adjust(
         If not None, values to adjust (after preprossing steps) that are above max_tail_factor * the value
         of the last quantile of hist (before the preprocessing steps) are not adjusted.
         We keep the input simulation with only the preprocessing steps instead.
+    interp_prop: bool
+        For grouping other than "time", this controls whether an interpolation is applied on the `prop` dimension or not.
 
     Returns
     -------
@@ -744,13 +743,7 @@ def dqm_adjust(
 
     detrending = detrending.fit(scaled_sim)
     ds["sim"] = detrending.detrend(scaled_sim)
-    scen = qm_adjust.func(
-        ds,
-        group=group,
-        interp=interp,
-        extrapolation=extrapolation,
-        kind=kind,
-    ).scen
+    scen = qm_adjust.func(ds, group=group, interp=interp, extrapolation=extrapolation, kind=kind, interp_prop=interp_prop).scen
     scen = detrending.retrend(scen)
 
     # mask no bias adjustment, when sim is larger than n times the largest quantile in hist (without adapt freq)
@@ -772,6 +765,7 @@ def qdm_adjust(
     adapt_freq_thresh: str | None = None,
     rank_window: bool | None = None,
     max_tail_factor: int | None = None,
+    interp_prop: bool = True,
 ) -> xr.Dataset:
     """
     QDM adjustment on one block.
@@ -805,6 +799,8 @@ def qdm_adjust(
         If not None, values to adjust (after preprossing steps) that are above max_tail_factor * the value
         of the last quantile of hist (before the preprocessing steps) are not adjusted.
         We keep the input simulation with only the preprocessing steps instead.
+    interp_prop: bool
+        For grouping other than "time", this controls whether an interpolation is applied on the `prop` dimension or not.
 
     Returns
     -------
@@ -836,14 +832,8 @@ def qdm_adjust(
                 stacklevel=2,
             )
     sim_q = group.apply(nbu.rank, ds.sim, main_only=not rank_window, pct=True, use_random_tiebreak=False)
-    af = u.interp_on_quantiles(
-        sim_q,
-        ds.quantiles,
-        ds.af,
-        group=group,
-        method=interp,
-        extrapolation=extrapolation,
-    )
+
+    af = u.interp_on_quantiles(sim_q, ds.quantiles, ds.af, group=group, method=interp, extrapolation=extrapolation, interp_prop=interp_prop)
     scen = u.apply_correction(ds.sim, af, kind)
     # mask no bias adjustment, when sim is larger than n times the largest quantile in hist (without adapt freq)
     if max_tail_factor is not None:
@@ -852,15 +842,18 @@ def qdm_adjust(
     return xr.Dataset({"scen": scen, "sim_q": sim_q})
 
 
-@njit(fastmath=True, nogil=True, cache=True)
-def _cdft_quantiles(ref, hist, q, normalization):
+# fastmath makes errors, maybe I need to be more specific.
+# 000 because I should learn how to empty cache
+@njit(nogil=True, cache=True)
+def _cdft_quantiles000(ref, hist, q, normalization):
     ref_q = np.nanquantile(ref, q)
     hist_q = np.nanquantile(hist, q)
     if normalization is None:
         scaling = delta_mean = ref_q[0]  # dummy
     elif normalization == "z_score":
         # get relevant scaling / offsets
-        scaling = np.nanstd(ref) / np.nanstd(hist)
+        _hist = np.nanstd(hist)
+        scaling = np.nan if _hist == 0 else np.nanstd(ref) / _hist
         hist_mean = np.nanmean(hist)
         ref_mean = np.nanmean(ref)
         # normalize hist_q -> [hist_q - hist_mean]_1 * [ref_std/hist_std]_2 + [ref_mean]_3
@@ -869,12 +862,13 @@ def _cdft_quantiles(ref, hist, q, normalization):
         delta_mean = ref_mean - hist_mean
     else:
         if normalization == "mean_scale":
-            # maybe should use a big quantile, e.g. 0.99
-            scaling = np.nanmean(ref) / np.nanmean(hist)
+            _hist = np.nanmean(hist)
+            scaling = np.nan if _hist == 0 else np.nanmean(ref) / _hist
         elif normalization == "max_scale":
             # maybe should use a big quantile, e.g. 0.99
-            scaling = np.nanmax(ref) / np.nanmax(hist)
-        hist_q *= scaling
+            _hist = np.nanmax(hist)
+            scaling = np.nan if _hist == 0 else np.nanmax(ref) / _hist
+        hist_q = hist_q * scaling
         delta_mean = scaling  # dummy field in the case of multiplicative
     return ref_q, hist_q, scaling, delta_mean
 
@@ -950,7 +944,7 @@ def cdft_train(
     sim_dim = Grouper.filter_dim(ds.hist, dim)
 
     ref_q, hist_q, scaling, delta_mean = xr.apply_ufunc(
-        _cdft_quantiles,
+        _cdft_quantiles000,
         ds.ref,
         ds.hist,
         input_core_dims=[ref_dim, sim_dim],
@@ -989,6 +983,7 @@ def cdft_adjust(
     normalization: str,
     interp: str,
     extrapolation: str,
+    interp_prop: bool,
     adapt_freq_thresh: str | None = None,
     max_tail_factor: float | None = None,
 ) -> xr.Dataset:
@@ -1012,6 +1007,8 @@ def cdft_adjust(
         The interpolation method to use.
     extrapolation : {'constant', 'nan', 'extrapolate'}
         The extrapolation method to use.
+    interp_prop: bool
+        For grouping other than "time", this controls whether an interpolation is applied on the `prop` dimension or not.
     normalization : {'z_score', 'mean_scale', 'max_scale'}
         The kind of correction to compute. See :py:func:`xsdba.utils.get_correction`.
     adapt_freq_thresh : str, optional
@@ -1031,32 +1028,21 @@ def cdft_adjust(
         varss = ["sim", "P0_ref", "P0_hist", "pth"]
         ds["sim"] = _adapt_freq_preprocess(ds[varss], adapt_freq_thresh, group=Grouper(group.name), dim=None).sim
 
-    kw = {"method": interp, "extrapolation": extrapolation}
+    kw = {"method": interp, "extrapolation": extrapolation, "interp_prop": interp_prop}
 
     # quantiles of normalized hist
     sim_q = group.apply(nbu.quantile, ds.sim, q=ds.quantiles.values, main_only=False)
     if normalization == "z_score":
         sim_mean = group.apply(nbu.statistics, ds.sim, statistic="mean", main_only=False)
         sim_q = (sim_q - sim_mean) * ds.scaling + sim_mean + (ds.delta_mean)
-    elif normalization in ["mean_scaling", "max_scaling"]:
+    elif normalization in ["mean_scale", "max_scale"]:
         sim_q = sim_q * ds.scaling
 
     # Q_X1(F_X0∘Q_Y0(p))
     ref_hist_sim_q = u.interp_on_quantiles(ds.ref_to_hist_u, ds.quantiles, sim_q, group=Grouper("quantiles"), **kw)
     # Q_X1∘F_X0∘Q_Y0(u1) =  Q_X1∘F_X0∘Q_Y0(F_X1(x))
     sim_u = group.apply(nbu.rank, ds.sim, pct=True, main_only=False)
-
-    if group.prop == "group":
-        scen = u.interp_on_quantiles(sim_u, ds.quantiles, ref_hist_sim_q, group=group, **kw)
-    else:
-        time_template = sim_u.groupby(group.name).map(lambda ds: ds.isel(time=0)).drop(group.prop).time.values
-        temp = ref_hist_sim_q.rename({group.prop: "time"}).assign_coords(time=time_template)
-        scen = (
-            sim_u.to_dataset(name="sim_u")
-            .assign(temp=temp)
-            .groupby(group.name)
-            .map(lambda ds0: u.interp_on_quantiles(ds0.sim_u, ds.quantiles, ds0.temp.isel(time=0), group=Grouper("time"), **kw))
-        )
+    scen = u.interp_on_quantiles(sim_u, ds.quantiles, ref_hist_sim_q, group=group, **kw)
 
     # mask no bias adjustment, when sim is larger than n times the largest quantile in hist (without adapt freq)
     if max_tail_factor is not None:

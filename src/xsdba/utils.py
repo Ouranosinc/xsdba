@@ -13,7 +13,6 @@ import numpy as np
 import xarray as xr
 from boltons.funcutils import wraps
 from dask import array as dsk
-from numba import njit
 from scipy.interpolate import griddata, interp1d, make_interp_spline
 from scipy.spatial import distance
 from scipy.stats import spearmanr
@@ -347,8 +346,7 @@ def _interp_on_quantiles_1d_multi(newxs, oldx, oldy, method, extrap):  # noqa: N
     return out
 
 
-@njit
-def _interp_on_quantiles_1d_linear(xn, x, y):
+def _linear_interp_on_quantiles_1d(xn, x, y):
     out = np.interp(xn, x, y)
     left_filter = xn < x[0]
     right_filter = xn > x[-1]
@@ -356,12 +354,6 @@ def _interp_on_quantiles_1d_linear(xn, x, y):
         out[left_filter] = y[0] + np.diff(y[:2]) / np.diff(x[:2]) * (xn[left_filter] - x[0])
         out[right_filter] = y[-1] + np.diff(y[-2:]) / np.diff(x[-2:]) * (xn[right_filter] - x[-1])
     return out
-
-
-@njit
-def _interp_on_quantiles_1d_nearest(xn, x, y):
-    idx = np.searchsorted(0.5 * (x[:-1] + x[1:]), xn, side="left")
-    return y[idx]
 
 
 # can I assume x is sorted here? this saves some time
@@ -385,9 +377,10 @@ def _interp_on_quantiles_1d(newx, oldx, oldy, method, extrap):
     else:
         xn = newx[~mask_new]
     if method == "nearest":
-        out[~mask_new] = _interp_on_quantiles_1d_nearest(xn, x, y)
+        idx = np.searchsorted(0.5 * (x[:-1] + x[1:]), xn, side="left")
+        out[~mask_new] = y[idx]
     elif method == "linear":
-        out[~mask_new] = _interp_on_quantiles_1d_linear(xn, x, y)
+        out[~mask_new] = _linear_interp_on_quantiles_1d(xn, x, y)
     elif method == "cubic":
         out[~mask_new] = make_interp_spline(x, y, k=3)(xn)
     else:
@@ -395,57 +388,35 @@ def _interp_on_quantiles_1d(newx, oldx, oldy, method, extrap):
     return out
 
 
-def _interp_on_quantiles_1d_old(newx, oldx, oldy, method, extrap):  # noqa: N802
-    mask_new = np.isnan(newx)
-    mask_old = np.isnan(oldy) | np.isnan(oldx)
-    out = np.full_like(newx, np.nan, dtype=f"float{oldy.dtype.itemsize * 8}")
-    if np.all(mask_new) or np.all(mask_old):
-        warn(
-            "All-nan slice encountered in interp_on_quantiles",
-            category=RuntimeWarning,
-            stacklevel=2,
-        )
+def _interp_on_quantiles_2d(newx, newg, oldx, oldy, oldg, method, extrap, interp_prop):
+    if not interp_prop:
+        out = np.full_like(newx, np.nan, dtype=f"float{oldy.dtype.itemsize * 8}")
+        for ig in range(oldg.shape[0]):
+            g = oldg[ig, 0]
+            nfilt = newg == g
+            out[nfilt] = _interp_on_quantiles_1d(newx[nfilt], oldx[ig, :], oldy[ig, :], method, extrap)
         return out
-
-    if extrap == "constant":
-        fill_value = (
-            oldy[~np.isnan(oldy)][0],
-            oldy[~np.isnan(oldy)][-1],
+    else:
+        mask_new = np.isnan(newx) | np.isnan(newg)
+        mask_old = np.isnan(oldy) | np.isnan(oldx) | np.isnan(oldg)
+        out = np.full_like(newx, np.nan, dtype=f"float{oldy.dtype.itemsize * 8}")
+        if np.all(mask_new) or np.all(mask_old):
+            warn(
+                "All-nan slice encountered in interp_on_quantiles",
+                category=RuntimeWarning,
+                stacklevel=2,
+            )
+            return out
+        out[~mask_new] = griddata(
+            (oldx[~mask_old], oldg[~mask_old]),
+            oldy[~mask_old],
+            (newx[~mask_new], newg[~mask_new]),
+            method=method,
         )
-    else:  # extrap == 'nan'
-        fill_value = np.nan
-
-    out[~mask_new] = interp1d(
-        oldx[~mask_old],
-        oldy[~mask_old],
-        kind=method,
-        bounds_error=False,
-        fill_value=fill_value,
-    )(newx[~mask_new])
-    return out
-
-
-def _interp_on_quantiles_2d(newx, newg, oldx, oldy, oldg, method, extrap):
-    mask_new = np.isnan(newx) | np.isnan(newg)
-    mask_old = np.isnan(oldy) | np.isnan(oldx) | np.isnan(oldg)
-    out = np.full_like(newx, np.nan, dtype=f"float{oldy.dtype.itemsize * 8}")
-    if np.all(mask_new) or np.all(mask_old):
-        warn(
-            "All-nan slice encountered in interp_on_quantiles",
-            category=RuntimeWarning,
-            stacklevel=2,
-        )
+        if method == "nearest" or extrap != "nan":
+            # 'nan' extrapolation implicit for cubic and linear interpolation.
+            out = _extrapolate_on_quantiles(out, oldx, oldg, oldy, newx, newg, extrap)
         return out
-    out[~mask_new] = griddata(
-        (oldx[~mask_old], oldg[~mask_old]),
-        oldy[~mask_old],
-        (newx[~mask_new], newg[~mask_new]),
-        method=method,
-    )
-    if method == "nearest" or extrap != "nan":
-        # 'nan' extrapolation implicit for cubic and linear interpolation.
-        out = _extrapolate_on_quantiles(out, oldx, oldg, oldy, newx, newg, extrap)
-    return out
 
 
 SEASON_MAP = {"DJF": 0, "MAM": 1, "JJA": 2, "SON": 3}
@@ -462,6 +433,7 @@ def interp_on_quantiles(
     group: str | Grouper = "time",
     method: str = "linear",
     extrapolation: str = "constant",
+    interp_prop: bool = True,
 ):
     """
     Interpolate values of yq on new values of x.
@@ -539,7 +511,7 @@ def interp_on_quantiles(
 
     xq = add_cyclic_bounds(xq, prop, cyclic_coords=False)
     yq = add_cyclic_bounds(yq, prop, cyclic_coords=False)
-    newg = group.get_index(newx, interp=method != "nearest")
+    newg = group.get_index(newx, interp=((method != "nearest") and interp_prop))
     oldg = xq[prop].expand_dims(quantiles=xq.coords["quantiles"])
 
     return xr.apply_ufunc(
@@ -549,7 +521,7 @@ def interp_on_quantiles(
         xq,
         yq,
         oldg,
-        kwargs={"method": method, "extrap": extrapolation},
+        kwargs={"method": method, "extrap": extrapolation, "interp_prop": interp_prop},
         input_core_dims=[
             dims,
             dims,
