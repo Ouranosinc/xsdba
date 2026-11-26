@@ -895,37 +895,43 @@ def cdft_train(
     max_tail_factor: float | None = None,
 ) -> xr.Dataset:
     r"""
-    Cumulative Distribution Function transform.
+    CDFt: Train step on one group.
 
-    Attributes
+    Parameters
     ----------
-    Train step:
-
-    nquantiles : int or 1d array of floats
-        The number of quantiles to use. See :py:func:`~xsdba.utils.equally_spaced_nodes`.
-        An array of quantiles [0, 1] can also be passed. Defaults to 20 quantiles.
-    group : str or Grouper
-        The grouping information. See :py:class:`xsdba.base.Grouper` for details.
-        Default is "time", meaning a single adjustment group along dimension "time".
-    interp : {'nearest', 'linear', 'cubic'}
-        The interpolation method to use when interpolating the adjustment factors. Defaults to "nearest".
-    extrapolation : {'constant', 'nan', 'extrapolate'}
-        The type of extrapolation to use. Defaults to "constant".
+    ds : xr.Dataset
+        Dataset variables:
+            ref : training target
+            hist : training data
+    dim : str
+        The dimension along which to compute the quantiles.
+    normalization : {'z_score','mean_scale','max_scale'}
+        The kind of normalization.
+    quantiles : array-like
+        The quantiles to compute.
+    interp : str
+        The interpolation method to use.
+    extrapolation : str
+        The extrapolation method to use.
     adapt_freq_thresh : str, optional
         Threshold for frequency adaptation. See :py:class:`xsdba.processing.adapt_freq` for details.
         Default is None, meaning that frequency adaptation is not performed.
+    jitter_under_thresh_value : str, optional
+        Threshold under which a uniform random noise is added to values, a quantity with units.
+        Default is None, meaning that jitter under thresh is not performed.
+    jitter_over_thresh_upper_bnd : str, optional
+        Maximum possible value for the random noise, a quantity with units.
+        Default is None, meaning that jitter over thresh is not performed.
     max_tail_factor: float, optional
         If not None, values to adjust (after preprocessing steps) that are above max_tail_factor * the value
-        of the last quantile of hist (before the preprocessing steps) are not adjusted.
+        of the last quantile of hist (before the preprocessing steps, stored in hist_q_raw) are not adjusted.
         We keep the input simulation with only the preprocessing steps instead.
+        If None, hist_q_raw output will just be a dummy variable.
 
-    Adjust step:
-        For CDFt, train and adjust both use interpolation / extrapolation. Thus, no additional arguments are needed for the adjusting
-        part in this case.
-
-    References
-    ----------
-    :cite:cts:`michelangeli_probabilistic_2009`
+    Returns
+    -------
+    xr.Dataset
+        Returns intermediate interpolated quantities.
     """
     # Ensures extra dimensions are only aggregated in datasets
     ref_dim, sim_dim = Grouper.filter_dim(ds.ref, dim), Grouper.filter_dim(ds.hist, dim)
