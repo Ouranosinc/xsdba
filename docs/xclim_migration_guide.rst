@@ -58,7 +58,7 @@ xsdba Global Options
 --------------------
 
 It used to be possible to control certain global functionalities of `sdba` with `xclim` global options. `SDBA_ENCODE_CF` was removed as it was not necessary.
-The option `SDBA_EXTRA_OUTPUT` is now simply called `EXTRA_OUTPUT` within `xsdba` and can be activated in two ways, either from `xclim`, or directly from `xsdba`
+The option `SDBA_EXTRA_OUTPUT` is now simply called `EXTRA_OUTPUT` within `xsdba`.
 
 .. code-block:: python
 
