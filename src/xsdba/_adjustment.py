@@ -990,7 +990,7 @@ def cdft_adjust(
     interp: str,
     extrapolation: str,
     adapt_freq_thresh: str | None = None,
-    max_tail_factor: int | None = None,
+    max_tail_factor: float | None = None,
 ) -> xr.Dataset:
     """
     CDFt: Adjust step on one block.
