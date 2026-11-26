@@ -14,7 +14,7 @@ import xarray as xr
 from boltons.funcutils import wraps
 from dask import array as dsk
 from numba import njit
-from scipy.interpolate import griddata, interp1d
+from scipy.interpolate import griddata, interp1d, make_interp_spline
 from scipy.spatial import distance
 from scipy.stats import spearmanr
 from xarray.core.utils import get_temp_dimname
@@ -349,7 +349,13 @@ def _interp_on_quantiles_1d_multi(newxs, oldx, oldy, method, extrap):  # noqa: N
 
 @njit
 def _interp_on_quantiles_1d_linear(xn, x, y):
-    return np.interp(xn, x, y)
+    out = np.interp(xn, x, y)
+    left_filter = xn < x[0]
+    right_filter = xn > x[-1]
+    if np.any(left_filter | right_filter):
+        out[left_filter] = y[0] + np.diff(y[:2]) / np.diff(x[:2]) * (xn[left_filter] - x[0])
+        out[right_filter] = y[-1] + np.diff(y[-2:]) / np.diff(x[-2:]) * (xn[right_filter] - x[-1])
+    return out
 
 
 @njit
@@ -358,34 +364,34 @@ def _interp_on_quantiles_1d_nearest(xn, x, y):
     return y[idx]
 
 
+# can I assume x is sorted here? this saves some time
 def _interp_on_quantiles_1d(newx, oldx, oldy, method, extrap):
     mask_new = np.isnan(newx)
     mask_old = np.isnan(oldy) | np.isnan(oldx)
     out = np.full_like(newx, np.nan, dtype=f"float{oldy.dtype.itemsize * 8}")
-    if method == "nearest" and extrap == "linear":
-        raise ValueError("`extrap = 'linear'` cannot be used with `method = 'nearest'`.")
     if np.all(mask_new) or np.all(mask_old):
         warn("All-nan slice encountered in interp_on_quantiles", category=RuntimeWarning, stacklevel=2)
         return out
+    if method == "nearest" and extrap == "extrapolate":
+        raise ValueError("`extrap = 'extrapolate'` cannot be used with `method = 'nearest'`.")
 
     x, y = oldx[~mask_old], oldy[~mask_old]
+    if extrap == "constant":
+        xn = np.clip(newx[~mask_new], x[0], x[-1])
+    elif extrap == "nan":
+        bounds_mask = (newx < x[0]) | (newx > x[1])
+        mask_new = mask_new & bounds_mask
+        xn = newx[~mask_new]
+    else:
+        xn = newx[~mask_new]
     if method == "nearest":
-        out[~mask_new] = _interp_on_quantiles_1d_nearest(newx[~mask_new], x, y)
+        out[~mask_new] = _interp_on_quantiles_1d_nearest(xn, x, y)
     elif method == "linear":
-        out[~mask_new] = _interp_on_quantiles_1d_linear(newx[~mask_new], x, y)
+        out[~mask_new] = _interp_on_quantiles_1d_linear(xn, x, y)
+    elif method == "cubic":
+        out[~mask_new] = make_interp_spline(x, y, k=3)(xn)
     else:
-        raise ValueError("`method` must be in ['nearest', 'linear'].")
-
-    left_filter = (newx < x[0]) & (~mask_new)
-    right_filter = (newx > x[-1]) & (~mask_new)
-    if extrap == "linear":
-        out[left_filter] = y[0] + np.diff(y[:2]) / np.diff(x[:2]) * (newx[left_filter] - x[0])
-        out[right_filter] = y[-1] + np.diff(y[-2:]) / np.diff(x[-2:]) * (newx[right_filter] - x[-1])
-    elif extrap == "constant":
-        out[left_filter] = y[0]
-        out[right_filter] = y[-1]
-    else:
-        raise ValueError("`extrap` must be in ['nan', 'constant', 'linear'].")
+        raise ValueError("`method` must be in ['nearest', 'linear', 'cubic'].")
     return out
 
 

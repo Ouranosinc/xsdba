@@ -651,12 +651,8 @@ def qm_adjust(
         The adjusted data.
     """
     if adapt_freq_thresh:
-        ds["sim"] = _adapt_freq_preprocess(
-            ds[["sim", "P0_ref", "P0_hist", "pth"]],
-            adapt_freq_thresh,
-            group=Grouper(group.name),
-            dim=None,
-        ).sim
+        varss = ["sim", "P0_ref", "P0_hist", "pth"]
+        ds["sim"] = _adapt_freq_preprocess(ds[varss], adapt_freq_thresh, group=Grouper(group.name), dim=None).sim
 
     af = u.interp_on_quantiles(
         ds.sim,
@@ -717,7 +713,7 @@ def dqm_adjust(
         Threshold for frequency adaptation. See :py:class:`xsdba.processing.adapt_freq` for details.
         Default is None, meaning that frequency adaptation is not performed.
     max_tail_factor: float, optional
-        If not None, values to adjust (after preprocessing steps) that are above max_tail_factor * the value
+        If not None, values to adjust (after preprossing steps) that are above max_tail_factor * the value
         of the last quantile of hist (before the preprocessing steps) are not adjusted.
         We keep the input simulation with only the preprocessing steps instead.
 
@@ -727,12 +723,8 @@ def dqm_adjust(
         The adjusted data and the trend.
     """
     if adapt_freq_thresh:
-        ds["sim"] = _adapt_freq_preprocess(
-            ds[["sim", "P0_ref", "P0_hist", "pth"]],
-            adapt_freq_thresh,
-            group=Grouper(group.name),
-            dim=None,
-        ).sim
+        varss = ["sim", "P0_ref", "P0_hist", "pth"]
+        ds["sim"] = _adapt_freq_preprocess(ds[varss], adapt_freq_thresh, group=Grouper(group.name), dim=None).sim
 
     scaled_sim = u.apply_correction(
         ds.sim,
@@ -810,7 +802,7 @@ def qdm_adjust(
         If `False`, ranks are computed within exact groups, e.g., a specific day of year.
         In `xsdba>=0.8`, this option will be deprecated in favour of honoring the grouping window (equivalent to `True`).
     max_tail_factor: float, optional
-        If not None, values to adjust (after preprocessing steps) that are above max_tail_factor * the value
+        If not None, values to adjust (after preprossing steps) that are above max_tail_factor * the value
         of the last quantile of hist (before the preprocessing steps) are not adjusted.
         We keep the input simulation with only the preprocessing steps instead.
 
@@ -826,12 +818,8 @@ def qdm_adjust(
         the current behavior will change.
     """
     if adapt_freq_thresh:
-        ds["sim"] = _adapt_freq_preprocess(
-            ds[["sim", "P0_ref", "P0_hist", "pth"]],
-            adapt_freq_thresh,
-            group=Grouper(group.name),
-            dim=None,
-        ).sim
+        varss = ["sim", "P0_ref", "P0_hist", "pth"]
+        ds["sim"] = _adapt_freq_preprocess(ds[varss], adapt_freq_thresh, group=Grouper(group.name), dim=None).sim
 
     if rank_window is None:
         rank_window = False
@@ -864,29 +852,28 @@ def qdm_adjust(
     return xr.Dataset({"scen": scen, "sim_q": sim_q})
 
 
-@njit
-def _cdft_normalization(ref, hist, q, additive=True):
-    # get quantiles
+@njit(fastmath=True, nogil=True, cache=True)
+def _cdft_quantiles(ref, hist, q, normalization):
     ref_q = np.nanquantile(ref, q)
     hist_q = np.nanquantile(hist, q)
-    if additive:
+    if normalization is None:
+        scaling = delta_mean = ref_q[0]  # dummy
+    elif normalization == "z_score":
         # get relevant scaling / offsets
-        scaling = np.nanstd(ref)
-        scaling /= np.nanstd(hist)
-        delta_mean = np.nanmean(ref)
+        scaling = np.nanstd(ref) / np.nanstd(hist)
         hist_mean = np.nanmean(hist)
-
+        ref_mean = np.nanmean(ref)
         # normalize hist_q -> [hist_q - hist_mean]_1 * [ref_std/hist_std]_2 + [ref_mean]_3
-        hist_q -= hist_mean
-        hist_q *= scaling
-        hist_q += delta_mean
-
+        hist_q = (hist_q - hist_mean) * scaling + ref_mean
         # in the future, we add (ref_mean - hist_mea)
-        delta_mean -= hist_mean
+        delta_mean = ref_mean - hist_mean
     else:
-        # maybe should use a big quantile, e.g. 0.99
-        scaling = np.nanmean(ref)
-        scaling /= np.nanmean(hist)
+        if normalization == "mean_scale":
+            # maybe should use a big quantile, e.g. 0.99
+            scaling = np.nanmean(ref) / np.nanmean(hist)
+        elif normalization == "max_scale":
+            # maybe should use a big quantile, e.g. 0.99
+            scaling = np.nanmax(ref) / np.nanmax(hist)
         hist_q *= scaling
         delta_mean = scaling  # dummy field in the case of multiplicative
     return ref_q, hist_q, scaling, delta_mean
@@ -894,67 +881,60 @@ def _cdft_normalization(ref, hist, q, additive=True):
 
 @map_groups(
     ref_to_hist_u=[Grouper.PROP, "quantiles"],
-    # hist_q_raw=[Grouper.PROP, "quantiles"],
+    hist_q_raw=[Grouper.PROP, "quantiles"],
     P0_ref=[Grouper.PROP, Grouper.ADD_DIMS],
     P0_hist=[Grouper.PROP, Grouper.ADD_DIMS],
     pth=[Grouper.PROP, Grouper.ADD_DIMS],
-    delta_mean=[Grouper.PROP, "quantiles"],
-    scaling=[Grouper.PROP, "quantiles"],
 )
 def cdft_train(
     ds: xr.Dataset,
     *,
     dim: str,
+    normalization: str,
     quantiles: np.ndarray,
     interp: str,
     extrapolation: str,
-    normalization_kind: str | None = None,
     adapt_freq_thresh: str | None = None,
     jitter_under_thresh_value: str | None = None,
     jitter_over_thresh_value: str | None = None,
     jitter_over_thresh_upper_bnd: str | None = None,
     max_tail_factor: float | None = None,
 ) -> xr.Dataset:
-    """
-    CDFt: Train step on one group.
+    r"""
+    Cumulative Distribution Function transform.
 
-    Parameters
+    Attributes
     ----------
-    ds : xr.Dataset
-        Dataset variables:
-            ref : training target
-            hist : training data
-    dim : str
-        The dimension along which to compute the quantiles.
-    quantiles : array-like
-        The quantiles to compute.
-    interp : str
-        The interpolation method to use.
-    extrapolation : str
-        The extrapolation method to use.
-    normalization_kind : str, optional
-        The kind of correction to compute for the normalization.
+    Train step:
+
+    nquantiles : int or 1d array of floats
+        The number of quantiles to use. See :py:func:`~xsdba.utils.equally_spaced_nodes`.
+        An array of quantiles [0, 1] can also be passed. Defaults to 20 quantiles.
+    group : str or Grouper
+        The grouping information. See :py:class:`xsdba.base.Grouper` for details.
+        Default is "time", meaning a single adjustment group along dimension "time".
+    interp : {'nearest', 'linear', 'cubic'}
+        The interpolation method to use when interpolating the adjustment factors. Defaults to "nearest".
+    extrapolation : {'constant', 'nan', 'extrapolate'}
+        The type of extrapolation to use. Defaults to "constant".
     adapt_freq_thresh : str, optional
         Threshold for frequency adaptation. See :py:class:`xsdba.processing.adapt_freq` for details.
         Default is None, meaning that frequency adaptation is not performed.
-    jitter_under_thresh_value : str, optional
-        Threshold under which a uniform random noise is added to values, a quantity with units.
-        Default is None, meaning that jitter under thresh is not performed.
-    jitter_over_thresh_upper_bnd : str, optional
-        Maximum possible value for the random noise, a quantity with units.
-        Default is None, meaning that jitter over thresh is not performed.
     max_tail_factor: float, optional
-        If not None, values to adjust (after preprocessing steps) that are above max_tail_factor * the value
-        of the last quantile of hist (before the preprocessing steps, stored in hist_q_raw) are not adjusted.
+        If not None, values to adjust (after preprossing steps) that are above max_tail_factor * the value
+        of the last quantile of hist (before the preprocessing steps) are not adjusted.
         We keep the input simulation with only the preprocessing steps instead.
-        If None, hist_q_raw output will just be a dummy variable.
 
-    Returns
-    -------
-    xr.Dataset
-        The dataset containing the intermediate interpolation results.
+    Adjust step:
+        For CDFt, train and adjust both use interpolation / extrapolation. Thus, no additional arguments are needed for the adjusting
+        part in this case.
+
+    References
+    ----------
+    :cite:cts:`michelangeli_probabilistic_2009`
     """
-    sim_dim = Grouper.filter_dim(ds.hist, dim)
+    # Ensures extra dimensions are only aggregated in datasets
+    ref_dim, sim_dim = Grouper.filter_dim(ds.ref, dim), Grouper.filter_dim(ds.hist, dim)
     if max_tail_factor is not None:
         # needed for  max_tail_factor in dqm_adjust
         hist_q_raw = nbu.quantile(ds.hist, quantiles, sim_dim)
@@ -966,35 +946,23 @@ def cdft_train(
         jitter_over_thresh_value,
         jitter_over_thresh_upper_bnd,
     )
-    # Ensures extra dimensions are only aggregated in datasets that have them
-    ref_dim = Grouper.filter_dim(ds.ref, dim)
-    # ds.hist might have been broadcasted in preprocess, so `sim_dim` must be re-computed
+    # hist might have been broadcasted in preprocess, so `sim_dim` must be re-computed
     sim_dim = Grouper.filter_dim(ds.hist, dim)
 
+    ref_q, hist_q, scaling, delta_mean = xr.apply_ufunc(
+        _cdft_quantiles,
+        ds.ref,
+        ds.hist,
+        input_core_dims=[ref_dim, sim_dim],
+        output_core_dims=[["quantiles"], ["quantiles"], [], []],
+        dask="parallelized",
+        vectorize=True,
+        kwargs={"q": quantiles, "normalization": normalization},
+    )
     # I use "u" for the quantiles ... "Q_X(u)" below is used to designate the value X* = Q_X(u) s.t. prob(X<=X*) = u
     u_q = xr.DataArray(quantiles, dims=["quantiles"], coords={"quantiles": quantiles})
-
-    if normalization_kind:
-        ref_q, hist_q, scaling, delta_mean = xr.apply_ufunc(
-            _cdft_normalization,
-            ds.ref,
-            ds.hist,
-            u_q,
-            input_core_dims=[ref_dim, sim_dim, ["quantiles"]],
-            output_core_dims=[["quantiles"], ["quantiles"], [], []],
-            dask="parallelized",
-            vectorize=True,
-            kwargs={"additive": normalization_kind == "+"},
-        )
-    else:
-        ref_q = nbu.quantile(ds.ref, quantiles, ref_dim)
-        hist_q = nbu.quantile(ds.hist, quantiles, sim_dim)
-        # dummy fields
-        scaling = (ref_q.isel(quantiles=0).copy(deep=True)) * np.nan
-        delta_mean = scaling
-    # quantiles of normalized hist
     kw = {"method": interp, "extrapolation": extrapolation, "group": Grouper("quantiles")}
-    ref_to_hist_u = u.interp_on_quantiles(ref_q, hist_q, u_q, **kw)
+    ref_to_hist_u = u.interp_on_quantiles(ref_q.assign_coords(quantiles=quantiles), hist_q.assign_coords(quantiles=quantiles), u_q, **kw)
 
     if max_tail_factor is None:
         # make a dummy variable to keep the same output structure
@@ -1018,7 +986,7 @@ def cdft_adjust(
     ds: xr.Dataset,
     *,
     group: Grouper,
-    normalization_kind: str,
+    normalization: str,
     interp: str,
     extrapolation: str,
     adapt_freq_thresh: str | None = None,
@@ -1040,17 +1008,17 @@ def cdft_adjust(
             pth (optional) : The smallest value of `hist` that was not frequency-adjusted in the training.
     group : Grouper
         The grouper object.
-    interp : str
+    interp : {'nearest', 'linear', 'cubic'}
         The interpolation method to use.
-    extrapolation : str
+    extrapolation : {'constant', 'nan', 'extrapolate'}
         The extrapolation method to use.
-    normalization_kind : str
+    normalization : {'z_score', 'mean_scale', 'max_scale'}
         The kind of correction to compute. See :py:func:`xsdba.utils.get_correction`.
     adapt_freq_thresh : str, optional
         Threshold for frequency adaptation. See :py:class:`xsdba.processing.adapt_freq` for details.
         Default is None, meaning that frequency adaptation is not performed.
     max_tail_factor: float, optional
-        If not None, values to adjust (after preprocessing steps) that are above max_tail_factor * the value
+        If not None, values to adjust (after preprossing steps) that are above max_tail_factor * the value
         of the last quantile of hist (before the preprocessing steps) are not adjusted.
         We keep the input simulation with only the preprocessing steps instead.
 
@@ -1060,35 +1028,27 @@ def cdft_adjust(
         The adjusted data.
     """
     if adapt_freq_thresh:
-        ds["sim"] = _adapt_freq_preprocess(
-            ds[["sim", "P0_ref", "P0_hist", "pth"]],
-            adapt_freq_thresh,
-            group=Grouper(group.name),
-            dim=None,
-        ).sim
+        varss = ["sim", "P0_ref", "P0_hist", "pth"]
+        ds["sim"] = _adapt_freq_preprocess(ds[varss], adapt_freq_thresh, group=Grouper(group.name), dim=None).sim
 
     kw = {"method": interp, "extrapolation": extrapolation}
 
     # quantiles of normalized hist
     sim_q = group.apply(nbu.quantile, ds.sim, q=ds.quantiles.values, main_only=False)
-
-    if normalization_kind:
-        if normalization_kind == "+":
-            sim_mean = group.apply(nbu.statistics, ds.sim, statistic="mean", main_only=False)
-            sim_q -= sim_mean
-            sim_q *= ds.scaling
-            sim_q += ds.delta_mean
-        elif normalization_kind == "*":
-            sim_q *= ds.scaling
+    if normalization == "z_score":
+        sim_mean = group.apply(nbu.statistics, ds.sim, statistic="mean", main_only=False)
+        sim_q = (sim_q - sim_mean) * ds.scaling + sim_mean + (ds.delta_mean)
+    elif normalization in ["mean_scaling", "max_scaling"]:
+        sim_q = sim_q * ds.scaling
 
     # Q_X1(F_X0∘Q_Y0(p))
     ref_hist_sim_q = u.interp_on_quantiles(ds.ref_to_hist_u, ds.quantiles, sim_q, group=Grouper("quantiles"), **kw)
     # Q_X1∘F_X0∘Q_Y0(u1) =  Q_X1∘F_X0∘Q_Y0(F_X1(x))
     sim_u = group.apply(nbu.rank, ds.sim, pct=True, main_only=False)
+
     if group.prop == "group":
         scen = u.interp_on_quantiles(sim_u, ds.quantiles, ref_hist_sim_q, group=group, **kw)
     else:
-        # A bit of sorcery to apply the interpolation on each PROP individually, no interpolation between PROPs
         time_template = sim_u.groupby(group.name).map(lambda ds: ds.isel(time=0)).drop(group.prop).time.values
         temp = ref_hist_sim_q.rename({group.prop: "time"}).assign_coords(time=time_template)
         scen = (
@@ -1103,6 +1063,7 @@ def cdft_adjust(
         scen = _max_tail_factor_masking(ds.sim, scen, ds.hist_q_raw, max_tail_factor, interp, group)
 
     out = scen.to_dataset(name="scen")
+
     return out
 
 

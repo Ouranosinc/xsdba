@@ -66,6 +66,7 @@ def statistics(da: DataArray, statistic: str, dim: str | Sequence[Hashable]) -> 
             output_core_dims=[[]],
             output_dtypes=[da.dtype],
             dask="parallelized",
+            vectorize=True,
         )
         .assign_attrs(da.attrs)
         .assign_attrs({"statistic": statistic})

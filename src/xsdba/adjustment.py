@@ -789,14 +789,15 @@ class CDFt(TrainAdjust):
         hist: xr.DataArray,
         *,
         nquantiles: int | np.ndarray = 20,
+        normalization: str = "z_score",
         group: str | Grouper = "time",
         interp="nearest",
         extrapolation="constant",
-        normalization_kind: str | None = None,
         adapt_freq_thresh: str | None = None,
         jitter_under_thresh_value: str | None = None,
         jitter_over_thresh_value: str | None = None,
         jitter_over_thresh_upper_bnd: str | None = None,
+        max_tail_factor: float | None = None,
     ) -> tuple[xr.Dataset, dict[str, Any]]:
         if np.isscalar(nquantiles):
             quantiles = equally_spaced_nodes(nquantiles).astype(ref.dtype)
@@ -806,14 +807,14 @@ class CDFt(TrainAdjust):
         ds = cdft_train(
             xr.Dataset({"ref": ref, "hist": hist}),
             group=group,
+            normalization=normalization,
             quantiles=quantiles,
-            interp=interp,
-            extrapolation=extrapolation,
-            normalization_kind=normalization_kind,
             adapt_freq_thresh=adapt_freq_thresh,
             jitter_under_thresh_value=jitter_under_thresh_value,
             jitter_over_thresh_value=jitter_over_thresh_value,
             jitter_over_thresh_upper_bnd=jitter_over_thresh_upper_bnd,
+            interp=interp,
+            extrapolation=extrapolation,
         )
 
         ds.ref_to_hist_u.attrs.update(
@@ -828,17 +829,21 @@ class CDFt(TrainAdjust):
             standard_name="Scaling",
             long_name="Scaling",
         )
+        ds.hist_q_raw.attrs.update(
+            standard_name="Model quantiles",
+            long_name="Quantiles of model on the reference period, befofe the preprocessing steps.",
+        )
 
         if adapt_freq_thresh is None:
             ds = ds.drop_vars(["P0_ref", "P0_hist", "pth"])
 
         return ds, {
             "group": group,
-            "normalization_kind": normalization_kind,
             "adapt_freq_thresh": adapt_freq_thresh,
             "interp": interp,
             "extrapolation": extrapolation,
-            # "max_tail_factor": max_tail_factor,
+            "normalization": normalization,
+            "max_tail_factor": max_tail_factor,
         }
 
     # @classmethod
@@ -848,9 +853,9 @@ class CDFt(TrainAdjust):
             group=self.group,
             interp=self.interp,
             extrapolation=self.extrapolation,
-            normalization_kind=self.normalization_kind,
+            normalization=self.normalization,
             adapt_freq_thresh=self.adapt_freq_thresh,
-            # max_tail_factor=self.max_tail_factor,
+            max_tail_factor=self.max_tail_factor,
         ).scen
 
 
