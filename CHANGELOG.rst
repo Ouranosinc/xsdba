@@ -29,6 +29,7 @@ Internal changes
     * Typing of functions is now more accurate.
     * A new convenience function ``open_dataset`` (for opening testing datasets) has been added for example scripts.
 * The documentation on ReadTheDocs no longer installs the `dev` dependency group (dependencies were unused). (:pull:`340`).
+* The `xclim` migration page has been updated to reflect changes made in the recent v1.0 release. (:pull:`344`).
 
 .. _changes_0.8.0:
 
