@@ -16,6 +16,8 @@ from scipy import stats
 from xarray.core.dataarray import DataArray
 
 from xsdba._adjustment import (
+    cdft_adjust,
+    cdft_train,
     dotc_adjust,
     dqm_adjust,
     dqm_train,
@@ -55,6 +57,7 @@ __all__ = [
     "LOCI",
     "OTC",
     "BaseAdjustment",
+    "CDFt",
     "DetrendedQuantileMapping",
     "EmpiricalQuantileMapping",
     "ExtremeValues",
@@ -434,7 +437,7 @@ class EmpiricalQuantileMapping(TrainAdjust):
         Threshold for frequency adaptation. See :py:class:`xsdba.processing.adapt_freq` for details.
         Default is None, meaning that frequency adaptation is not performed.
     max_tail_factor: float, optional
-        If not None, values to adjust (after preprossing steps) that are above max_tail_factor * the value
+        If not None, values to adjust (after preprocessing steps) that are above max_tail_factor * the value
         of the last quantile of hist (before the preprocessing steps, stored in hist_q_raw) are not adjusted.
         We keep the input simulation with only the preprocessing steps instead.
         If None, hist_q_raw output will just be a dummy variable.
@@ -519,7 +522,7 @@ class EmpiricalQuantileMapping(TrainAdjust):
             "max_tail_factor": max_tail_factor,
         }
 
-    def _adjust(self, sim, interp="nearest", extrapolation="constant"):
+    def _adjust(self, sim, interp="nearest", extrapolation="constant", interp_prop=True):
         return qm_adjust(
             self.ds.assign(sim=sim),
             group=self.group,
@@ -528,6 +531,7 @@ class EmpiricalQuantileMapping(TrainAdjust):
             kind=self.kind,
             adapt_freq_thresh=self.adapt_freq_thresh,
             max_tail_factor=self.max_tail_factor,
+            interp_prop=interp_prop,
         ).scen
 
 
@@ -551,7 +555,7 @@ class DetrendedQuantileMapping(TrainAdjust):
         Threshold for frequency adaptation. See :py:class:`xsdba.processing.adapt_freq` for details.
         Default is None, meaning that frequency adaptation is not performed.
     max_tail_factor: float, optional
-        If not None, values to adjust (after preprossing steps) that are above max_tail_factor * the value
+        If not None, values to adjust (after preprocessing steps) that are above max_tail_factor * the value
         of the last quantile of hist (before the preprocessing steps, stored in hist_q_raw) are not adjusted.
         We keep the input simulation with only the preprocessing steps instead.
         If None, hist_q_raw output will just be a dummy variable.
@@ -658,6 +662,7 @@ class DetrendedQuantileMapping(TrainAdjust):
         interp="nearest",
         extrapolation="constant",
         detrend=1,
+        interp_prop=True,
     ):
         scen = dqm_adjust(
             self.ds.assign(sim=sim),
@@ -668,6 +673,7 @@ class DetrendedQuantileMapping(TrainAdjust):
             kind=self.kind,
             adapt_freq_thresh=self.adapt_freq_thresh,
             max_tail_factor=self.max_tail_factor,
+            interp_prop=interp_prop,
         ).scen
         # Detrending needs units.
         scen.attrs["units"] = sim.units
@@ -691,7 +697,7 @@ class QuantileDeltaMapping(EmpiricalQuantileMapping):
         The grouping information. See :py:class:`xsdba.base.Grouper` for details.
         Default is "time", meaning a single adjustment group along dimension "time".
     max_tail_factor: float, optional
-        If not None, values to adjust (after preprossing steps) that are above max_tail_factor * the value
+        If not None, values to adjust (after preprocessing steps) that are above max_tail_factor * the value
         of the last quantile of hist (before the preprocessing steps, stored in hist_q_raw) are not adjusted.
         We keep the input simulation with only the preprocessing steps instead.
         If None, hist_q_raw output will just be a dummy variable.
@@ -727,7 +733,7 @@ class QuantileDeltaMapping(EmpiricalQuantileMapping):
     :cite:cts:`cannon_bias_2015`
     """
 
-    def _adjust(self, sim, interp="nearest", extrapolation="constant", rank_window=None):
+    def _adjust(self, sim, interp="nearest", extrapolation="constant", rank_window=None, interp_prop=True):
         out = qdm_adjust(
             self.ds.assign(sim=sim),
             group=self.group,
@@ -737,12 +743,125 @@ class QuantileDeltaMapping(EmpiricalQuantileMapping):
             adapt_freq_thresh=self.adapt_freq_thresh,
             rank_window=rank_window,
             max_tail_factor=self.max_tail_factor,
+            interp_prop=interp_prop,
         )
         if OPTIONS[EXTRA_OUTPUT]:
             out.sim_q.attrs.update(long_name="Group-wise quantiles of `sim`.")
             return out
 
         return out.scen
+
+
+class CDFt(TrainAdjust):
+    r"""
+    Cumulative Distribution Function transform.
+
+    Attributes
+    ----------
+    Train step:
+
+    nquantiles : int or 1d array of floats
+        The number of quantiles to use. See :py:func:`~xsdba.utils.equally_spaced_nodes`.
+        An array of quantiles [0, 1] can also be passed. Defaults to 20 quantiles.
+    group : str or Grouper
+        The grouping information. See :py:class:`xsdba.base.Grouper` for details.
+        Default is "time", meaning a single adjustment group along dimension "time".
+    adapt_freq_thresh : str, optional
+        Threshold for frequency adaptation. See :py:class:`xsdba.processing.adapt_freq` for details.
+        Default is None, meaning that frequency adaptation is not performed.
+    interp : {'nearest', 'linear', 'cubic'}
+        The interpolation method to use when interpolating the adjustment factors. Defaults to "nearest".
+    extrapolation : {'constant', 'nan', 'extrapolate'}
+        The type of extrapolation to use. Defaults to "constant".
+
+    Adjust step:
+        For CDFt, train and adjust both use interpolation / extrapolation. Thus, no additional arguments are needed for the adjusting
+        part in this case.
+
+    References
+    ----------
+    :cite:cts:`michelangeli_probabilistic_2009`
+    """
+
+    _allow_diff_calendars = True
+    _allow_diff_time_sizes = True
+
+    @classmethod
+    def _train(
+        cls,
+        ref: xr.DataArray,
+        hist: xr.DataArray,
+        *,
+        nquantiles: int | np.ndarray = 20,
+        normalization: str = "z_score",
+        group: str | Grouper = "time",
+        interp="nearest",
+        extrapolation="constant",
+        adapt_freq_thresh: str | None = None,
+        jitter_under_thresh_value: str | None = None,
+        jitter_over_thresh_value: str | None = None,
+        jitter_over_thresh_upper_bnd: str | None = None,
+        max_tail_factor: float | None = None,
+    ) -> tuple[xr.Dataset, dict[str, Any]]:
+        if np.isscalar(nquantiles):
+            quantiles = equally_spaced_nodes(nquantiles).astype(ref.dtype)
+        else:
+            quantiles = nquantiles.astype(ref.dtype)
+
+        ds = cdft_train(
+            xr.Dataset({"ref": ref, "hist": hist}),
+            group=group,
+            normalization=normalization,
+            quantiles=quantiles,
+            adapt_freq_thresh=adapt_freq_thresh,
+            jitter_under_thresh_value=jitter_under_thresh_value,
+            jitter_over_thresh_value=jitter_over_thresh_value,
+            jitter_over_thresh_upper_bnd=jitter_over_thresh_upper_bnd,
+            interp=interp,
+            extrapolation=extrapolation,
+        )
+
+        ds.ref_to_hist_u.attrs.update(
+            standard_name="Intermediate interpolation in CDFt",
+            long_name="Intermediate interpolation in CDFt",
+        )
+        ds.delta_mean.attrs.update(
+            standard_name="Delta mean",
+            long_name="Delta mean",
+        )
+        ds.scaling.attrs.update(
+            standard_name="Scaling",
+            long_name="Scaling",
+        )
+        ds.hist_q_raw.attrs.update(
+            standard_name="Model quantiles",
+            long_name="Quantiles of model on the reference period, befofe the preprocessing steps.",
+        )
+
+        if adapt_freq_thresh is None:
+            ds = ds.drop_vars(["P0_ref", "P0_hist", "pth"])
+
+        return ds, {
+            "group": group,
+            "adapt_freq_thresh": adapt_freq_thresh,
+            "interp": interp,
+            "extrapolation": extrapolation,
+            "normalization": normalization,
+            "max_tail_factor": max_tail_factor,
+        }
+
+    # @classmethod
+    def _adjust(self, sim, interp_prop=False):
+        return cdft_adjust(
+            self.ds.assign(sim=sim),
+            group=self.group,
+            interp=self.interp,
+            extrapolation=self.extrapolation,
+            normalization=self.normalization,
+            adapt_freq_thresh=self.adapt_freq_thresh,
+            max_tail_factor=self.max_tail_factor,
+            interp_prop=interp_prop,
+        ).scen
 
 
 class ExtremeValues(TrainAdjust):
