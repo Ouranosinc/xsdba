@@ -84,7 +84,7 @@ def _preprocess_dataset(
     return ds
 
 
-def _max_tail_factor_masking(sim, scen, hist_q_raw, max_tail_factor, interp, group):
+def _max_tail_factor_mask(sim, hist_q_raw, max_tail_factor, interp, group):
     last_quantile = hist_q_raw.isel({"quantiles": -1}).drop_vars("quantiles")
     # make last_quantile dim fit adaptedsim dim
     last_quantile = u.broadcast(
@@ -93,8 +93,7 @@ def _max_tail_factor_masking(sim, scen, hist_q_raw, max_tail_factor, interp, gro
         group=group,
         interp=interp if group.prop != "dayofyear" else "nearest",
     )
-    mask = sim > max_tail_factor * last_quantile
-    return scen.where(~mask, sim)
+    return sim > max_tail_factor * last_quantile
 
 
 @map_groups(
@@ -657,13 +656,16 @@ def qm_adjust(
         varss = ["sim", "P0_ref", "P0_hist", "pth"]
         ds["sim"] = _adapt_freq_preprocess(ds[varss], adapt_freq_thresh, group=Grouper(group.name), dim=None).sim
 
+    if max_tail_factor is not None:
+        max_tail_factor_mask = _max_tail_factor_mask(ds.sim, ds.hist_q_raw, max_tail_factor, interp, group)
+
     af = u.interp_on_quantiles(ds.sim, ds.hist_q, ds.af, group=group, method=interp, extrapolation=extrapolation, interp_prop=interp_prop)
 
     scen: xr.DataArray = u.apply_correction(ds.sim, af, kind).rename("scen")
 
     # mask no bias adjustment, when sim is larger than n times the largest quantile in hist (without adapt freq)
     if max_tail_factor is not None:
-        scen = _max_tail_factor_masking(ds.sim, scen, ds.hist_q_raw, max_tail_factor, interp, group)
+        scen = scen.where(~max_tail_factor_mask)
 
     out = scen.to_dataset()
     return out
@@ -679,7 +681,7 @@ def dqm_adjust(
     extrapolation: str,
     detrend: int | PolyDetrend,
     adapt_freq_thresh: str | None = None,
-    max_tail_factor: int | None = None,
+    max_tail_factor: float | None = None,
     interp_prop: bool = True,
 ) -> xr.Dataset:
     """
@@ -725,6 +727,9 @@ def dqm_adjust(
         varss = ["sim", "P0_ref", "P0_hist", "pth"]
         ds["sim"] = _adapt_freq_preprocess(ds[varss], adapt_freq_thresh, group=Grouper(group.name), dim=None).sim
 
+    if max_tail_factor is not None:
+        max_tail_factor_mask = _max_tail_factor_mask(ds.sim, ds.hist_q_raw, max_tail_factor, interp, group)
+
     scaled_sim = u.apply_correction(
         ds.sim,
         u.broadcast(
@@ -748,7 +753,7 @@ def dqm_adjust(
 
     # mask no bias adjustment, when sim is larger than n times the largest quantile in hist (without adapt freq)
     if max_tail_factor is not None:
-        scen = _max_tail_factor_masking(ds.sim, scen, ds.hist_q_raw, max_tail_factor, interp, group)
+        scen = scen.where(~max_tail_factor_mask)
 
     out = xr.Dataset({"scen": scen, "trend": detrending.ds.trend})
     return out
@@ -817,6 +822,9 @@ def qdm_adjust(
         varss = ["sim", "P0_ref", "P0_hist", "pth"]
         ds["sim"] = _adapt_freq_preprocess(ds[varss], adapt_freq_thresh, group=Grouper(group.name), dim=None).sim
 
+    if max_tail_factor is not None:
+        max_tail_factor_mask = _max_tail_factor_mask(ds.sim, ds.hist_q_raw, max_tail_factor, interp, group)
+
     if rank_window is None:
         rank_window = False
         if group.window > 1:
@@ -835,9 +843,10 @@ def qdm_adjust(
 
     af = u.interp_on_quantiles(sim_q, ds.quantiles, ds.af, group=group, method=interp, extrapolation=extrapolation, interp_prop=interp_prop)
     scen = u.apply_correction(ds.sim, af, kind)
+
     # mask no bias adjustment, when sim is larger than n times the largest quantile in hist (without adapt freq)
     if max_tail_factor is not None:
-        scen = _max_tail_factor_masking(ds.sim, scen, ds.hist_q_raw, max_tail_factor, interp, group)
+        scen = scen.where(~max_tail_factor_mask)
 
     return xr.Dataset({"scen": scen, "sim_q": sim_q})
 
@@ -1034,6 +1043,9 @@ def cdft_adjust(
         varss = ["sim", "P0_ref", "P0_hist", "pth"]
         ds["sim"] = _adapt_freq_preprocess(ds[varss], adapt_freq_thresh, group=Grouper(group.name), dim=None).sim
 
+    if max_tail_factor is not None:
+        max_tail_factor_mask = _max_tail_factor_mask(ds.sim, ds.hist_q_raw, max_tail_factor, interp, group)
+
     kw = {"method": interp, "extrapolation": extrapolation, "interp_prop": interp_prop}
 
     # quantiles of normalized hist
@@ -1052,7 +1064,7 @@ def cdft_adjust(
 
     # mask no bias adjustment, when sim is larger than n times the largest quantile in hist (without adapt freq)
     if max_tail_factor is not None:
-        scen = _max_tail_factor_masking(ds.sim, scen, ds.hist_q_raw, max_tail_factor, interp, group)
+        scen = scen.where(~max_tail_factor_mask)
 
     out = scen.to_dataset(name="scen")
 
