@@ -710,7 +710,7 @@ def dqm_adjust(
         Threshold for frequency adaptation. See :py:class:`xsdba.processing.adapt_freq` for details.
         Default is None, meaning that frequency adaptation is not performed.
     max_tail_factor: float, optional
-        If not None, values to adjust (after preprossing steps) that are above max_tail_factor * the value
+        If not None, values to adjust (after preprocessing steps) that are above max_tail_factor * the value
         of the last quantile of hist (before the preprocessing steps) are not adjusted.
         We keep the input simulation with only the preprocessing steps instead.
     interp_prop: bool
@@ -796,7 +796,7 @@ def qdm_adjust(
         If `False`, ranks are computed within exact groups, e.g., a specific day of year.
         In `xsdba>=0.8`, this option will be deprecated in favour of honoring the grouping window (equivalent to `True`).
     max_tail_factor: float, optional
-        If not None, values to adjust (after preprossing steps) that are above max_tail_factor * the value
+        If not None, values to adjust (after preprocessing steps) that are above max_tail_factor * the value
         of the last quantile of hist (before the preprocessing steps) are not adjusted.
         We keep the input simulation with only the preprocessing steps instead.
     interp_prop: bool
@@ -915,7 +915,7 @@ def cdft_train(
         Threshold for frequency adaptation. See :py:class:`xsdba.processing.adapt_freq` for details.
         Default is None, meaning that frequency adaptation is not performed.
     max_tail_factor: float, optional
-        If not None, values to adjust (after preprossing steps) that are above max_tail_factor * the value
+        If not None, values to adjust (after preprocessing steps) that are above max_tail_factor * the value
         of the last quantile of hist (before the preprocessing steps) are not adjusted.
         We keep the input simulation with only the preprocessing steps instead.
 
@@ -1015,7 +1015,7 @@ def cdft_adjust(
         Threshold for frequency adaptation. See :py:class:`xsdba.processing.adapt_freq` for details.
         Default is None, meaning that frequency adaptation is not performed.
     max_tail_factor: float, optional
-        If not None, values to adjust (after preprossing steps) that are above max_tail_factor * the value
+        If not None, values to adjust (after preprocessing steps) that are above max_tail_factor * the value
         of the last quantile of hist (before the preprocessing steps) are not adjusted.
         We keep the input simulation with only the preprocessing steps instead.
 

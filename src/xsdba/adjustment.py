@@ -437,7 +437,7 @@ class EmpiricalQuantileMapping(TrainAdjust):
         Threshold for frequency adaptation. See :py:class:`xsdba.processing.adapt_freq` for details.
         Default is None, meaning that frequency adaptation is not performed.
     max_tail_factor: float, optional
-        If not None, values to adjust (after preprossing steps) that are above max_tail_factor * the value
+        If not None, values to adjust (after preprocessing steps) that are above max_tail_factor * the value
         of the last quantile of hist (before the preprocessing steps, stored in hist_q_raw) are not adjusted.
         We keep the input simulation with only the preprocessing steps instead.
         If None, hist_q_raw output will just be a dummy variable.
@@ -555,7 +555,7 @@ class DetrendedQuantileMapping(TrainAdjust):
         Threshold for frequency adaptation. See :py:class:`xsdba.processing.adapt_freq` for details.
         Default is None, meaning that frequency adaptation is not performed.
     max_tail_factor: float, optional
-        If not None, values to adjust (after preprossing steps) that are above max_tail_factor * the value
+        If not None, values to adjust (after preprocessing steps) that are above max_tail_factor * the value
         of the last quantile of hist (before the preprocessing steps, stored in hist_q_raw) are not adjusted.
         We keep the input simulation with only the preprocessing steps instead.
         If None, hist_q_raw output will just be a dummy variable.
@@ -697,7 +697,7 @@ class QuantileDeltaMapping(EmpiricalQuantileMapping):
         The grouping information. See :py:class:`xsdba.base.Grouper` for details.
         Default is "time", meaning a single adjustment group along dimension "time".
     max_tail_factor: float, optional
-        If not None, values to adjust (after preprossing steps) that are above max_tail_factor * the value
+        If not None, values to adjust (after preprocessing steps) that are above max_tail_factor * the value
         of the last quantile of hist (before the preprocessing steps, stored in hist_q_raw) are not adjusted.
         We keep the input simulation with only the preprocessing steps instead.
         If None, hist_q_raw output will just be a dummy variable.
