@@ -374,7 +374,7 @@ def _interp_on_quantiles_1d(newx, oldx, oldy, method, extrap):
         xn = np.clip(newx[~mask_new], x[0], x[-1])
     elif extrap == "nan":
         bounds_mask = (newx < x[0]) | (newx > x[-1])
-        mask_new = mask_new & bounds_mask
+        mask_new = mask_new | bounds_mask
         xn = newx[~mask_new]
     else:
         xn = newx[~mask_new]
