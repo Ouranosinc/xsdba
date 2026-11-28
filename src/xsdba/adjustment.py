@@ -16,6 +16,7 @@ from scipy import stats
 from xarray.core.dataarray import DataArray
 
 from xsdba._adjustment import (
+    _preprocess_dataset,
     dotc_adjust,
     dqm_adjust,
     dqm_train,
@@ -2058,11 +2059,12 @@ else:
 
             fit_needs_sim = "X1" in signature(cls.sbck.fit).parameters
             for k, v in signature(cls.sbck.__init__).parameters.items():
-                if v.default == v.empty and v.kind != v.VAR_KEYWORD and k != "cls" and k not in kwargs:
+                if v.default == v.empty and v.kind != v.VAR_KEYWORD and k != "self" and k not in kwargs:
                     raise ValueError(f"Argument {k} is not optional for SBCK method {cls.sbck.__name__}.")
 
             def _wrap_sbck(ds):
-                ref_dim, hist_dim, sim_dim = "time", "time", "time"
+                # ref_dim = "time"
+                hist_dim, sim_dim = "time", "time"
                 ds0 = xr.Dataset({"ref": ds.ref, "sim": ds.hist})
                 # add the `dP0, P0_ref, P0_hist, pth` datasets
                 ds0 = _preprocess_dataset(
