@@ -73,7 +73,10 @@ def _preprocess_dataset(
         # pick the dataset with the largest number of dimensions
         # keep add_dims on the new datasets
         dim = Grouper.filter_add_dims(dim)
-        ds0 = ds.sim if len(ds.sim.dims) >= len(ds.ref.dims) else ds.ref
+        if "ref" in ds.data_vars:
+            ds0 = ds.sim if len(ds.sim.dims) >= len(ds.ref.dims) else ds.ref
+        else:
+            ds0 = ds.sim
         dummy = xr.full_like(ds0[{d: 0 for d in dim}], np.nan)
         ds = ds.assign(P0_ref=dummy, P0_hist=dummy, pth=dummy)
 

@@ -16,6 +16,7 @@ from scipy import stats
 from xarray.core.dataarray import DataArray
 
 from xsdba._adjustment import (
+    _preprocess_dataset,
     dotc_adjust,
     dqm_adjust,
     dqm_train,
@@ -2034,39 +2035,92 @@ else:
         sbck = None  # The method
 
         @classmethod
-        def _adjust(cls, ref, hist, sim, *, multi_dim=None, **kwargs):
-            # Check inputs
+        def _adjust(
+            cls,
+            ref,
+            hist,
+            sim,
+            *,
+            group: str | Grouper = "time",
+            adapt_freq_thresh: str | None = None,
+            jitter_under_thresh_value: str | None = None,
+            jitter_over_thresh_value: str | None = None,
+            jitter_over_thresh_upper_bnd: str | None = None,
+            # max_tail_factor: float | None = None,
+            multi_dim=None,
+            **kwargs,
+        ):
+            if isinstance(group, str):
+                group = Grouper(group)
+            if isinstance(group, dict):
+                group = Grouper(**group)
+            if group.window != 1:
+                raise NotImplementedError("Group for SBCK must be in ['time', 'time.month', 'time.dayofyear'], without a window.")
+
             fit_needs_sim = "X1" in signature(cls.sbck.fit).parameters
             for k, v in signature(cls.sbck.__init__).parameters.items():
                 if v.default == v.empty and v.kind != v.VAR_KEYWORD and k != "self" and k not in kwargs:
                     raise ValueError(f"Argument {k} is not optional for SBCK method {cls.sbck.__name__}.")
 
-            ref = ref.rename(time="time_cal")
-            hist = hist.rename(time="time_cal")
-            sim = sim.rename(time="time_tgt")
+            def _wrap_sbck(ds):
+                # ref_dim = "time"
+                hist_dim, sim_dim = "time", "time"
+                ds0 = xr.Dataset({"ref": ds.ref, "sim": ds.hist})
+                # add the `dP0, P0_ref, P0_hist, pth` datasets
+                ds0 = _preprocess_dataset(
+                    ds0,
+                    dim=hist_dim,
+                    adapt_freq_thresh=adapt_freq_thresh,
+                    jitter_under_thresh_value=jitter_under_thresh_value,
+                    jitter_over_thresh_value=jitter_over_thresh_value,
+                    jitter_over_thresh_upper_bnd=jitter_over_thresh_upper_bnd,
+                )
+                hist = ds0.sim
+                ds0["sim"] = ds.sim
+                # remove the `ref` dataset since we already have `P0_ref` and other datasets
+                ds0 = ds0.drop_vars("ref")
+                sim = _preprocess_dataset(
+                    ds0,
+                    dim=sim_dim,
+                    adapt_freq_thresh=adapt_freq_thresh,
+                    jitter_under_thresh_value=jitter_under_thresh_value,
+                    jitter_over_thresh_value=jitter_over_thresh_value,
+                    jitter_over_thresh_upper_bnd=jitter_over_thresh_upper_bnd,
+                ).sim
+                ref = ds.ref
 
-            if multi_dim:
-                input_core_dims = [
-                    ("time_cal", multi_dim),
-                    ("time_cal", multi_dim),
-                    ("time_tgt", multi_dim),
-                ]
+                ref = ref.rename(time="time_cal")
+                hist = hist.rename(time="time_cal")
+                sim = sim.rename(time="time_tgt")
+
+                if multi_dim:
+                    input_core_dims = [
+                        ("time_cal", multi_dim),
+                        ("time_cal", multi_dim),
+                        ("time_tgt", multi_dim),
+                    ]
+                else:
+                    input_core_dims = [("time_cal",), ("time_cal",), ("time_tgt",)]
+
+                return xr.apply_ufunc(
+                    cls._apply_sbck,
+                    ref,
+                    hist,
+                    sim,
+                    input_core_dims=input_core_dims,
+                    kwargs={"method": cls.sbck, "fit_needs_sim": fit_needs_sim, **kwargs},
+                    vectorize=True,
+                    keep_attrs=True,
+                    dask="parallelized",
+                    output_core_dims=[input_core_dims[-1]],
+                    output_dtypes=[sim.dtype],
+                ).rename(time_tgt="time")
+
+            # TODO: I tried a group.apply, but had some problems.
+            if group.name == "time":
+                return _wrap_sbck(xr.Dataset(dict(ref=ref, hist=hist, sim=sim)))
             else:
-                input_core_dims = [("time_cal",), ("time_cal",), ("time_tgt",)]
-
-            return xr.apply_ufunc(
-                cls._apply_sbck,
-                ref,
-                hist,
-                sim,
-                input_core_dims=input_core_dims,
-                kwargs={"method": cls.sbck, "fit_needs_sim": fit_needs_sim, **kwargs},
-                vectorize=True,
-                keep_attrs=True,
-                dask="parallelized",
-                output_core_dims=[input_core_dims[-1]],
-                output_dtypes=[sim.dtype],
-            ).rename(time_tgt="time")
+                return xr.Dataset(dict(ref=ref, hist=hist, sim=sim)).groupby(group.name).map(_wrap_sbck)
 
         @staticmethod
         def _apply_sbck(ref, hist, sim, method, fit_needs_sim, **kwargs):

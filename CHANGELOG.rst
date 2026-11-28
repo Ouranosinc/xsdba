@@ -5,7 +5,7 @@ Changelog
 `Unreleased <https://github.com/Ouranosinc/xsdba>`_ (latest)
 ------------------------------------------------------------
 
-Contributors: Trevor James Smith (:user:`Zeitsperre`).
+Contributors: Trevor James Smith (:user:`Zeitsperre`), Éric Dupuis (:user:`coxipi`).
 
 Changes
 ^^^^^^^
@@ -14,6 +14,7 @@ Changes
     * ``optimization``: For optional mathematical optmimization libraries.
     * ``xclim``: For compatible version of `xclim`.
 * The unused CLI entrypoint and module (`cli.py`) has been removed. Additionally, dependencies `rich` and `typer` have been made redundant and are no longer core dependencies. (:pull:`340`).
+* Simple time grouping are now available with the `SBCK` wrapper.
 
 Fixes
 ^^^^^
