@@ -2117,7 +2117,10 @@ else:
                 ).rename(time_tgt="time")
 
             # TODO: I tried a group.apply, but had some problems.
-            return xr.Dataset(dict(ref=ref, hist=hist, sim=sim)).groupby(group.name).map(_wrap_sbck)
+            if group.name == "time":
+                return _wrap_sbck(xr.Dataset(dict(ref=ref, hist=hist, sim=sim)))
+            else:
+                return xr.Dataset(dict(ref=ref, hist=hist, sim=sim)).groupby(group.name).map(_wrap_sbck)
 
         @staticmethod
         def _apply_sbck(ref, hist, sim, method, fit_needs_sim, **kwargs):
